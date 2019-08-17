@@ -1,7 +1,7 @@
 .PHONY: example
 
 # setup development environment
-init: update-venv
+setup: update-venv
 
 # example usage
 example:
