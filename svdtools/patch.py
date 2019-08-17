@@ -5,14 +5,14 @@ Copyright 2017-2019 Adam Greig.
 Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
-import copy
-import yaml
-import os.path
 import argparse
+import copy
+import os.path
 import xml.etree.ElementTree as ET
-from fnmatch import fnmatch
 from collections import OrderedDict
+from fnmatch import fnmatch
 
+import yaml
 
 DEVICE_CHILDREN = [
     "vendor",
@@ -97,11 +97,11 @@ def yaml_includes(parent):
 
 def make_write_constraint(wc_range):
     """Given a (min, max), returns a writeConstraint Element."""
-    wc = ET.Element('writeConstraint')
-    r = ET.SubElement(wc, 'range')
-    minimum = ET.SubElement(r, 'minimum')
+    wc = ET.Element("writeConstraint")
+    r = ET.SubElement(wc, "range")
+    minimum = ET.SubElement(r, "minimum")
     minimum.text = str(wc_range[0])
-    maximum = ET.SubElement(r, 'maximum')
+    maximum = ET.SubElement(r, "maximum")
     maximum.text = str(wc_range[1])
     wc.tail = "\n            "
     return wc
@@ -112,10 +112,10 @@ def make_enumerated_values(name, values, usage="read-write"):
     Given a name and a dict of values which maps variant names to (value,
     description), returns an enumeratedValues Element.
     """
-    ev = ET.Element('enumeratedValues')
+    ev = ET.Element("enumeratedValues")
     usagekey = {"read": "R", "write": "W"}.get(usage, "")
-    ET.SubElement(ev, 'name').text = name + usagekey
-    ET.SubElement(ev, 'usage').text = usage
+    ET.SubElement(ev, "name").text = name + usagekey
+    ET.SubElement(ev, "usage").text = usage
     if len(set(v[0] for v in values.values())) != len(values):
         raise ValueError("enumeratedValue {}: can't have duplicate values".format(name))
     if name[0] in "0123456789":
@@ -133,25 +133,25 @@ def make_enumerated_values(name, values, usage="read-write"):
                 "enumeratedValue {}: can't have empty description"
                 " for value {}".format(name, value)
             )
-        el = ET.SubElement(ev, 'enumeratedValue')
-        ET.SubElement(el, 'name').text = vname
-        ET.SubElement(el, 'description').text = description
-        ET.SubElement(el, 'value').text = str(value)
+        el = ET.SubElement(ev, "enumeratedValue")
+        ET.SubElement(el, "name").text = vname
+        ET.SubElement(el, "description").text = description
+        ET.SubElement(el, "value").text = str(value)
     ev.tail = "\n            "
     return ev
 
 
 def make_derived_enumerated_values(name):
     """Returns an enumeratedValues Element which is derivedFrom name."""
-    evd = ET.Element('enumeratedValues', {"derivedFrom": name})
+    evd = ET.Element("enumeratedValues", {"derivedFrom": name})
     evd.tail = "\n            "
     return evd
 
 
 def iter_peripherals(tree, pspec, check_derived=True):
     """Iterates over all peripherals that match pspec."""
-    for ptag in tree.iter('peripheral'):
-        name = ptag.find('name').text
+    for ptag in tree.iter("peripheral"):
+        name = ptag.find("name").text
         if matchname(name, pspec):
             if check_derived and "derivedFrom" in ptag.attrib:
                 continue
@@ -162,8 +162,8 @@ def iter_registers(ptag, rspec):
     """
     Iterates over all registers that match rspec and live inside ptag.
     """
-    for rtag in ptag.iter('register'):
-        name = rtag.find('name').text
+    for rtag in ptag.iter("register"):
+        name = rtag.find("name").text
         if matchname(name, rspec):
             yield rtag
 
@@ -172,8 +172,8 @@ def iter_fields(rtag, fspec):
     """
     Iterates over all fields that match fspec and live inside rtag.
     """
-    for ftag in rtag.find('fields').iter('field'):
-        name = ftag.find('name').text
+    for ftag in rtag.find("fields").iter("field"):
+        name = ftag.find("name").text
         if matchname(name, fspec):
             yield ftag
 
@@ -193,7 +193,7 @@ def process_device_child_modify(device, key, val):
 
 def process_device_cpu_modify(device, mod):
     """Modify the `cpu` node inside `device` according to `mod`."""
-    cpu = device.find('cpu')
+    cpu = device.find("cpu")
     for key, val in mod.items():
         field = cpu.find(key)
         if field is not None:
@@ -218,35 +218,35 @@ def process_register_modify(rtag, fspec, fmod):
                 ftag.find(key).text = str(value)
             except AttributeError:
                 raise SvdPatchError(
-                    'invalid attribute {!r} for '
-                    'register {}, field {}'.format(
-                        key, rtag.find('name').text, ftag.find('name').text
+                    "invalid attribute {!r} for "
+                    "register {}, field {}".format(
+                        key, rtag.find("name").text, ftag.find("name").text
                     )
                 )
 
 
 def process_device_add(device, pname, padd):
     """Add pname given by padd to device."""
-    parent = device.find('peripherals')
-    for ptag in parent.iter('peripheral'):
-        if ptag.find('name').text == pname:
-            raise SvdPatchError('device already has a peripheral {}'.format(pname))
+    parent = device.find("peripherals")
+    for ptag in parent.iter("peripheral"):
+        if ptag.find("name").text == pname:
+            raise SvdPatchError("device already has a peripheral {}".format(pname))
     if "derivedFrom" in padd:
         derived = padd["derivedFrom"]
-        pnew = ET.SubElement(parent, 'peripheral', {"derivedFrom": derived})
+        pnew = ET.SubElement(parent, "peripheral", {"derivedFrom": derived})
     else:
-        pnew = ET.SubElement(parent, 'peripheral')
-    ET.SubElement(pnew, 'name').text = pname
+        pnew = ET.SubElement(parent, "peripheral")
+    ET.SubElement(pnew, "name").text = pname
     for (key, value) in padd.items():
         if key == "registers":
-            ET.SubElement(pnew, 'registers')
+            ET.SubElement(pnew, "registers")
             for rname in value:
                 process_peripheral_add_reg(pnew, rname, value[rname])
         elif key == "interrupts":
             for iname in value:
                 process_peripheral_add_int(pnew, iname, value[iname])
         elif key == "addressBlock":
-            ab = ET.SubElement(pnew, 'addressBlock')
+            ab = ET.SubElement(pnew, "addressBlock")
             for (ab_key, ab_value) in value.items():
                 ET.SubElement(ab, ab_key).text = str(ab_value)
         elif key != "derivedFrom":
@@ -259,23 +259,23 @@ def process_device_derive(device, pname, pderive):
     Remove registers from pname and mark it as derivedFrom pderive.
     Update all derivedFrom referencing pname.
     """
-    parent = device.find('peripherals')
-    ptag = parent.find('./peripheral[name=\'{}\']'.format(pname))
-    derived = parent.find('./peripheral[name=\'{}\']'.format(pderive))
+    parent = device.find("peripherals")
+    ptag = parent.find("./peripheral[name='{}']".format(pname))
+    derived = parent.find("./peripheral[name='{}']".format(pderive))
     if ptag is None:
-        raise SvdPatchError('peripheral {} not found'.format(pname))
+        raise SvdPatchError("peripheral {} not found".format(pname))
     if derived is None:
-        raise SvdPatchError('peripheral {} not found'.format(pderive))
+        raise SvdPatchError("peripheral {} not found".format(pderive))
     for value in list(ptag):
-        if value.tag in ('name', 'baseAddress', 'interrupt'):
+        if value.tag in ("name", "baseAddress", "interrupt"):
             continue
         ptag.remove(value)
     for value in ptag:
         last = value
     last.tail = "\n    "
-    ptag.set('derivedFrom', pderive)
-    for p in parent.findall('./peripheral[@derivedFrom=\'{}\']'.format(pname)):
-        p.set('derivedFrom', pderive)
+    ptag.set("derivedFrom", pderive)
+    for p in parent.findall("./peripheral[@derivedFrom='{}']".format(pname)):
+        p.set("derivedFrom", pderive)
 
 
 def process_device_rebase(device, pnew, pold):
@@ -283,43 +283,43 @@ def process_device_rebase(device, pnew, pold):
     Move registers from pold to pnew.
     Update all derivedFrom referencing pold.
     """
-    parent = device.find('peripherals')
-    old = parent.find('./peripheral[name=\'{}\']'.format(pold))
-    new = parent.find('./peripheral[name=\'{}\']'.format(pnew))
+    parent = device.find("peripherals")
+    old = parent.find("./peripheral[name='{}']".format(pold))
+    new = parent.find("./peripheral[name='{}']".format(pnew))
     if old is None:
-        raise SvdPatchError('peripheral {} not found'.format(pold))
+        raise SvdPatchError("peripheral {} not found".format(pold))
     if new is None:
-        raise SvdPatchError('peripheral {} not found'.format(pnew))
+        raise SvdPatchError("peripheral {} not found".format(pnew))
     for value in new:
         last = value
     last.tail = "\n      "
     for value in list(old):
-        if value.tag in ('name', 'baseAddress', 'interrupt'):
+        if value.tag in ("name", "baseAddress", "interrupt"):
             continue
         old.remove(value)
         new.append(value)
     for value in old:
         last = value
     last.tail = "\n    "
-    del new.attrib['derivedFrom']
-    old.set('derivedFrom', pnew)
-    for p in parent.findall('./peripheral[@derivedFrom=\'{}\']'.format(pold)):
-        p.set('derivedFrom', pnew)
+    del new.attrib["derivedFrom"]
+    old.set("derivedFrom", pnew)
+    for p in parent.findall("./peripheral[@derivedFrom='{}']".format(pold)):
+        p.set("derivedFrom", pnew)
 
 
 def process_peripheral_add_reg(ptag, rname, radd):
     """Add rname given by radd to ptag."""
-    parent = ptag.find('registers')
-    for rtag in parent.iter('register'):
-        if rtag.find('name').text == rname:
+    parent = ptag.find("registers")
+    for rtag in parent.iter("register"):
+        if rtag.find("name").text == rname:
             raise SvdPatchError(
-                'peripheral {} already has a register {}'.format(
-                    ptag.find('name').text, rname
+                "peripheral {} already has a register {}".format(
+                    ptag.find("name").text, rname
                 )
             )
-    rnew = ET.SubElement(parent, 'register')
-    ET.SubElement(rnew, 'name').text = rname
-    ET.SubElement(rnew, 'fields')
+    rnew = ET.SubElement(parent, "register")
+    ET.SubElement(rnew, "name").text = rname
+    ET.SubElement(rnew, "fields")
     for (key, value) in radd.items():
         if key == "fields":
             for fname in value:
@@ -331,15 +331,15 @@ def process_peripheral_add_reg(ptag, rname, radd):
 
 def process_peripheral_add_int(ptag, iname, iadd):
     """Add iname given by iadd to ptag."""
-    for itag in ptag.iter('interrupt'):
-        if itag.find('name').text == iname:
+    for itag in ptag.iter("interrupt"):
+        if itag.find("name").text == iname:
             raise SvdPatchError(
-                'peripheral {} already has an interrupt {}'.format(
-                    ptag.find('name').text, iname
+                "peripheral {} already has an interrupt {}".format(
+                    ptag.find("name").text, iname
                 )
             )
-    inew = ET.SubElement(ptag, 'interrupt')
-    ET.SubElement(inew, 'name').text = iname
+    inew = ET.SubElement(ptag, "interrupt")
+    ET.SubElement(inew, "name").text = iname
     for key, val in iadd.items():
         ET.SubElement(inew, key).text = str(val)
     inew.tail = "\n    "
@@ -347,16 +347,16 @@ def process_peripheral_add_int(ptag, iname, iadd):
 
 def process_register_add(rtag, fname, fadd):
     """Add fname given by fadd to rtag."""
-    parent = rtag.find('fields')
-    for ftag in parent.iter('field'):
-        if ftag.find('name').text == fname:
+    parent = rtag.find("fields")
+    for ftag in parent.iter("field"):
+        if ftag.find("name").text == fname:
             raise SvdPatchError(
-                'register {} already has a field {}'.format(
-                    rtag.find('name').text, fname
+                "register {} already has a field {}".format(
+                    rtag.find("name").text, fname
                 )
             )
-    fnew = ET.SubElement(parent, 'field')
-    ET.SubElement(fnew, 'name').text = fname
+    fnew = ET.SubElement(parent, "field")
+    ET.SubElement(fnew, "name").text = fname
     for (key, value) in fadd.items():
         ET.SubElement(fnew, key).text = str(value)
     fnew.tail = "\n            "
@@ -365,29 +365,29 @@ def process_register_add(rtag, fname, fadd):
 def process_device_delete(device, pspec):
     """Delete registers matched by rspec inside ptag."""
     for ptag in list(iter_peripherals(device, pspec, check_derived=False)):
-        device.find('peripherals').remove(ptag)
+        device.find("peripherals").remove(ptag)
 
 
 def process_peripheral_delete(ptag, rspec):
     """Delete registers matched by rspec inside ptag."""
     for rtag in list(iter_registers(ptag, rspec)):
-        ptag.find('registers').remove(rtag)
+        ptag.find("registers").remove(rtag)
 
 
 def process_register_delete(rtag, fspec):
     """Delete fields matched by fspec inside rtag."""
     for ftag in list(iter_fields(rtag, fspec)):
-        rtag.find('fields').remove(ftag)
+        rtag.find("fields").remove(ftag)
 
 
 def process_peripheral_strip(ptag, prefix):
     """Delete prefix in register names inside ptag."""
-    for rtag in ptag.iter('register'):
-        nametag = rtag.find('name')
+    for rtag in ptag.iter("register"):
+        nametag = rtag.find("name")
         name = nametag.text
         if name.startswith(prefix):
             nametag.text = name[len(prefix) :]
-            dnametag = rtag.find('displayName')
+            dnametag = rtag.find("displayName")
             dname = dnametag.text
             if dname.startswith(prefix):
                 dnametag.text = dname[len(prefix) :]
@@ -437,14 +437,14 @@ def process_peripheral_regs_array(ptag, rspec, rmod):
     registers = []
     li, ri = spec_ind(rspec)
     for rtag in list(iter_registers(ptag, rspec)):
-        rname = rtag.findtext('name')
+        rname = rtag.findtext("name")
         registers.append(
-            [rtag, rname[li : len(rname) - ri], int(rtag.findtext('addressOffset'), 0)]
+            [rtag, rname[li : len(rname) - ri], int(rtag.findtext("addressOffset"), 0)]
         )
     dim = len(registers)
     if dim == 0:
         raise SvdPatchError(
-            "{}: registers {} not found".format(ptag.findtext('name'), rspec)
+            "{}: registers {} not found".format(ptag.findtext("name"), rspec)
         )
     registers = sorted(registers, key=lambda r: r[2])
 
@@ -464,21 +464,21 @@ def process_peripheral_regs_array(ptag, rspec, rmod):
     ):
         raise SvdPatchError(
             "{}: registers cannot be collected into {} array".format(
-                ptag.findtext('name'), rspec
+                ptag.findtext("name"), rspec
             )
         )
     for rtag, _, _ in registers[1:]:
-        ptag.find('registers').remove(rtag)
+        ptag.find("registers").remove(rtag)
     rtag = registers[0][0]
-    if 'name' in rmod:
-        name = rmod['name']
+    if "name" in rmod:
+        name = rmod["name"]
     else:
         name = rspec[:li] + "%s" + rspec[len(rspec) - ri :]
-    rtag.find('name').text = name
+    rtag.find("name").text = name
     process_peripheral_register(ptag, name, rmod)
-    ET.SubElement(rtag, 'dim').text = str(dim)
-    ET.SubElement(rtag, 'dimIndex').text = dimIndex
-    ET.SubElement(rtag, 'dimIncrement').text = hex(dimIncrement)
+    ET.SubElement(rtag, "dim").text = str(dim)
+    ET.SubElement(rtag, "dimIndex").text = dimIndex
+    ET.SubElement(rtag, "dimIncrement").text = hex(dimIncrement)
 
 
 def process_peripheral_cluster(ptag, cname, cmod):
@@ -491,12 +491,12 @@ def process_peripheral_cluster(ptag, cname, cmod):
         registers = []
         li, ri = spec_ind(rspec)
         for rtag in list(iter_registers(ptag, rspec)):
-            rname = rtag.findtext('name')
+            rname = rtag.findtext("name")
             registers.append(
                 [
                     rtag,
                     rname[li : len(rname) - ri],
-                    int(rtag.findtext('addressOffset'), 0),
+                    int(rtag.findtext("addressOffset"), 0),
                 ]
             )
         registers = sorted(registers, key=lambda r: r[2])
@@ -531,38 +531,38 @@ def process_peripheral_cluster(ptag, cname, cmod):
     if not check:
         raise SvdPatchError(
             "{}: registers cannot be collected into {} cluster".format(
-                ptag.findtext('name'), cname
+                ptag.findtext("name"), cname
             )
         )
-    ctag = ET.SubElement(ptag.find('registers'), 'cluster')
+    ctag = ET.SubElement(ptag.find("registers"), "cluster")
     addressOffset = min([registers[0][2] for _, registers in rdict.items()])
-    ET.SubElement(ctag, 'name').text = cname
-    if 'description' in cmod:
-        description = cmod['description']
+    ET.SubElement(ctag, "name").text = cname
+    if "description" in cmod:
+        description = cmod["description"]
     else:
         description = "Cluster {}, containing {}".format(cname, ", ".join(rspecs))
-    ET.SubElement(ctag, 'description').text = description
-    ET.SubElement(ctag, 'addressOffset').text = hex(addressOffset)
+    ET.SubElement(ctag, "description").text = description
+    ET.SubElement(ctag, "addressOffset").text = hex(addressOffset)
     for rspec, registers in rdict.items():
         for rtag, _, _ in registers[1:]:
-            ptag.find('registers').remove(rtag)
+            ptag.find("registers").remove(rtag)
         rtag = registers[0][0]
         rmod = cmod[rspec]
         process_peripheral_register(ptag, rspec, rmod)
         new_rtag = copy.deepcopy(rtag)
-        ptag.find('registers').remove(rtag)
-        if 'name' in rmod:
-            name = rmod['name']
+        ptag.find("registers").remove(rtag)
+        if "name" in rmod:
+            name = rmod["name"]
         else:
             li, ri = spec_ind(rspec)
             name = rspec[:li] + rspec[len(rspec) - ri :]
-        new_rtag.find('name').text = name
-        offset = new_rtag.find('addressOffset')
+        new_rtag.find("name").text = name
+        offset = new_rtag.find("addressOffset")
         offset.text = hex(int(offset.text, 0) - addressOffset)
         ctag.append(new_rtag)
-    ET.SubElement(ctag, 'dim').text = str(dim)
-    ET.SubElement(ctag, 'dimIndex').text = dimIndex
-    ET.SubElement(ctag, 'dimIncrement').text = hex(dimIncrement)
+    ET.SubElement(ctag, "dim").text = str(dim)
+    ET.SubElement(ctag, "dimIndex").text = dimIndex
+    ET.SubElement(ctag, "dimIncrement").text = hex(dimIncrement)
 
 
 class SvdPatchError(ValueError):
@@ -589,56 +589,56 @@ def process_register_merge(rtag, fspec):
     """Merge all fspec in rtag."""
     fields = list(iter_fields(rtag, fspec))
     if len(fields) == 0:
-        rname = rtag.find('name').text
+        rname = rtag.find("name").text
         raise RegisterMergeError(
             "Could not find any fields to merge {}.{}".format(rname, fspec)
         )
-    parent = rtag.find('fields')
-    name = os.path.commonprefix([f.find('name').text for f in fields])
-    desc = fields[0].find('description').text
-    bitwidth = sum(int(f.find('bitWidth').text) for f in fields)
-    bitoffset = min(int(f.find('bitOffset').text) for f in fields)
+    parent = rtag.find("fields")
+    name = os.path.commonprefix([f.find("name").text for f in fields])
+    desc = fields[0].find("description").text
+    bitwidth = sum(int(f.find("bitWidth").text) for f in fields)
+    bitoffset = min(int(f.find("bitOffset").text) for f in fields)
     for field in fields:
         parent.remove(field)
-    fnew = ET.SubElement(parent, 'field')
-    ET.SubElement(fnew, 'name').text = name
-    ET.SubElement(fnew, 'description').text = desc
-    ET.SubElement(fnew, 'bitOffset').text = str(bitoffset)
-    ET.SubElement(fnew, 'bitWidth').text = str(bitwidth)
+    fnew = ET.SubElement(parent, "field")
+    ET.SubElement(fnew, "name").text = name
+    ET.SubElement(fnew, "description").text = desc
+    ET.SubElement(fnew, "bitOffset").text = str(bitoffset)
+    ET.SubElement(fnew, "bitWidth").text = str(bitwidth)
 
 
 def process_register_split(rtag, fspec):
     """split all fspec in rtag."""
     fields = list(iter_fields(rtag, fspec))
     if len(fields) == 0:
-        rname = rtag.find('name').text
+        rname = rtag.find("name").text
         raise RegisterMergeError(
             "Could not find any fields to split {}.{}".format(rname, fspec)
         )
-    parent = rtag.find('fields')
-    name = os.path.commonprefix([f.find('name').text for f in fields])
-    desc = fields[0].find('description').text
-    bitwidth = sum(int(f.find('bitWidth').text) for f in fields)
+    parent = rtag.find("fields")
+    name = os.path.commonprefix([f.find("name").text for f in fields])
+    desc = fields[0].find("description").text
+    bitwidth = sum(int(f.find("bitWidth").text) for f in fields)
     parent.remove(fields[0])
     for i in range(bitwidth):
-        fnew = ET.SubElement(parent, 'field')
-        ET.SubElement(fnew, 'name').text = name + str(i)
-        ET.SubElement(fnew, 'description').text = desc
-        ET.SubElement(fnew, 'bitOffset').text = str(i)
-        ET.SubElement(fnew, 'bitWidth').text = str(1)
+        fnew = ET.SubElement(parent, "field")
+        ET.SubElement(fnew, "name").text = name + str(i)
+        ET.SubElement(fnew, "description").text = desc
+        ET.SubElement(fnew, "bitOffset").text = str(i)
+        ET.SubElement(fnew, "bitWidth").text = str(1)
 
 
 def process_field_enum(pname, rtag, fspec, field, usage="read-write"):
     """Add an enumeratedValues given by field to all fspec in rtag."""
     derived = None
     for ftag in iter_fields(rtag, fspec):
-        name = ftag.find('name').text
+        name = ftag.find("name").text
         if derived is None:
             enum = make_enumerated_values(name, field, usage=usage)
-            enum_name = enum.find('name').text
-            enum_usage = enum.find('usage').text
-            for ev in ftag.iter('enumeratedValues'):
-                ev_usage = ev.find('usage').text
+            enum_name = enum.find("name").text
+            enum_usage = enum.find("usage").text
+            for ev in ftag.iter("enumeratedValues"):
+                ev_usage = ev.find("usage").text
                 if ev_usage == enum_usage or ev_usage == "read-write":
                     print(pname, fspec, field)
                     raise SvdPatchError(
@@ -651,7 +651,7 @@ def process_field_enum(pname, rtag, fspec, field, usage="read-write"):
         else:
             ftag.append(derived)
     if derived is None:
-        rname = rtag.find('name').text
+        rname = rtag.find("name").text
         raise MissingFieldError("Could not find {}:{}.{}".format(pname, rname, fspec))
 
 
@@ -662,7 +662,7 @@ def process_field_range(pname, rtag, fspec, field):
         ftag.append(make_write_constraint(field))
         set_any = True
     if not set_any:
-        rname = rtag.find('name').text
+        rname = rtag.find("name").text
         raise MissingFieldError("Could not find {}:{}.{}".format(pname, rname, fspec))
 
 
@@ -686,7 +686,7 @@ def process_register_field(pname, rtag, fspec, field):
 def process_peripheral_register(ptag, rspec, register, update_fields=True):
     """Work through a register, handling all fields."""
     # Find all registers that match the spec
-    pname = ptag.find('name').text
+    pname = ptag.find("name").text
     rcount = 0
     for rtag in iter_registers(ptag, rspec):
         rcount += 1
@@ -775,7 +775,7 @@ def process_device(svd, device, update_fields=True):
             process_device_cpu_modify(svd, val)
         elif key == "_peripherals":
             for pspec in val:
-                pmod = device['_modify']['_peripherals'][pspec]
+                pmod = device["_modify"]["_peripherals"][pspec]
                 process_device_peripheral_modify(svd, pspec, pmod)
         elif key in DEVICE_CHILDREN:
             process_device_child_modify(svd, key, val)
