@@ -3,6 +3,7 @@
 
 /dist
 /venv
+/regression-tests
 **/*.pyc
 **/*.pyo
 **/*.svd.patched
