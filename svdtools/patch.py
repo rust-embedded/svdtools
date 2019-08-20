@@ -5,13 +5,14 @@ Copyright 2017-2019 Adam Greig.
 Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
-import copy
-import yaml
-import os.path
 import argparse
+import copy
+import os.path
 import xml.etree.ElementTree as ET
-from fnmatch import fnmatch
 from collections import OrderedDict
+from fnmatch import fnmatch
+
+import yaml
 
 DEVICE_CHILDREN = [
     "vendor",
