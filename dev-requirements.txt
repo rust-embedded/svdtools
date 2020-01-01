@@ -1,1 +1,3 @@
-flit
+black==19.10b0
+flit==2.1.0
+isort==4.3.21
