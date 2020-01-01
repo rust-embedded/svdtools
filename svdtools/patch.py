@@ -509,9 +509,11 @@ class Peripheral:
             if name.startswith(prefix):
                 nametag.text = name[len(prefix) :]
                 dnametag = rtag.find("displayName")
-                dname = dnametag.text
-                if dname.startswith(prefix):
-                    dnametag.text = dname[len(prefix) :]
+                # not all SVD files provide display name tags
+                if dnametag is not None:
+                    dname = dnametag.text
+                    if dname.startswith(prefix):
+                        dnametag.text = dname[len(prefix) :]
 
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
