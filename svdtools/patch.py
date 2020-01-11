@@ -504,7 +504,7 @@ class Peripheral:
             name = nametag.text
 
             if strip_end and name.endswith(substr):
-                nametag.text = name[: len(name) - len(substr)]
+                nametag.text = name[: len(substr)]
             elif name.startswith(substr):
                 nametag.text = name[len(substr) :]
 
@@ -513,7 +513,7 @@ class Peripheral:
                 dname = dnametag.text
 
                 if strip_end and dname.endswith(substr):
-                    dnametag.text = dname[: len(dname) - len(substr)]
+                    dnametag.text = dname[: len(substr)]
                 elif dname.startswith(substr):
                     dnametag.text = dname[len(substr) :]
 
