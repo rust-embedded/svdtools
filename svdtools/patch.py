@@ -5,7 +5,6 @@ Copyright 2017-2019 Adam Greig.
 Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
-import argparse
 import copy
 import os.path
 import xml.etree.ElementTree as ET
@@ -42,14 +41,6 @@ def dict_constructor(loader, node):
 
 _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
 yaml.add_constructor(_mapping_tag, dict_constructor, yaml.SafeLoader)
-
-
-def parseargs():
-    """Parse our command line arguments, returns a Namespace of results."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("yaml", help="Path to YAML file to load")
-    args = parser.parse_args()
-    return args
 
 
 def matchname(name, spec):
@@ -384,7 +375,9 @@ class Device:
                     p.modify_register(rspec, rmod)
             # Handle strips
             for prefix in peripheral.get("_strip", []):
-                p.strip_prefix(prefix)
+                p.strip(prefix)
+            for suffix in peripheral.get("_strip_end", []):
+                p.strip(suffix, strip_end=True)
             # Handle additions
             for rname in peripheral.get("_add", {}):
                 radd = peripheral["_add"][rname]
@@ -501,17 +494,28 @@ class Peripheral:
         for rtag in list(self.iter_registers(rspec)):
             self.ptag.find("registers").remove(rtag)
 
-    def strip_prefix(self, prefix):
-        """Delete prefix in register names inside ptag."""
+    def strip(self, substr, strip_end=False):
+        """
+        Delete substring from register names inside ptag. Strips from the
+        beginning of the name by default.
+        """
         for rtag in self.ptag.iter("register"):
             nametag = rtag.find("name")
             name = nametag.text
-            if name.startswith(prefix):
-                nametag.text = name[len(prefix) :]
-                dnametag = rtag.find("displayName")
+
+            if strip_end and name.endswith(substr):
+                nametag.text = name[: len(substr)]
+            elif name.startswith(substr):
+                nametag.text = name[len(substr) :]
+
+            dnametag = rtag.find("displayName")
+            if dnametag is not None:
                 dname = dnametag.text
-                if dname.startswith(prefix):
-                    dnametag.text = dname[len(prefix) :]
+
+                if strip_end and dname.endswith(substr):
+                    dnametag.text = dname[: len(substr)]
+                elif dname.startswith(substr):
+                    dnametag.text = dname[len(substr) :]
 
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
