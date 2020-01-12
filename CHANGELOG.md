@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.0.4] 2020-01-12
+
+* Added `strip` & `_strip_end` patching options for stripping bitfields
+
 ## [v0.0.3] 2020-01-10
 
 * Added missing `black` and `isort` requirements - @jessebraham

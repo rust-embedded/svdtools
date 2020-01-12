@@ -680,6 +680,11 @@ class Peripheral:
             # Handle splits
             for fspec in register.get("_split", []):
                 r.split_fields(fspec)
+            # Handle strips
+            for prefix in register.get("_strip", []):
+                r.strip(prefix)
+            for suffix in register.get("_strip_end", []):
+                r.strip(suffix, strip_end=True)
             # Handle fields
             if update_fields:
                 for fspec in register:
@@ -704,6 +709,29 @@ class Register:
             name = ftag.find("name").text
             if matchname(name, fspec):
                 yield ftag
+
+    def strip(self, substr, strip_end=False):
+        """
+        Delete substring from bitfield names inside rtag. Strips from the
+        beginning of the name by default.
+        """
+        for ftag in self.rtag.iter("field"):
+            nametag = ftag.find("name")
+            name = nametag.text
+
+            if strip_end and name.endswith(substr):
+                nametag.text = name[: len(substr)]
+            elif name.startswith(substr):
+                nametag.text = name[len(substr) :]
+
+            dnametag = ftag.find("displayName")
+            if dnametag is not None:
+                dname = dnametag.text
+
+                if strip_end and dname.endswith(substr):
+                    dnametag.text = dname[: len(substr)]
+                elif dname.startswith(substr):
+                    dnametag.text = dname[len(substr) :]
 
     def modify_field(self, fspec, fmod):
         """Modify fspec inside rtag according to fmod."""
