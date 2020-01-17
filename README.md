@@ -1,22 +1,27 @@
 # svdtools
 
-Python package to handle vendor-supplied, often buggy SVD files.
+**svdtools** is a Python package for modifying vendor-supplied, often buggy SVD
+files. It can be imported as a library for use in other applications, or run
+directly via the included `svd` CLI utility.
 
-One use case is to patch vendor-supplied SVD files, then apply
-[svd2rust](https://github.com/rust-embedded/svd2rust).
+A common use case is patching vendor-supplied SVD files, then applying
+[svd2rust](https://github.com/rust-embedded/svd2rust) to the resulting patched
+SVD.
 
 
 ## Getting Started
 
-Python 3 is required to install and use `svdtools`. To install:
+Python 3.6 or newer is required to install and use `svdtools`. To install:
 
 ```bash
-pip3 install --upgrade --user svdtools
+$ pip3 install --upgrade --user svdtools
 ```
 
-`svd` can then be called call from the command line. An example is given in
-`make example`, which calls `svd patch example/incomplete-stm32l4x2.yaml`
-and generates a patched SVD file `example/stm32l4x2.svd.patched`.
+Once installation has completed, the `svd` utility can be called from the command line.
+
+An example is given in `make example`, which calls
+`svd patch example/incomplete-stm32l4x2.yaml` and generates a patched SVD file
+`example/stm32l4x2.svd.patched`.
 
 See [Device and Peripheral YAML Format](#device-and-peripheral-yaml-format) for
 more information on creating patches.
@@ -24,15 +29,17 @@ more information on creating patches.
 
 ## Develop
 
-To each their own, but the intended workflow is:
-- Setup a virtual environment via `make setup`: this also installs the `svd` CLI
-- `source venv/bin/activate` (or use [direnv](https://direnv.net/))
-- iterate, running `make check` and `make fix`
+To each their own, but the intended workflow is as follows:
+
+1. Setup a virtual environment via `make setup`; this also installs the `svd` CLI
+2. Activate the virtual environment by running `source venv/bin/activate` (or use [direnv](https://direnv.net/))
+3. Iterate, running `make check` and `make fix` as necessary
 
 
 ## Device and Peripheral YAML Format
 
-The patch specifications are in YAML and have the following general format:
+The patch specifications are in [YAML](https://yaml.org/), and have the following
+general format:
 
 ```yaml
 # Path to the SVD file we're targeting. Relative to this file.
@@ -266,6 +273,7 @@ _rebase:
 ### Name Matching
 
 Peripheral, register, and field names can be specified:
+
 - Directly (eg. the full name of the peripheral/register/field)
 - Using `?` and `*` for single- and multi- character wildcards
 - Using `[ABC]` to give a list of possible matching characters
@@ -275,17 +283,17 @@ You must quote the name if using any special characters in YAML.
 
 ### Style Guide
 
-- Enumerated values should be named in the past tense ("enabled", "masked",
-  etc).
-- Descriptions should start with capital letters but do not end with a period
+- Enumerated values should be named in the past tense (*enabled*, *masked*,
+etc.)
+- Descriptions should start with capital letters and should not end with a period
 
 
 ## License
 
-Licensed under either of
+svdtools is licensed under either of
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
 
 at your option.
 
