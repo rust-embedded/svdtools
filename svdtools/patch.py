@@ -406,7 +406,8 @@ class Device:
                         p.derive_register(rname, rderive[rname])
                 elif rname == "_interrupts":
                     raise NotImplementedError(
-                        'deriving interrupts not implemented yet: {}'.format(rname))
+                        "deriving interrupts not implemented yet: {}".format(rname)
+                    )
                 else:
                     p.derive_register(rname, rderive)
             # Handle registers
@@ -511,33 +512,40 @@ class Peripheral:
 
     def derive_register(self, rname, rderive):
         """Add rname given by deriving from rsource to ptag"""
-        parent = self.ptag.find('registers')
-        if not '_from' in  rderive:
+        parent = self.ptag.find("registers")
+        if not "_from" in rderive:
             raise SvdPatchError(
-                'derive: source register not given, please add a _from field to {}'
-                .format(rname))
-        srcname = rderive['_from']
+                "derive: source register not given, please add a _from field to {}".format(
+                    rname
+                )
+            )
+        srcname = rderive["_from"]
         source = None
-        for rtag in parent.iter('register'):
-            if rtag.find('name').text == rname:
+        for rtag in parent.iter("register"):
+            if rtag.find("name").text == rname:
                 raise SvdPatchError(
-                    'peripheral {} already has a register {}'
-                    .format(self.ptag.find('name').text, rname))
-            if rtag.find('name').text == srcname:
+                    "peripheral {} already has a register {}".format(
+                        self.ptag.find("name").text, rname
+                    )
+                )
+            if rtag.find("name").text == srcname:
                 source = rtag
         if source == None:
             raise SvdPatchError(
-                'peripheral {} does not have register {}'
-                .format(self.ptag.find('name').text, srcname))
+                "peripheral {} does not have register {}".format(
+                    self.ptag.find("name").text, srcname
+                )
+            )
         rcopy = copy.deepcopy(source)
-        rcopy.find('name').text = rname
-        rcopy.find('displayName').text = rname
+        rcopy.find("name").text = rname
+        rcopy.find("displayName").text = rname
         for (key, value) in rderive.items():
-            if key == '_from':
+            if key == "_from":
                 continue
-            elif key == 'fields':
+            elif key == "fields":
                 raise NotImplementedError(
-                    'Modifying fields in derived register not implemented')
+                    "Modifying fields in derived register not implemented"
+                )
             else:
                 rcopy.find(key).text = str(value)
         parent.append(rcopy)
