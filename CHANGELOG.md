@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.1] 2020-01-26
+
+* Backport changes for deriving registers from stm32-rs svdpatch.py - @jessebraham
+
 ## [v0.1.0] 2020-01-20
 
 * Backport two changes to stm32-rs svdpatch.py
