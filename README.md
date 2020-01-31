@@ -1,3 +1,5 @@
+[![PyPI][pypi-badge]][pypi-url]
+
 # svdtools
 
 **svdtools** is a Python package for modifying vendor-supplied, often buggy SVD
@@ -8,6 +10,8 @@ A common use case is patching vendor-supplied SVD files, then applying
 [svd2rust](https://github.com/rust-embedded/svd2rust) to the resulting patched
 SVD.
 
+[pypi-badge]: https://img.shields.io/pypi/v/svdtools.svg
+[pypi-url]: https://pypi.org/project/svdtools/
 
 ## Getting Started
 
