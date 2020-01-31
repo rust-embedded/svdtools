@@ -564,8 +564,9 @@ class Peripheral:
             nametag = rtag.find("name")
             name = nametag.text
 
-            if strip_end and name.endswith(substr):
-                nametag.text = name[: len(substr)]
+            if strip_end:
+                if name.endswith(substr):
+                    nametag.text = name[: -len(substr)]
             elif name.startswith(substr):
                 nametag.text = name[len(substr) :]
 
@@ -573,8 +574,9 @@ class Peripheral:
             if dnametag is not None:
                 dname = dnametag.text
 
-                if strip_end and dname.endswith(substr):
-                    dnametag.text = dname[: len(substr)]
+                if strip_end:
+                    if dname.endswith(substr):
+                        dnametag.text = dname[: -len(substr)]
                 elif dname.startswith(substr):
                     dnametag.text = dname[len(substr) :]
 
@@ -780,8 +782,9 @@ class Register:
             nametag = ftag.find("name")
             name = nametag.text
 
-            if strip_end and name.endswith(substr):
-                nametag.text = name[: len(substr)]
+            if strip_end:
+                if name.endswith(substr):
+                    nametag.text = name[: -len(substr)]
             elif name.startswith(substr):
                 nametag.text = name[len(substr) :]
 
@@ -789,8 +792,9 @@ class Register:
             if dnametag is not None:
                 dname = dnametag.text
 
-                if strip_end and dname.endswith(substr):
-                    dnametag.text = dname[: len(substr)]
+                if strip_end:
+                    if dname.endswith(substr):
+                        dnametag.text = dname[: -len(substr)]
                 elif dname.startswith(substr):
                     dnametag.text = dname[len(substr) :]
 
