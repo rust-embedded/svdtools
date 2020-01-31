@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.2] 2020-01-29
+
+* Fixed behavior of \_strip\_end  - @ahepp
+
 ## [v0.1.1] 2020-01-26
 
 * Backport changes for deriving registers from stm32-rs svdpatch.py - @jessebraham
