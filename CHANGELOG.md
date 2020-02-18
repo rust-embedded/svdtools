@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.3] 2020-02-18
+
+* Iterate through derived peripherals when processing a device.
+
 ## [v0.1.2] 2020-01-29
 
 * Fixed behavior of \_strip\_end  - @ahepp
