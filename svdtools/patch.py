@@ -352,11 +352,9 @@ class Device:
 
     def process_peripheral(self, pspec, peripheral, update_fields=True):
         """Work through a peripheral, handling all registers."""
-        # Find all peripherals that match the spec,
-        # iterate through derived peripherals too, as we may
-        # need to add interrupts etc to them.
+        # Find all peripherals that match the spec
         pcount = 0
-        for ptag in self.iter_peripherals(pspec, False):
+        for ptag in self.iter_peripherals(pspec):
             pcount += 1
             # Handle deletions
             p = Peripheral(ptag)
