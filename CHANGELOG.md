@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.4] 2020-02-18
+
+* Revert v0.1.3 changes as they broke stm32-rs builds.
+
 ## [v0.1.3] 2020-02-18
 
 * Iterate through derived peripherals when processing a device.
