@@ -72,6 +72,18 @@ _modify:
         FSMC:
             description: Flexible static memory controller
 
+            # Multiple address blocks are supported via the addressBlocks list
+            # use either addressBlock or addressBlocks, but not both
+            addressBlocks:
+                -   offset: 0x0
+                    size: 0x400
+                    usage: "ADC base registers"
+                -   offset: 0x1000
+                    size: 0x400
+                    usage: "ADC extra registers"
+
+
+
 # Add whole new peripherals to this device.
 # Incredibly this feature is required.
 _add:
@@ -82,6 +94,15 @@ _add:
         addressBlock:
             offset: 0x0
             size: 0x400
+            usage: "All ADC registers"
+        # Multiple address blocks are supported via the addressBlocks list
+        addressBlocks:
+            -   offset: 0x0
+                size: 0x400
+                usage: "ADC base registers"
+            -   offset: 0x1000
+                size: 0x400
+                usage: "ADC extra registers"
         registers:
             CSR:
                 description: ADC Common status register
