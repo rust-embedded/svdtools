@@ -1,0 +1,22 @@
+language: rust
+dist: "trusty"
+before_install:
+  - pyenv install 3.6.3
+  - pyenv global 3.6.3
+
+install:
+  - pip3 install virtualenv
+  - make venv
+  - make setup
+
+env:
+  - SCRIPT="check_stm32.sh"
+  - SCRIPT="check_esp32.sh"
+
+matrix:
+  allow_failures:
+    - env: SCRIPT="check_esp32.sh"
+  fast_finish: true
+
+script:
+  - bash tools/$SCRIPT
