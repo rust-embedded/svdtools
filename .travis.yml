@@ -8,10 +8,15 @@ install:
   - pip3 install virtualenv
   - make venv
   - make setup
+  - make install-svd2rust-form-rustfmt
+
+before_script:
+  - make check
 
 env:
   - SCRIPT="check_stm32.sh"
   - SCRIPT="check_esp32.sh"
+  - SCRIPT="check_lpc55.sh"
 
 matrix:
   allow_failures:
