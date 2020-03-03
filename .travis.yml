@@ -9,6 +9,14 @@ install:
   - make venv
   - make setup
 
+env:
+  - SCRIPT="check_stm32.sh"
+  - SCRIPT="check_esp32.sh"
+
+matrix:
+  allow_failures:
+    - env: SCRIPT="check_esp32.sh"
+  fast_finish: true
+
 script:
-  - bash tools/check_esp32.sh
-  - bash tools/check_stm32.sh
+  - bash tools/$SCRIPT
