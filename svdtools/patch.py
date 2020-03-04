@@ -231,7 +231,19 @@ class Device:
         """Modify pspec inside device according to pmod."""
         for ptag in self.iter_peripherals(pspec):
             for (key, value) in pmod.items():
-                ptag.find(key).text = str(value)
+                if key == "addressBlock":
+                    ab = ptag.find(key)
+                    for (ab_key, ab_value) in value.items():
+                        ET.SubElement(ab, ab_key).text = str(ab_value)
+                elif key == "addressBlocks":
+                    for ab in ptag.findall("addressBlock"):
+                        ptag.remove(ab)
+                    for ab in value:
+                        ab_el = ET.SubElement(ptag, "addressBlock")
+                        for (ab_key, ab_value) in ab.items():
+                            ET.SubElement(ab_el, ab_key).text = str(ab_value)
+                else:
+                    ptag.find(key).text = str(value)
 
     def add_peripheral(self, pname, padd):
         """Add pname given by padd to device."""
@@ -257,6 +269,11 @@ class Device:
                 ab = ET.SubElement(pnew, "addressBlock")
                 for (ab_key, ab_value) in value.items():
                     ET.SubElement(ab, ab_key).text = str(ab_value)
+            elif key == "addressBlocks":
+                for ab in value:
+                    ab_el = ET.SubElement(ptag, "addressBlock")
+                    for (ab_key, ab_value) in ab.items():
+                        ET.SubElement(ab_el, ab_key).text = str(ab_value)
             elif key != "derivedFrom":
                 ET.SubElement(pnew, key).text = str(value)
         pnew.tail = "\n    "
