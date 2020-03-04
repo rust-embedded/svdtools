@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.5] 2020-03-20
+
+* Manipulate multiple peripheral address blocks - @arjanmels
+
 ## [v0.1.4] 2020-02-18
 
 * Revert v0.1.3 changes as they broke stm32-rs builds.
