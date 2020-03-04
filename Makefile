@@ -3,6 +3,10 @@
 # setup development environment
 setup: update-venv
 
+install-svd2rust-form-rustfmt:
+	rustup component add rustfmt
+	cargo install svd2rust form
+
 # example usage
 example:
 	venv/bin/svd patch example/incomplete-stm32l4x2.yaml
@@ -14,16 +18,16 @@ check: check-black check-isort
 fix: apply-black apply-isort
 
 check-black:
-	black --check svdtools/
+	venv/bin/black --check svdtools/
 
 apply-black:
-	black svdtools/
+	venv/bin/black svdtools/
 
 apply-isort:
-	isort -y --recursive svdtools/
+	venv/bin/isort -y --recursive svdtools/
 
 check-isort:
-	isort --check-only --recursive svdtools/
+	venv/bin/isort --check-only --recursive svdtools/
 
 semi-clean:
 	rm -rf **/__pycache__

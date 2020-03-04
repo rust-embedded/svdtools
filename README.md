@@ -1,4 +1,4 @@
-[![PyPI][pypi-badge]][pypi-url]
+[![PyPI][pypi-badge]][pypi-url] [![Travis][travis-badge]][travis-url]
 
 # svdtools
 
@@ -12,6 +12,8 @@ SVD.
 
 [pypi-badge]: https://img.shields.io/pypi/v/svdtools.svg
 [pypi-url]: https://pypi.org/project/svdtools/
+[travis-badge]: https://travis-ci.com/stm32-rs/svdtools.svg?branch=master
+[travis-url]: https://travis-ci.com/stm32-rs/svdtools
 
 ## Getting Started
 
