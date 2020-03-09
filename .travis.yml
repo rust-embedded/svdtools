@@ -24,4 +24,5 @@ matrix:
   fast_finish: true
 
 script:
+  - pytest svdtools
   - bash tools/$SCRIPT
