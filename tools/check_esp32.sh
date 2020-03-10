@@ -2,7 +2,7 @@
 
 set -e
 
-source venv/bin/activate
+make install-svd2rust-form-rustfmt
 
 git clone https://github.com/esp-rs/esp32 --depth 1
 

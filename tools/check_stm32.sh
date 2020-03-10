@@ -2,7 +2,7 @@
 
 set -e
 
-source venv/bin/activate
+make install-svd2rust-form-rustfmt
 
 git clone https://github.com/stm32-rs/stm32-rs --depth 1
 
