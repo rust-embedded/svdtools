@@ -1,3 +1,4 @@
 black
 flit
 isort
+pytest
