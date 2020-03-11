@@ -27,3 +27,9 @@ jobs:
     - name: check_esp32
       script: bash tools/check_esp32.sh
   fast_finish: true
+
+branches:
+  only:
+    - staging
+    - trying
+    - master
