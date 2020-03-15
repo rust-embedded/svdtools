@@ -25,6 +25,13 @@ def makedeps(yaml_file, deps_file):
 
 
 @click.command()
+@click.argument("svd-file")
+def mmap(svd_file):
+    """Generate text-based memory map of an SVD file."""
+    print(svdtools.mmap.main(svd_file))
+
+
+@click.command()
 def version():
     """Version of svdtools library and tool."""
     print(svdtools.__version__)
@@ -32,4 +39,5 @@ def version():
 
 svdtools_cli.add_command(patch)
 svdtools_cli.add_command(makedeps)
+svdtools_cli.add_command(mmap)
 svdtools_cli.add_command(version)
