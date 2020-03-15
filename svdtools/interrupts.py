@@ -25,11 +25,13 @@ def main(svd_file, gaps=True):
     name, interrupts = parse_device(svd_file)
     missing = set()
     lastint = -1
+    results = []
     for val in sorted(interrupts.keys()):
         for v in range(lastint + 1, val):
             missing.add(v)
         lastint = val
         i = interrupts[val]
-        print(f"{val} {i['name']}: {i['desc']} (in {i['pname']})")
+        results.append(f"{val} {i['name']}: {i['desc']} (in {i['pname']})")
     if gaps:
-        print("Gaps:", ", ".join(str(x) for x in sorted(missing)))
+        results.append("Gaps: " + ", ".join(str(x) for x in sorted(missing)))
+    return "\n".join(results)
