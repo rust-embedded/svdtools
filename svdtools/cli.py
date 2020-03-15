@@ -5,6 +5,7 @@ import svdtools.patch
 
 
 @click.group()
+@click.version_option(svdtools.__version__, prog_name="svdtools")
 def svdtools_cli():
     pass
 
