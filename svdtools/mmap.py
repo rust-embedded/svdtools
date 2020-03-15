@@ -90,7 +90,7 @@ def expand_dim(node):
     inc = get_int(node, "dimIncrement")
     idxs = get_string(node, "dimIndex")
     if idxs is None:
-        idxs = list(range(dim))
+        idxs = list(range(int(dim, 0)))
     else:
         if "," in idxs:
             idxs = idxs.split(",")
