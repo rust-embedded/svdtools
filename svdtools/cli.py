@@ -5,6 +5,7 @@ import svdtools.patch
 
 
 @click.group()
+@click.version_option(svdtools.__version__, prog_name="svdtools")
 def svdtools_cli():
     pass
 
@@ -24,12 +25,5 @@ def makedeps(yaml_file, deps_file):
     svdtools.makedeps.main(yaml_file, deps_file)
 
 
-@click.command()
-def version():
-    """Version of svdtools library and tool."""
-    print(svdtools.__version__)
-
-
 svdtools_cli.add_command(patch)
 svdtools_cli.add_command(makedeps)
-svdtools_cli.add_command(version)
