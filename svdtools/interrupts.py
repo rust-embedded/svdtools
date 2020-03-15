@@ -16,7 +16,8 @@ def parse_device(svd_file):
         for itag in ptag.iter("interrupt"):
             name = itag.find("name").text
             value = itag.find("value").text
-            desc = itag.find("description").text.replace("\n", " ")
+            maybe_desc = itag.find("description")
+            desc = maybe_desc.text.replace("\n", " ") if maybe_desc else ""
             interrupts[int(value)] = {"name": name, "desc": desc, "pname": pname}
     return dname, interrupts
 
