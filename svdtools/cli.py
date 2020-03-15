@@ -25,8 +25,11 @@ def makedeps(yaml_file, deps_file):
 
 @click.command()
 @click.argument("svd-file")
-@click.option("--gaps/--no-gaps", default=True,
-              help="Whether to print gaps in interrupt number sequence")
+@click.option(
+    "--gaps/--no-gaps",
+    default=True,
+    help="Whether to print gaps in interrupt number sequence",
+)
 def interrupts(svd_file, gaps):
     """Print list of all interrupts described by an SVD file."""
     svdtools.interrupts.main(svd_file, gaps)

@@ -11,15 +11,13 @@ def parse_device(svd_file):
     interrupts = {}
     tree = ET.parse(svd_file)
     dname = tree.find("name").text
-    for ptag in tree.iter('peripheral'):
-        pname = ptag.find('name').text
-        for itag in ptag.iter('interrupt'):
-            name = itag.find('name').text
-            value = itag.find('value').text
-            desc = itag.find('description').text.replace("\n", " ")
-            interrupts[int(value)] = {"name": name,
-                                      "desc": desc,
-                                      "pname": pname}
+    for ptag in tree.iter("peripheral"):
+        pname = ptag.find("name").text
+        for itag in ptag.iter("interrupt"):
+            name = itag.find("name").text
+            value = itag.find("value").text
+            desc = itag.find("description").text.replace("\n", " ")
+            interrupts[int(value)] = {"name": name, "desc": desc, "pname": pname}
     return dname, interrupts
 
 
@@ -28,7 +26,7 @@ def main(svd_file, gaps=True):
     missing = set()
     lastint = -1
     for val in sorted(interrupts.keys()):
-        for v in range(lastint+1, val):
+        for v in range(lastint + 1, val):
             missing.add(v)
         lastint = val
         i = interrupts[val]
