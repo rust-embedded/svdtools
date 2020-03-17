@@ -1,7 +1,6 @@
 import click
 
 import svdtools
-import svdtools.patch
 
 
 @click.group()
@@ -27,6 +26,18 @@ def makedeps(yaml_file, deps_file):
 
 @click.command()
 @click.argument("svd-file")
+@click.option(
+    "--gaps/--no-gaps",
+    default=True,
+    help="Whether to print gaps in interrupt number sequence",
+)
+def interrupts(svd_file, gaps):
+    """Print list of all interrupts described by an SVD file."""
+    print(svdtools.interrupts.main(svd_file, gaps))
+
+
+@click.command()
+@click.argument("svd-file")
 def mmap(svd_file):
     """Generate text-based memory map of an SVD file."""
     print(svdtools.mmap.main(svd_file))
@@ -40,5 +51,6 @@ def version():
 
 svdtools_cli.add_command(patch)
 svdtools_cli.add_command(makedeps)
+svdtools_cli.add_command(interrupts)
 svdtools_cli.add_command(mmap)
 svdtools_cli.add_command(version)
