@@ -4,6 +4,7 @@ import svdtools
 
 
 @click.group()
+@click.version_option(svdtools.__version__, prog_name="svdtools")
 def svdtools_cli():
     pass
 
@@ -36,6 +37,13 @@ def interrupts(svd_file, gaps):
 
 
 @click.command()
+@click.argument("svd-file")
+def mmap(svd_file):
+    """Generate text-based memory map of an SVD file."""
+    print(svdtools.mmap.main(svd_file))
+
+
+@click.command()
 def version():
     """Version of svdtools library and tool."""
     print(svdtools.__version__)
@@ -44,4 +52,5 @@ def version():
 svdtools_cli.add_command(patch)
 svdtools_cli.add_command(makedeps)
 svdtools_cli.add_command(interrupts)
+svdtools_cli.add_command(mmap)
 svdtools_cli.add_command(version)
