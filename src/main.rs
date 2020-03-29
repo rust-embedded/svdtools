@@ -1,5 +1,5 @@
 mod cli;
-mod interrupts;
+mod interrupt;
 
 fn main() {
     cli::run();

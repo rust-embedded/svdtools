@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::interrupts;
+use crate::interrupt::interrupts;
 
 #[derive(StructOpt, Debug)]
 enum Command {
