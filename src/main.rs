@@ -7,9 +7,9 @@ use cli::Command;
 fn main() {
     let args = CliArgs::get_arguments();
     match args.command {
-        Command::Interrupts{svd_file, no_gaps} => {
+        Command::Interrupts { svd_file, no_gaps } => {
             interrupts::parse_device(svd_file, !no_gaps);
         }
-        _ => todo!()
+        _ => todo!(),
     }
 }

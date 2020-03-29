@@ -5,7 +5,7 @@ use structopt::StructOpt;
 pub enum Command {
     Patch,
     Makedeps,
-    /// Print list of all interrupts described by an SVD file.
+    /// Print list of all interrupts described by an SVD file
     Interrupts {
         #[structopt(parse(from_os_str))]
         svd_file: PathBuf,
@@ -13,7 +13,6 @@ pub enum Command {
         /// Whether to print gaps in interrupt number sequence
         #[structopt(long)]
         no_gaps: bool,
-
     },
     Mmap,
 }
