@@ -2,7 +2,7 @@ use quick_xml::de;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Deserialize, Debug)]
 struct Svd {
@@ -27,7 +27,7 @@ struct Interrupt {
     value: u32,
 }
 
-pub fn parse_device(svd_file: PathBuf, gaps: bool) {
+pub fn parse_device(svd_file: &Path, gaps: bool) {
     let file = File::open(svd_file).expect("svd file doesn't exist");
     let reader = BufReader::new(file);
 

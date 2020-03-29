@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+use crate::interrupts;
+
 #[derive(StructOpt, Debug)]
-pub enum Command {
+enum Command {
     Patch,
     Makedeps,
     /// Print list of all interrupts described by an SVD file
@@ -17,14 +19,24 @@ pub enum Command {
     Mmap,
 }
 
-#[derive(StructOpt, Debug)]
-pub struct CliArgs {
-    #[structopt(subcommand)]
-    pub command: Command,
+impl Command {
+    pub fn run(&self) {
+        match self {
+            Self::Interrupts { svd_file, no_gaps } => {
+                interrupts::parse_device(svd_file, !no_gaps);
+            }
+            _ => todo!(),
+        };
+    }
 }
 
-impl CliArgs {
-    pub fn get_arguments() -> CliArgs {
-        Self::from_args()
-    }
+#[derive(StructOpt, Debug)]
+struct CliArgs {
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+pub fn run() {
+    let args = CliArgs::from_args();
+    args.command.run();
 }
