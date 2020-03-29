@@ -28,7 +28,6 @@ struct Interrupt {
 }
 
 pub fn parse_device(svd_file: PathBuf, gaps: bool) {
-    println!("{:?}, {}", svd_file, gaps);
     let file = File::open(svd_file).expect("svd file doesn't exist");
     let reader = BufReader::new(file);
 
