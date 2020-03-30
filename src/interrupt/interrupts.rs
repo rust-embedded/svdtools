@@ -1,6 +1,6 @@
 use crate::interrupt::{
     svd_reader,
-    svd_reader::{Interrupt, Peripheral}
+    svd_reader::{Interrupt, Peripheral},
 };
 use std::fs::File;
 use std::path::Path;
@@ -73,7 +73,7 @@ fn get_gaps(interrupt_list: &[InterruptWithPeriph]) -> Vec<u32> {
 }
 
 fn print_gaps(gaps: &[u32]) {
-    let gaps: Vec<String> = gaps.into_iter().map(|g| g.to_string()).collect();
+    let gaps: Vec<String> = gaps.iter().map(|g| g.to_string()).collect();
     let gaps_str = gaps.join(", ");
     println!("Gaps: {}", gaps_str);
 }
