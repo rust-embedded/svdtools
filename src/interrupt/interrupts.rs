@@ -18,7 +18,8 @@ pub fn parse_device(svd_file: &Path, gaps: bool) {
     print_interrupts(&interrupt_list);
 
     if gaps {
-        print_gaps(&interrupt_list);
+        let gaps = get_gaps(&interrupt_list);
+        print_gaps(&gaps);
     }
 }
 
@@ -56,7 +57,7 @@ fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {
     }
 }
 
-fn print_gaps(interrupt_list: &[InterruptWithPeriph]) {
+fn get_gaps(interrupt_list: &[InterruptWithPeriph]) -> Vec<u32> {
     let mut gaps = Vec::new();
     let mut interrupt_list_iter = interrupt_list.iter().peekable();
     while let Some(i) = interrupt_list_iter.next() {
@@ -68,5 +69,11 @@ fn print_gaps(interrupt_list: &[InterruptWithPeriph]) {
             }
         }
     }
-    println!("Gaps: {:?}", gaps);
+    gaps
+}
+
+fn print_gaps(gaps: &[u32]) {
+    let gaps: Vec<String> = gaps.into_iter().map(|g| g.to_string()).collect();
+    let gaps_str = gaps.join(", ");
+    println!("Gaps: {}", gaps_str);
 }
