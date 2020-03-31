@@ -1,4 +1,4 @@
-use crate::interrupt::{
+use crate::interrupts::{
     interrupt_list::{InterruptList, InterruptWithPeriph},
     svd_reader,
 };

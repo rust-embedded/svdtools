@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::interrupt::interrupts;
+use crate::interrupts::interrupts_cli;
 
 #[derive(StructOpt, Debug)]
 enum Command {
@@ -23,7 +23,7 @@ impl Command {
     pub fn run(&self) {
         match self {
             Self::Interrupts { svd_file, no_gaps } => {
-                interrupts::parse_device(svd_file, !no_gaps);
+                interrupts_cli::parse_device(svd_file, !no_gaps);
             }
             _ => todo!(),
         };

@@ -1,4 +1,4 @@
-use crate::interrupt::svd_reader::{Interrupt, Peripheral};
+use crate::interrupts::svd_reader::{Interrupt, Peripheral};
 
 pub struct InterruptWithPeriph {
     pub peripheral: String,
@@ -13,7 +13,6 @@ impl InterruptList {
     pub fn new(peripherals: impl Iterator<Item = Peripheral>) -> InterruptList {
         let ordered_interrupts = InterruptList::get_ordered_interrupts(peripherals);
         InterruptList { ordered_interrupts }
-
     }
 
     /// Get interrupts ordered by interrupt value
@@ -21,6 +20,7 @@ impl InterruptList {
         &self.ordered_interrupts
     }
 
+    /// Get missing interrupt values
     pub fn gaps(&self) -> Vec<u32> {
         let mut gaps = Vec::new();
         let mut interrupt_list_iter = self.ordered_interrupts.iter().peekable();
