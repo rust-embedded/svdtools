@@ -1,9 +1,8 @@
 use crate::interrupt::{
+    interrupt_list::{InterruptList, InterruptWithPeriph},
     svd_reader,
-    interrupt_list::{InterruptWithPeriph, InterruptList},
 };
-use std::fs::File;
-use std::path::Path;
+use std::{fs::File, path::Path};
 
 pub fn parse_device(svd_file: &Path, gaps: bool) {
     let file = File::open(svd_file).expect("svd file doesn't exist");
