@@ -23,15 +23,14 @@ impl InterruptList {
     /// Get missing interrupt values
     pub fn gaps(&self) -> Vec<u32> {
         let mut gaps = Vec::new();
-        let mut interrupt_list_iter = self.ordered_interrupts.iter().peekable();
-        while let Some(i) = interrupt_list_iter.next() {
-            let curr_num = i.interrupt.value;
-            if let Some(i) = interrupt_list_iter.peek() {
-                let next_num = i.interrupt.value;
-                for k in (curr_num + 1)..next_num {
-                    gaps.push(k);
-                }
+        let mut last_interrupt: i64 = -1;
+        for i in &self.ordered_interrupts {
+            let curr_interrupt = i.interrupt.value;
+            let required_interrupt = (last_interrupt + 1) as u32;
+            for gap in required_interrupt..curr_interrupt {
+                gaps.push(gap);
             }
+            last_interrupt = curr_interrupt as i64;
         }
         gaps
     }
@@ -50,5 +49,38 @@ impl InterruptList {
             .collect();
         interrupt_list.sort_by_key(|i| i.interrupt.value);
         interrupt_list
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn correct_gaps_if_zero_and_two_are_missing() {
+        let peripherals = vec![
+            Peripheral {
+                name: "PeriphA".to_string(),
+                interrupt: vec![Interrupt {
+                    name: "INT_A1".to_string(),
+                    description: None,
+                    value: 1,
+                }],
+            },
+            Peripheral {
+                name: "PeriphB".to_string(),
+                interrupt: vec![Interrupt {
+                    name: "INT_B3".to_string(),
+                    description: None,
+                    value: 3,
+                }],
+            },
+        ];
+        let interrupt_list = InterruptList::new(peripherals.into_iter());
+
+        let expected_gaps = vec![0, 2];
+        let actual_gaps = interrupt_list.gaps();
+
+        assert_eq!(actual_gaps, expected_gaps);
     }
 }
