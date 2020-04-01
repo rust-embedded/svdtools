@@ -55,8 +55,7 @@ pub fn peripherals_with_interrupts<R: Read>(svd: R) -> impl Iterator<Item = Peri
 mod tests {
     use super::*;
 
-    static SVD: &str =
-"<device>
+    static SVD: &str = r"<device>
     <name>Test Device</name>
     <peripherals>
         <peripheral>
@@ -80,7 +79,7 @@ mod tests {
 ";
 
     #[test]
-    fn verify_average() {
+    fn peripherals_interrupts_are_parsed_correctly() {
         let svd = SVD.as_bytes();
         let actual_peripherals: Vec<Peripheral> = peripherals_with_interrupts(svd).collect();
         let expected_peripherals = vec![
@@ -90,7 +89,7 @@ mod tests {
                     name: "INT_A1".to_string(),
                     description: Some("Interrupt A1".to_string()),
                     value: 1,
-                }]
+                }],
             },
             Peripheral {
                 name: "PeriphB".to_string(),
@@ -98,8 +97,8 @@ mod tests {
                     name: "INT_B3".to_string(),
                     description: Some("Interrupt B3".to_string()),
                     value: 3,
-                }]
-            }
+                }],
+            },
         ];
 
         assert_eq!(actual_peripherals, expected_peripherals);
