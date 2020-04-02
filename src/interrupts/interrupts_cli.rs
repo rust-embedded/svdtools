@@ -23,9 +23,9 @@ fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {
         interrupt,
     } in interrupt_list
     {
-        let description: String = match &interrupt.description {
-            Some(desc) => desc.clone(),
-            None => "".to_string(),
+        let description: &str = match &interrupt.description {
+            Some(desc) => desc,
+            None => "",
         };
         let description = description.replace("\r\n", " ").replace("\n", " ");
         println!(
