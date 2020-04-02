@@ -1,3 +1,4 @@
+use crate::common::str_utils;
 use crate::interrupts::{
     interrupt_list::{InterruptList, InterruptWithPeriph},
     svd_reader,
@@ -23,11 +24,12 @@ fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {
         interrupt,
     } in interrupt_list
     {
-        let description: &str = match &interrupt.description {
-            Some(desc) => desc,
-            None => "",
-        };
+        let description = str_utils::unwrap_or_empty_str(&interrupt.description);
+
+        // TODO replace this with str_utils::get_description once comparison
+        // with python is done in order to remove duplicated whitespaces
         let description = description.replace("\r\n", " ").replace("\n", " ");
+
         println!(
             "{} {}: {} (in {})",
             interrupt.value, interrupt.name, description, peripheral

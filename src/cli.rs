@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::interrupts::interrupts_cli;
+use crate::{interrupts::interrupts_cli, mmap::mmap_cli};
 
 #[derive(StructOpt, Debug)]
 enum Command {
@@ -16,7 +16,10 @@ enum Command {
         #[structopt(long)]
         no_gaps: bool,
     },
-    Mmap,
+    Mmap {
+        #[structopt(parse(from_os_str))]
+        svd_file: PathBuf,
+    },
 }
 
 impl Command {
@@ -24,6 +27,9 @@ impl Command {
         match self {
             Self::Interrupts { svd_file, no_gaps } => {
                 interrupts_cli::parse_device(svd_file, !no_gaps);
+            }
+            Self::Mmap { svd_file } => {
+                mmap_cli::parse_device(svd_file);
             }
             _ => todo!(),
         };
