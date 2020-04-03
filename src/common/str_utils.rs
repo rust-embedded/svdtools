@@ -14,30 +14,11 @@ pub fn get_description(opt_str: &Option<String>) -> String {
     words.join(" ")
 }
 
-fn get_access(opt_str: &Option<String>) -> &str {
-    let access = unwrap_or_empty_str(opt_str);
-
-    match access {
-        "read-only" => "ro",
-        "read-write" => "rw",
-        "write-only" => "wo",
-        other => other,
-    }
-}
-
-pub fn access_with_brace(opt_str: &Option<String>) -> String {
-    let access = get_access(opt_str);
-    if access.is_empty() {
-        access.to_string()
-    } else {
-        format!(" ({})", access)
-    }
-}
-
 /// Make everything uppercase except first two character, which should be "0x"
-pub fn format_address(hex_address: &str) -> String {
-    assert_eq!(&hex_address[0..2], "0x");
-    format!("0x{}", hex_address[2..].to_uppercase())
+pub fn format_address(hex_address: u32) -> String {
+    let addr = format! {"{:x}", hex_address};
+    let addr = addr.to_uppercase();
+    format!("0x{}", addr)
 }
 
 #[cfg(test)]
@@ -46,8 +27,8 @@ mod tests {
 
     #[test]
     fn correctly_format_address() {
-        let addr = "0xdeadBeeF";
+        let addr: u32 = 0xde4dBeeF;
         let formatted_addr = format_address(addr);
-        assert_eq!(formatted_addr, "0xDEADBEEF");
+        assert_eq!(formatted_addr, "0xDE4DBEEF");
     }
 }
