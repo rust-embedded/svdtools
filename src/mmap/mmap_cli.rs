@@ -1,7 +1,7 @@
 use crate::common::{str_utils, svd_utils};
 use crate::mmap::svd_reader;
 use std::{fs::File, path::Path};
-use svd_parser::{Cluster, Field, Peripheral, Register, RegisterCluster};
+use svd_parser::{Peripheral, Register, RegisterCluster};
 
 pub fn parse_device(svd_file: &Path) {
     let mut file = File::open(svd_file).expect("svd file doesn't exist");
@@ -17,11 +17,30 @@ fn to_text(peripherals: &[Peripheral]) -> String {
     for p in peripherals {
         get_peripheral(&p, &mut mmap);
         get_interrupts(&p, &mut mmap);
-        get_registers(&p, &mut mmap);
+        let registers = get_periph_registers(p, peripherals);
+        get_registers(p.base_address, registers, &mut mmap);
     }
 
     mmap.sort();
     mmap.join("\n")
+}
+
+fn get_periph_registers<'a>(
+    peripheral: &'a Peripheral,
+    peripheral_list: &'a [Peripheral],
+) -> &'a Option<Vec<RegisterCluster>> {
+    match &peripheral.derived_from {
+        None => &peripheral.registers,
+        Some(father) => {
+            let mut registers = &None;
+            for p in peripheral_list {
+                if &p.name == father {
+                    registers = &p.registers;
+                }
+            }
+            registers
+        }
+    }
 }
 
 fn get_peripheral(peripheral: &Peripheral, mmap: &mut Vec<String>) {
@@ -44,14 +63,18 @@ fn get_interrupts(peripheral: &Peripheral, mmap: &mut Vec<String>) {
     }
 }
 
-fn get_registers(peripheral: &Peripheral, mmap: &mut Vec<String>) {
-    if let Some(registers) = &peripheral.registers {
+fn get_registers(
+    base_address: u32,
+    registers: &Option<Vec<RegisterCluster>>,
+    mmap: &mut Vec<String>,
+) {
+    if let Some(registers) = registers {
         for r in registers {
             match &r {
                 RegisterCluster::Register(r) => {
                     let description = str_utils::get_description(&r.description);
                     let access = svd_utils::access_with_brace(&r.access);
-                    let addr = peripheral.base_address + &r.address_offset;
+                    let addr = base_address + &r.address_offset;
                     let addr = str_utils::format_address(addr);
                     let text =
                         format!("{} B  REGISTER {}{}: {}", addr, r.name, access, description);
@@ -60,7 +83,7 @@ fn get_registers(peripheral: &Peripheral, mmap: &mut Vec<String>) {
                 }
                 RegisterCluster::Cluster(c) => {
                     let description = str_utils::get_description(&c.description);
-                    let addr = peripheral.base_address + &c.address_offset;
+                    let addr = base_address + &c.address_offset;
                     format!("{} B  CLUSTER {}: {}", addr, c.name, description);
                 }
             }
