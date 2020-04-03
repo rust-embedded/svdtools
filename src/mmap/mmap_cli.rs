@@ -58,7 +58,11 @@ fn get_registers(peripheral: &Peripheral, mmap: &mut Vec<String>) {
                     mmap.push(text);
                     get_fields(r, &addr, mmap)
                 }
-                RegisterCluster::Cluster(_) => todo!(),
+                RegisterCluster::Cluster(c) => {
+                    let description = str_utils::get_description(&c.description);
+                    let addr = peripheral.base_address + &c.address_offset;
+                    format!("{} B  CLUSTER {}: {}", addr, c.name, description);
+                }
             }
         }
     }
@@ -67,18 +71,13 @@ fn get_registers(peripheral: &Peripheral, mmap: &mut Vec<String>) {
 fn get_fields(register: &Register, addr: &str, mmap: &mut Vec<String>) {
     if let Some(fields) = &register.fields {
         for f in fields {
-            match f {
-                Field::Single(f) => {
-                    let description = str_utils::get_description(&f.description);
-                    let access = svd_utils::access_with_brace(&f.access);
-                    let text = format!(
-                        "{} C   FIELD {:02}w{:02} {}{}: {}",
-                        addr, f.bit_range.offset, f.bit_range.width, f.name, access, description
-                    );
-                    mmap.push(text);
-                }
-                Field::Array(_, _) => todo!(),
-            }
+            let description = str_utils::get_description(&f.description);
+            let access = svd_utils::access_with_brace(&f.access);
+            let text = format!(
+                "{} C   FIELD {:02}w{:02} {}{}: {}",
+                addr, f.bit_range.offset, f.bit_range.width, f.name, access, description
+            );
+            mmap.push(text);
         }
     }
 }
