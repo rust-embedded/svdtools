@@ -3,6 +3,8 @@ use crate::mmap::svd_reader;
 use std::{fs::File, io::Read, path::Path};
 use svd_parser::{Peripheral, Register, RegisterCluster};
 
+/// Output sorted text of every peripheral, register, field, and interrupt
+/// in the device, such that automated diffing is possible.
 pub fn parse_device(svd_file: &Path) {
     let mut file = File::open(svd_file).expect("svd file doesn't exist");
     let text = get_text(&mut file);
