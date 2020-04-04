@@ -11,3 +11,4 @@ structopt="0.3"
 serde = { version = "1.0", features = ["derive"] }
 quick-xml = { version = "0.18", features = ["serialize"] }
 svd-parser = "0.9"
+serde_yaml = "0.8"
