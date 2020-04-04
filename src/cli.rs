@@ -1,11 +1,15 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::{interrupts::interrupts_cli, mmap::mmap_cli};
+use crate::{interrupts::interrupts_cli, mmap::mmap_cli, patch::patch_cli};
 
 #[derive(StructOpt, Debug)]
 enum Command {
-    Patch,
+    Patch {
+        #[structopt(parse(from_os_str))]
+        svd_file: PathBuf,
+    },
+
     Makedeps,
     /// Print list of all interrupts described by an SVD file
     Interrupts {
@@ -30,6 +34,9 @@ impl Command {
             }
             Self::Mmap { svd_file } => {
                 mmap_cli::parse_device(svd_file);
+            }
+            Self::Patch { svd_file } => {
+                patch_cli::patch(svd_file);
             }
             _ => todo!(),
         };
