@@ -1,5 +1,5 @@
+use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
-use crate::mmap::svd_reader;
 use std::{fs::File, io::Read, path::Path};
 use svd_parser::{Peripheral, Register, RegisterCluster};
 
