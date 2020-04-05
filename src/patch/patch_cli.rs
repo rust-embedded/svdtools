@@ -41,6 +41,11 @@ fn open_yaml(yaml_file: &Path) -> Value {
     serde_yaml::from_reader(reader).expect("yaml not formatted correctly")
 }
 
+fn insert_path(m: &mut Mapping, path: PathBuf) {
+    let path: String = path.into_os_string().into_string().unwrap();
+    m.insert(Value::String("_path".to_string()), Value::String(path));
+}
+
 pub fn patch(yaml_file: &Path) {
     let mut yaml: Value = open_yaml(yaml_file);
 
@@ -51,13 +56,9 @@ pub fn patch(yaml_file: &Path) {
             Some(svd) => svd.as_str().unwrap().to_string(),
         };
 
-        let path: String = fs::canonicalize(yaml_file)
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap();
-
-        m.insert(Value::String("_path".to_string()), Value::String(path));
+        // calculate absolute path
+        let path = fs::canonicalize(yaml_file).unwrap();
+        insert_path(m, path);
 
         let yaml_dir = yaml_file.parent().unwrap();
         let svdpath = yaml_dir.join(Path::new(&svd));
