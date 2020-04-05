@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::{interrupts::interrupts_cli, mmap::mmap_cli, patch::patch_cli};
+use crate::{interrupts::interrupts_cli, mmap::mmap_cli, patch::patch_cli, makedeps::makedeps_cli};
 
 #[derive(StructOpt, Debug)]
 enum Command {
@@ -9,8 +9,16 @@ enum Command {
         #[structopt(parse(from_os_str))]
         svd_file: PathBuf,
     },
+    /// Generate Make dependency file listing dependencies for a YAML file.
+    Makedeps {
+        /// Input yaml file
+        #[structopt(parse(from_os_str))]
+        yaml_file: PathBuf,
 
-    Makedeps,
+        /// Dependencies output file
+        #[structopt(short)]
+        deps_file: String,
+    },
     /// Print list of all interrupts described by an SVD file
     Interrupts {
         #[structopt(parse(from_os_str))]
@@ -37,6 +45,9 @@ impl Command {
             }
             Self::Patch { svd_file } => {
                 patch_cli::patch(svd_file);
+            }
+            Self::Makedeps { yaml_file, deps_file } => {
+                makedeps_cli::makedeps(yaml_file, deps_file.to_string());
             }
             _ => todo!(),
         };

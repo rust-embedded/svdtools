@@ -8,3 +8,7 @@
 **/*.pyo
 **/*.svd.patched
 .pytest_cache
+
+# Rust
+Cargo.lock
+target
