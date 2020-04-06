@@ -17,8 +17,11 @@ pub struct PeripheralNode {
     pub data: Mapping,
 }
 
+// TODO after that riir is complete, this should be rewritten by remembering
+//      the ordering of the commands.
+//      See https://github.com/stm32-rs/svdtools/issues/9#issuecomment-605467243
 #[derive(Debug, Deserialize)]
-pub struct RootNode {
+pub struct Command {
     #[serde(rename = "_include")]
     pub include: Option<Vec<String>>,
 
@@ -27,9 +30,15 @@ pub struct RootNode {
 
     #[serde(rename = "_modify")]
     pub modify: Option<Mapping>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RootNode {
+    #[serde(flatten)]
+    pub commands: Command,
 
     #[serde(flatten)]
-    pub data: PeripheralNode,
+    pub peripherals: PeripheralNode,
 }
 
 pub fn from_path<T>(yaml_file: &Path) -> T
