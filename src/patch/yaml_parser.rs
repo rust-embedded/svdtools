@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Deserialize};
-use serde_yaml::{Mapping, Value};
+use serde_yaml::Mapping;
 use std::{fs::File, io::BufReader, path::Path};
 
 #[derive(Debug, Deserialize)]
@@ -8,11 +8,17 @@ pub struct Root {
     pub svd: String,
 
     #[serde(flatten)]
-    pub body: Node,
+    pub body: RootNode,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Node {
+pub struct PeripheralNode {
+    #[serde(flatten)]
+    pub data: Mapping,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RootNode {
     #[serde(rename = "_include")]
     pub include: Option<Vec<String>>,
 
@@ -23,7 +29,7 @@ pub struct Node {
     pub modify: Option<Mapping>,
 
     #[serde(flatten)]
-    pub data: Option<Mapping>,
+    pub data: PeripheralNode,
 }
 
 pub fn from_path<T>(yaml_file: &Path) -> T
