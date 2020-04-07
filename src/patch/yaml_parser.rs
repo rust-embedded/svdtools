@@ -3,16 +3,10 @@ use serde_yaml::Mapping;
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 #[derive(Debug, Deserialize)]
-pub struct Root {
+pub struct YamlRoot {
     #[serde(rename = "_svd")]
     pub svd: String,
 
-    #[serde(flatten)]
-    pub body: RootNode,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RootNode {
     #[serde(flatten)]
     pub commands: PeripheralCommand,
 
