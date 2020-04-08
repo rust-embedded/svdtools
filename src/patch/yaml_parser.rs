@@ -1,11 +1,16 @@
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_yaml::Mapping;
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct YamlRoot {
     #[serde(rename = "_svd")]
-    pub svd: String,
+    pub svd: PathBuf,
 
     #[serde(flatten)]
     pub commands: PeripheralCommand,
@@ -80,7 +85,7 @@ pub struct RegisterNode {
 #[derive(Debug, Deserialize)]
 pub struct PeripheralCommand {
     #[serde(default, rename = "_include")]
-    pub include: Vec<String>,
+    pub include: Vec<PathBuf>,
 
     #[serde(default, rename = "_delete")]
     pub delete: Vec<String>,
