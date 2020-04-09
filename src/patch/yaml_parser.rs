@@ -3,6 +3,7 @@ use serde_yaml::Mapping;
 use std::{
     collections::HashMap,
     fs::File,
+    hash::Hash,
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -25,7 +26,7 @@ pub struct YamlBody {
     pub peripherals: HashMap<String, PeripheralNode>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Peripheral {
     name: Option<String>,
@@ -36,7 +37,7 @@ pub struct Peripheral {
     registers: Option<Vec<Register>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Register {
     name: Option<String>,
@@ -46,10 +47,10 @@ pub struct Register {
     size: Option<String>,
     access: Option<String>,
     reset_value: Option<String>,
-    fiels: Option<Vec<Field>>,
+    fields: Option<Vec<Field>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Field {
     name: Option<String>,
@@ -58,19 +59,7 @@ pub struct Field {
     bit_width: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct PeripheralData {
-    #[serde(flatten)]
-    pub peripherals: HashMap<String, RegisterData>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RegisterData {
-    #[serde(flatten)]
-    pub registers: Mapping,
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct PeripheralNode {
     #[serde(flatten)]
     pub commands: RegisterCommand,
@@ -79,7 +68,7 @@ pub struct PeripheralNode {
     pub registers: HashMap<String, RegisterNode>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct RegisterNode {
     #[serde(flatten)]
     pub commands: FieldCommand,
@@ -103,7 +92,7 @@ pub struct PeripheralCommand {
     pub add: Mapping,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct FieldCommand {
     #[serde(default, rename = "_delete")]
     pub delete: Vec<String>,
@@ -115,7 +104,7 @@ pub struct FieldCommand {
     pub modify: HashMap<String, Field>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct RegisterCommand {
     #[serde(default, rename = "_include")]
     pub include: Vec<PathBuf>,
@@ -139,14 +128,126 @@ where
     serde_yaml::from_reader(reader).expect("yaml not formatted correctly")
 }
 
-impl YamlBody {
-    pub fn merge(&mut self, child: &YamlBody) {
-        todo!()
+impl Merge for YamlBody {
+    fn merge(&mut self, other: &Self) {
+        self.commands.merge(&other.commands);
+        merge_hashmap(&mut self.peripherals, &other.peripherals)
     }
 }
 
-impl PeripheralNode {
-    pub fn merge(&mut self, child: &PeripheralNode) {
-        todo!()
+impl Merge for PeripheralCommand {
+    fn merge(&mut self, other: &Self) {
+        self.delete.extend(other.delete.clone());
+        merge_hashmap(&mut self.modify, &other.modify);
+        // TODO merge add
     }
+}
+
+impl Merge for PeripheralNode {
+    fn merge(&mut self, other: &Self) {
+        self.commands.merge(&other.commands);
+        merge_hashmap(&mut self.registers, &other.registers);
+    }
+}
+
+impl Merge for RegisterNode {
+    fn merge(&mut self, other: &Self) {
+        self.commands.merge(&other.commands);
+    }
+}
+
+impl Merge for RegisterCommand {
+    fn merge(&mut self, other: &Self) {
+        self.delete.extend(other.delete.clone());
+        merge_opt_struct(&mut self.modify, &other.modify);
+        // TODO merge add
+    }
+}
+
+impl Merge for FieldCommand {
+    fn merge(&mut self, other: &Self) {
+        self.delete.extend(other.delete.clone());
+        self.merge.extend(other.merge.clone());
+
+        merge_hashmap(&mut self.modify, &other.modify);
+    }
+}
+
+impl Merge for Peripheral {
+    fn merge(&mut self, other: &Self) {
+        merge_option(&mut self.name, &other.name);
+        merge_option(&mut self.description, &other.description);
+        merge_option(&mut self.group_name, &other.group_name);
+        merge_option(&mut self.base_address, &other.base_address);
+        merge_option(&mut self.address_block, &other.address_block);
+        merge_opt_vec(&mut self.registers, &other.registers)
+    }
+}
+
+impl Merge for Register {
+    fn merge(&mut self, other: &Self) {
+        merge_option(&mut self.name, &other.name);
+        merge_option(&mut self.display_name, &other.display_name);
+        merge_option(&mut self.description, &other.description);
+        merge_option(&mut self.address_offset, &other.address_offset);
+        merge_option(&mut self.size, &other.size);
+        merge_option(&mut self.access, &other.access);
+        merge_option(&mut self.reset_value, &other.reset_value);
+        merge_opt_vec(&mut self.fields, &other.fields)
+    }
+}
+
+impl Merge for Field {
+    fn merge(&mut self, other: &Self) {
+        merge_option(&mut self.name, &other.name);
+        merge_option(&mut self.description, &other.description);
+        merge_option(&mut self.bit_offset, &other.bit_offset);
+        merge_option(&mut self.bit_width, &other.bit_width);
+    }
+}
+
+fn merge_hashmap<K, V>(dest: &mut HashMap<K, V>, src: &HashMap<K, V>)
+where
+    K: Eq + Hash + Clone,
+    V: Clone + Merge,
+{
+    for m in src {
+        let key = m.0;
+        let value = m.1;
+        let corresponding = dest.get_mut(key);
+        if let Some(entry) = corresponding {
+            entry.merge(value);
+        } else {
+            dest.insert(key.clone(), value.clone());
+        }
+    }
+}
+
+fn merge_opt_vec<T: Clone + Merge>(dest: &mut Option<Vec<T>>, src: &Option<Vec<T>>) {
+    if let Some(src) = src {
+        let mut src = src.clone();
+        match dest {
+            Some(dest) => dest.append(&mut src),
+            None => *dest = Some(src),
+        }
+    }
+}
+
+fn merge_opt_struct<T: Clone + Merge>(dest: &mut Option<T>, src: &Option<T>) {
+    if let Some(src) = src {
+        match dest {
+            Some(dest) => dest.merge(src),
+            None => *dest = Some(src.clone()),
+        }
+    }
+}
+
+fn merge_option<T: Clone>(dest: &mut Option<T>, src: &Option<T>) {
+    if dest.is_none() && src.is_some() {
+        *dest = src.clone();
+    }
+}
+
+pub trait Merge {
+    fn merge(&mut self, other: &Self);
 }

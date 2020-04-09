@@ -4,7 +4,7 @@ use std::{
     fs::{self, File},
     path::{Path, PathBuf},
 };
-use yaml_parser::{PeripheralNode, YamlBody, YamlRoot};
+use yaml_parser::{Merge, PeripheralNode, YamlBody, YamlRoot};
 
 fn get_abs_paths(parent_dir: &Path, relative_paths: &[PathBuf]) -> Vec<PathBuf> {
     relative_paths
@@ -56,7 +56,8 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
         }
 
         // Process any top-level includes in child
-        let child_included_yamls = yaml_includes(&mut child, &path);
+        let path_dir = path.parent().unwrap();
+        let child_included_yamls = yaml_includes(&mut child, &path_dir);
         included.extend(child_included_yamls);
         parent.merge(&child);
     }
