@@ -6,12 +6,20 @@ use std::{
 };
 use yaml_parser::{PeripheralNode, YamlBody, YamlRoot};
 
+fn get_abs_paths(parent_dir: &Path, relative_paths: &[PathBuf]) -> Vec<PathBuf> {
+    relative_paths
+        .iter()
+        .map(|i| {
+            let path = parent_dir.join(&i);
+            fs::canonicalize(path).expect("invalid include")
+        })
+        .collect()
+}
+
 fn yaml_peripheral_includes(parent: &mut PeripheralNode, parent_dir: &Path) -> Vec<PathBuf> {
     let mut included: Vec<PathBuf> = vec![];
-    for relpath in &parent.commands.include {
-        let path = parent_dir.join(&relpath);
-        println!("path: {:?}", path);
-        let path = fs::canonicalize(path).expect("invalid include");
+    let paths: Vec<PathBuf> = get_abs_paths(parent_dir, &parent.commands.include);
+    for path in paths {
         if included.contains(&path) {
             continue;
         }
@@ -24,17 +32,15 @@ fn yaml_peripheral_includes(parent: &mut PeripheralNode, parent_dir: &Path) -> V
         let path_dir = path.parent().unwrap();
         let child_included_yamls = yaml_peripheral_includes(&mut child, &path_dir);
         included.extend(child_included_yamls);
-        // TODO parent.merge(&child);
+        parent.merge(&child);
     }
     included
 }
 
 pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
     let mut included: Vec<PathBuf> = vec![];
-    for relpath in &parent.commands.include {
-        let path = parent_dir.join(&relpath);
-        let path = fs::canonicalize(path).expect("invalid include");
-        println!("path: {:?}", path);
+    let paths: Vec<PathBuf> = get_abs_paths(parent_dir, &parent.commands.include);
+    for path in paths {
         if included.contains(&path) {
             continue;
         }
@@ -52,7 +58,7 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
         // Process any top-level includes in child
         let child_included_yamls = yaml_includes(&mut child, &path);
         included.extend(child_included_yamls);
-        // TODO parent.merge(&child);
+        parent.merge(&child);
     }
     included
 }
