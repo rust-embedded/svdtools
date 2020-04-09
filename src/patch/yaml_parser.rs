@@ -13,6 +13,12 @@ pub struct YamlRoot {
     pub svd: PathBuf,
 
     #[serde(flatten)]
+    pub body: YamlBody,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct YamlBody {
+    #[serde(flatten)]
     pub commands: PeripheralCommand,
 
     #[serde(flatten)]
@@ -99,9 +105,6 @@ pub struct PeripheralCommand {
 
 #[derive(Debug, Deserialize)]
 pub struct FieldCommand {
-    #[serde(default, rename = "_include")]
-    pub include: Vec<String>,
-
     #[serde(default, rename = "_delete")]
     pub delete: Vec<String>,
 
@@ -115,7 +118,7 @@ pub struct FieldCommand {
 #[derive(Debug, Deserialize)]
 pub struct RegisterCommand {
     #[serde(default, rename = "_include")]
-    pub include: Vec<String>,
+    pub include: Vec<PathBuf>,
 
     #[serde(default, rename = "_delete")]
     pub delete: Vec<String>,
@@ -134,4 +137,16 @@ where
     let file = File::open(yaml_file).expect("yaml file doesn't exist");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("yaml not formatted correctly")
+}
+
+impl YamlBody {
+    pub fn merge(&mut self, child: &YamlBody) {
+        todo!()
+    }
+}
+
+impl PeripheralNode {
+    pub fn merge(&mut self, child: &PeripheralNode) {
+        todo!()
+    }
 }

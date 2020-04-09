@@ -1,87 +1,78 @@
 use crate::common::svd_reader;
-use serde_yaml::Mapping;
-use serde_yaml::Value;
+use crate::patch::yaml_parser;
 use std::{
     fs::{self, File},
-    io::BufReader,
     path::{Path, PathBuf},
 };
+use yaml_parser::{PeripheralNode, YamlBody, YamlRoot};
 
-pub fn yaml_includes(parent: &Mapping) -> Vec<PathBuf> {
+fn yaml_peripheral_includes(parent: &mut PeripheralNode, parent_dir: &Path) -> Vec<PathBuf> {
     let mut included: Vec<PathBuf> = vec![];
-    let include_node = parent.get(&Value::String("_include".to_string()));
-    if let Some(incl) = include_node {
-        let incl = incl.as_sequence().expect("_include is not a sequence");
-        for relpath in incl {
-            let relpath = relpath.as_str().expect("bad _include");
-            println!("{}", relpath);
-            let parent_path = parent
-                .get(&Value::String("_path".to_string()))
-                .unwrap()
-                .as_str()
-                .unwrap();
-            let path = Path::new(parent_path).join(Path::new(relpath));
-            if included.contains(&path) {
-                continue;
-            }
-
-            let mut yaml: Value = open_yaml(&path);
-            if let Value::Mapping(child) = &mut yaml {
-                let path_str: String = path.into_os_string().into_string().unwrap();
-                child.insert(Value::String("_path".to_string()), Value::String(path_str));
-            }
+    for relpath in &parent.commands.include {
+        let path = parent_dir.join(&relpath);
+        println!("path: {:?}", path);
+        let path = fs::canonicalize(path).expect("invalid include");
+        if included.contains(&path) {
+            continue;
         }
+
+        let mut child: PeripheralNode = yaml_parser::from_path(&path);
+        included.push(path.clone());
+
+        // Process any top-level includes in child
+
+        let path_dir = path.parent().unwrap();
+        let child_included_yamls = yaml_peripheral_includes(&mut child, &path_dir);
+        included.extend(child_included_yamls);
+        // TODO parent.merge(&child);
     }
     included
 }
 
-fn open_yaml(yaml_file: &Path) -> Value {
-    let file = File::open(yaml_file).expect("yaml file doesn't exist");
-    let reader = BufReader::new(file);
-    serde_yaml::from_reader(reader).expect("yaml not formatted correctly")
-}
+pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
+    let mut included: Vec<PathBuf> = vec![];
+    for relpath in &parent.commands.include {
+        let path = parent_dir.join(&relpath);
+        let path = fs::canonicalize(path).expect("invalid include");
+        println!("path: {:?}", path);
+        if included.contains(&path) {
+            continue;
+        }
 
-fn insert_path(m: &mut Mapping, path: PathBuf) {
-    let path: String = path.into_os_string().into_string().unwrap();
-    m.insert(Value::String("_path".to_string()), Value::String(path));
+        let mut child: YamlBody = yaml_parser::from_path(&path);
+        included.push(path.clone());
+
+        // Process any peripheral-level includes in child
+        for mut pspec in &mut child.peripherals {
+            let path_dir = path.parent().unwrap();
+            let child_included = yaml_peripheral_includes(&mut pspec.1, &path_dir);
+            included.extend(child_included);
+        }
+
+        // Process any top-level includes in child
+        let child_included_yamls = yaml_includes(&mut child, &path);
+        included.extend(child_included_yamls);
+        // TODO parent.merge(&child);
+    }
+    included
 }
 
 pub fn patch(yaml_file: &Path) {
-    let mut yaml: Value = open_yaml(yaml_file);
+    let mut yaml: YamlRoot = yaml_parser::from_path(yaml_file);
+    println!("root: {:#?}", yaml);
 
-    if let Value::Mapping(m) = &mut yaml {
-        let svd = m.get(&Value::String("_svd".to_string()));
-        let svd = match svd {
-            None => panic!("You must have an svd key in the root YAML file"),
-            Some(svd) => svd.as_str().unwrap().to_string(),
-        };
+    // let mut m = yaml.body;
 
-        // calculate absolute path
-        let path = fs::canonicalize(yaml_file).unwrap();
-        insert_path(m, path);
+    let yaml_dir = yaml_file.parent().expect("wrong yaml file path");
 
-        let yaml_dir = yaml_file.parent().unwrap();
-        let svdpath = yaml_dir.join(Path::new(&svd));
-        let _svdpath_out = svdpath.join(Path::new(".patched"));
-        let mut svd_file = File::open(svdpath).expect("svd file doesn't exist");
-        let _peripherals = svd_reader::peripherals(&mut svd_file);
+    let svdpath = yaml_dir.join(&yaml.svd);
+    println!("svdpath: {:?}", svdpath);
 
-        yaml_includes(&m);
-    }
+    let _svdpath_out = svdpath.join(Path::new(".patched"));
 
-    // match &yaml {
-    //     Value::Null => println!("null"),
-    //     Value::Bool(b) => println!("bool: {}", b),
-    //     Value::Number(n) => println!("number: {}", n),
-    //     Value::String(s) => println!("string: {}", s),
-    //     Value::Sequence(seq) => println!("sequence: {:#?}", seq),
-    //     Value::Mapping(m) => println!("mapping: {:#?}", m),
-    // }
-    // for m in yaml {
-    //     println!("entry:");
-    //     if m.contains_key("_svd") {
-    //         println!("svd ok");
-    //     }
-    //     println!("{:#?}", yaml);
-    // }
+    let mut svd_file = File::open(svdpath).expect("svd file doesn't exist");
+    let _peripherals = svd_reader::peripherals(&mut svd_file);
+
+    let yaml_dir = yaml_file.parent().unwrap();
+    yaml_includes(&mut yaml.body, yaml_dir);
 }
