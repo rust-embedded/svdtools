@@ -27,7 +27,7 @@ pub struct YamlBody {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Peripheral {
     name: Option<String>,
     description: Option<String>,
@@ -38,7 +38,7 @@ pub struct Peripheral {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Register {
     name: Option<String>,
     display_name: Option<String>,
@@ -51,12 +51,12 @@ pub struct Register {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Field {
     name: Option<String>,
     description: Option<String>,
-    bit_offset: Option<String>,
-    bit_width: Option<String>,
+    bit_offset: Option<u32>,
+    bit_width: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
