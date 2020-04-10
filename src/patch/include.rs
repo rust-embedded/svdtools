@@ -65,6 +65,7 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::patch::yaml_parser::Field;
     use crate::patch::yaml_parser::YamlRoot;
 
     fn test_dir() -> PathBuf {
@@ -78,8 +79,20 @@ mod tests {
         let yaml_file = test_dir.join(Path::new("stm32l4x2.yaml"));
         let mut yaml: YamlRoot = yaml_parser::from_path(&yaml_file);
         let actual_includes = yaml_includes(&mut yaml.body, &test_dir);
+
         let subdir = test_dir.join(Path::new("subdir"));
         let expected_includes = vec![subdir.join("tsc.yaml"), subdir.join("other.yaml")];
         assert_eq!(actual_includes, expected_includes);
+
+        let dac1_periph = yaml.body.peripherals.get("DAC1").unwrap();
+        let cr_reg = dac1_periph.registers.get("CR").unwrap();
+        let en1_field = cr_reg.commands.modify.get("EN1").unwrap();
+        let expected_field = Field {
+            name: None,
+            description: Some("EN2 description".to_string()),
+            bit_offset: Some(2),
+            bit_width: Some(4),
+        };
+        assert_eq!(en1_field, &expected_field);
     }
 }

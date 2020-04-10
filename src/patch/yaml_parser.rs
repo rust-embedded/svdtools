@@ -50,13 +50,13 @@ pub struct Register {
     fields: Option<Vec<Field>>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Field {
-    name: Option<String>,
-    description: Option<String>,
-    bit_offset: Option<u32>,
-    bit_width: Option<u32>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub bit_offset: Option<u32>,
+    pub bit_width: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
