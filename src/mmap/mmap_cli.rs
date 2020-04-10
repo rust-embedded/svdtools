@@ -79,8 +79,8 @@ fn get_registers(
             match &r {
                 RegisterCluster::Register(r) => {
                     let description = str_utils::get_description(&r.description);
-                    let access = svd_utils::access_with_brace(&r.access);
-                    let addr = base_address + &r.address_offset;
+                    let access = svd_utils::access_with_brace(r.access);
+                    let addr = base_address + r.address_offset;
                     let addr = str_utils::format_address(addr);
                     let text =
                         format!("{} B  REGISTER {}{}: {}", addr, r.name, access, description);
@@ -101,7 +101,7 @@ fn get_fields(register: &Register, addr: &str, mmap: &mut Vec<String>) {
     if let Some(fields) = &register.fields {
         for f in fields {
             let description = str_utils::get_description(&f.description);
-            let access = svd_utils::access_with_brace(&f.access);
+            let access = svd_utils::access_with_brace(f.access);
             let text = format!(
                 "{} C   FIELD {:02}w{:02} {}{}: {}",
                 addr, f.bit_range.offset, f.bit_range.width, f.name, access, description
