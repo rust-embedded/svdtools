@@ -61,3 +61,25 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
     }
     included
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::patch::yaml_parser::YamlRoot;
+
+    fn test_dir() -> PathBuf {
+        let res_dir: PathBuf = std::env::current_dir().unwrap().join(Path::new("res"));
+        res_dir.join(Path::new("include"))
+    }
+
+    #[test]
+    fn all_yamls_are_included() {
+        let test_dir = test_dir();
+        let yaml_file = test_dir.join(Path::new("stm32l4x2.yaml"));
+        let mut yaml: YamlRoot = yaml_parser::from_path(&yaml_file);
+        let actual_includes = yaml_includes(&mut yaml.body, &test_dir);
+        let subdir = test_dir.join(Path::new("subdir"));
+        let expected_includes = vec![subdir.join("tsc.yaml"), subdir.join("other.yaml")];
+        assert_eq!(actual_includes, expected_includes);
+    }
+}
