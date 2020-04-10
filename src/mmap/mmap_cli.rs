@@ -89,7 +89,7 @@ fn get_registers(
                 }
                 RegisterCluster::Cluster(c) => {
                     let description = str_utils::get_description(&c.description);
-                    let addr = base_address + &c.address_offset;
+                    let addr = base_address + c.address_offset;
                     format!("{} B  CLUSTER {}: {}", addr, c.name, description);
                 }
             }
