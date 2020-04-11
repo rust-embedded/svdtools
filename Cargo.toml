@@ -12,3 +12,7 @@ serde = { version = "1.0", features = ["derive"] }
 quick-xml = { version = "0.18", features = ["serialize"] }
 svd-parser = "0.9"
 serde_yaml = "0.8"
+anyhow = "1.0"
+
+[dev-dependencies]
+tempfile = "3.1"

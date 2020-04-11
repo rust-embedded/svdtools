@@ -1,0 +1,6 @@
+TSC:
+  _array:
+    IOG?CR: {}
+
+_include:
+  - inc2.yaml
