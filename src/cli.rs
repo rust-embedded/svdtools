@@ -5,6 +5,7 @@ use crate::{interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli, 
 
 #[derive(StructOpt, Debug)]
 enum Command {
+    /// Patches an SVD file as specified by a YAML file
     Patch {
         #[structopt(parse(from_os_str))]
         svd_file: PathBuf,
@@ -28,6 +29,7 @@ enum Command {
         #[structopt(long)]
         no_gaps: bool,
     },
+    /// Generate text-based memory map of an SVD file.
     Mmap {
         #[structopt(parse(from_os_str))]
         svd_file: PathBuf,
