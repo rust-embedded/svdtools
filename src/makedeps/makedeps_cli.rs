@@ -54,13 +54,9 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils;
     use std::fs;
     use tempfile::tempdir;
-
-    fn test_dir() -> PathBuf {
-        let res_dir: PathBuf = std::env::current_dir().unwrap().join(Path::new("res"));
-        res_dir.join(Path::new("makedeps"))
-    }
 
     #[test]
     fn test_makedeps() -> Result<()> {
@@ -68,7 +64,7 @@ mod tests {
         let out_dir = tempdir()?;
         let deps_file = out_dir.path().join("test.d");
 
-        let test_dir = test_dir();
+        let test_dir = test_utils::res_dir().join(Path::new("makedeps"));
         let yaml_file = test_dir.join(Path::new("test.yaml"));
 
         makedeps(&yaml_file, &deps_file);
