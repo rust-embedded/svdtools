@@ -90,6 +90,15 @@ pub struct PeripheralCommand {
 
     #[serde(default, rename = "_add")]
     pub add: Mapping,
+
+    /// Copy everything except `baseAddress` and `name` from another peripheral
+    #[serde(default, rename = "_copy")]
+    pub copy: HashMap<String, CopySource>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CopySource {
+    pub from: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
