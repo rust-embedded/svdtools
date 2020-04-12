@@ -211,9 +211,7 @@ where
     K: Eq + Hash + Clone,
     V: Clone + Merge,
 {
-    for m in src {
-        let key = m.0;
-        let value = m.1;
+    for (key, value) in src {
         let corresponding = dest.get_mut(key);
         if let Some(entry) = corresponding {
             entry.merge(value);

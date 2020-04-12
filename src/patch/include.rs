@@ -47,9 +47,10 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
         included.push(path.clone());
 
         // Process any peripheral-level includes in child
-        for mut pspec in &mut child.peripherals {
+        for pspec in &mut child.peripherals {
             let path_dir = path.parent().unwrap();
-            let child_included = yaml_peripheral_includes(&mut pspec.1, &path_dir);
+            let mut peripheral_node = pspec.1;
+            let child_included = yaml_peripheral_includes(&mut peripheral_node, &path_dir);
             included.extend(child_included);
         }
 
