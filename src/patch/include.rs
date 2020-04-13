@@ -1,4 +1,5 @@
-use crate::patch::yaml_parser::{self, Merge, PeripheralNode, YamlBody};
+use super::yaml::merge::Merge;
+use crate::patch::yaml::yaml_parser::{self, PeripheralNode, YamlBody};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -66,8 +67,8 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::patch::yaml_parser::Field;
-    use crate::{patch::yaml_parser::YamlRoot, test_utils};
+    use crate::patch::yaml::yaml_parser::Field;
+    use crate::{patch::yaml::yaml_parser::YamlRoot, test_utils};
 
     #[test]
     fn all_yamls_are_included() {

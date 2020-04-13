@@ -1,7 +1,7 @@
 use crate::common::svd_reader;
 use crate::patch::include;
 use crate::patch::patcher::Patcher;
-use crate::patch::yaml_parser;
+use crate::patch::yaml::yaml_parser;
 use std::path::Path;
 use yaml_parser::YamlRoot;
 

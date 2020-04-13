@@ -1,9 +1,11 @@
 use crate::{
     common::svd_reader,
-    patch::{patcher::Patcher, yaml_parser},
+    patch::{
+        patcher::Patcher,
+        yaml::yaml_parser::{self, YamlRoot},
+    },
 };
 use std::path::{Path, PathBuf};
-use yaml_parser::YamlRoot;
 
 pub fn res_dir() -> PathBuf {
     std::env::current_dir().unwrap().join(Path::new("res"))

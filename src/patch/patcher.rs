@@ -1,4 +1,4 @@
-use crate::{common::svd_reader, patch::yaml_parser::YamlBody};
+use crate::{common::svd_reader, patch::yaml::yaml_parser::YamlBody};
 use std::path::Path;
 use svd::Device;
 use svd_parser as svd;
