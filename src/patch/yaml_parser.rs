@@ -86,7 +86,7 @@ pub struct PeripheralCommand {
     pub delete: Vec<String>,
 
     #[serde(default, rename = "_modify")]
-    pub modify: HashMap<String, Peripheral>,
+    pub modify: HashMap<String, CpuPeripheral>,
 
     #[serde(default, rename = "_add")]
     pub add: Mapping,
@@ -94,6 +94,37 @@ pub struct PeripheralCommand {
     /// Copy everything except `baseAddress` and `name` from another peripheral
     #[serde(default, rename = "_copy")]
     pub copy: HashMap<String, CopySource>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum CpuPeripheral {
+    Cpu(Cpu),
+    Peripheral(Peripheral),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct Cpu {
+    pub name: Option<String>,
+
+    /// HW revision
+    pub revision: Option<String>,
+
+    /// Endianness
+    // TODO enum
+    pub endian: Option<String>,
+
+    /// Indicate whether the processor is equipped with a memory protection unit (MPU)
+    pub mpu_present: Option<bool>,
+
+    /// Indicate whether the processor is equipped with a hardware floating point unit (FPU)
+    pub fpu_present: Option<bool>,
+
+    /// Number of bits available in the Nested Vectored Interrupt Controller (NVIC) for configuring priority
+    pub nvic_prio_bits: Option<u32>,
+
+    /// Indicate whether the processor implements a vendor-specific System Tick Timer
+    pub vendor_systick_config: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,6 +180,7 @@ impl Merge for PeripheralCommand {
         self.delete.extend(other.delete.clone());
         merge_hashmap(&mut self.modify, &other.modify);
         // TODO merge add
+        // TODO merge copy
     }
 }
 
@@ -212,6 +244,37 @@ impl Merge for Field {
         merge_option(&mut self.description, &other.description);
         merge_option(&mut self.bit_offset, &other.bit_offset);
         merge_option(&mut self.bit_width, &other.bit_width);
+    }
+}
+
+impl Merge for CpuPeripheral {
+    fn merge(&mut self, other: &Self) {
+        if let CpuPeripheral::Cpu(self_cpu) = self {
+            if let CpuPeripheral::Cpu(other_cpu) = other {
+                self_cpu.merge(other_cpu);
+            }
+        }
+        if let CpuPeripheral::Peripheral(self_periph) = self {
+            if let CpuPeripheral::Peripheral(other_periph) = other {
+                self_periph.merge(other_periph);
+            }
+        }
+    }
+}
+
+impl Merge for Cpu {
+    fn merge(&mut self, other: &Self) {
+        merge_option(&mut self.name, &other.name);
+        merge_option(&mut self.name, &other.name);
+        merge_option(&mut self.revision, &other.revision);
+        merge_option(&mut self.endian, &other.endian);
+        merge_option(&mut self.mpu_present, &other.mpu_present);
+        merge_option(&mut self.fpu_present, &other.fpu_present);
+        merge_option(&mut self.nvic_prio_bits, &other.nvic_prio_bits);
+        merge_option(
+            &mut self.vendor_systick_config,
+            &other.vendor_systick_config,
+        );
     }
 }
 
