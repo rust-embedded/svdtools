@@ -1,5 +1,4 @@
 use crate::{common::svd_reader, patch::yaml_parser::YamlBody};
-use anyhow::{anyhow, Result};
 use std::path::Path;
 use svd::Device;
 use svd_parser as svd;
@@ -37,20 +36,20 @@ impl Patcher {
                 _ => panic!("_copy - from has too many ':'"),
             };
             let mut src_peripheral = match src_peripheral {
-                Err(e) => panic!("{}", e.to_string()),
-                Ok(periph) => periph,
+                None => panic!("peripheral {} not found", src.last().unwrap()),
+                Some(periph) => periph,
             };
             src_peripheral.name = dest.clone();
             let dest_periph = get_peripheral(&self.svd, dest);
             match dest_periph {
-                Ok(dest_periph) => {
+                Some(dest_periph) => {
                     src_peripheral.base_address = dest_periph.base_address;
                     src_peripheral.interrupt = dest_periph.interrupt;
                     self.svd
                         .peripherals
                         .retain(|p| p.name != src_peripheral.name);
                 }
-                Err(_) => {
+                None => {
                     src_peripheral.interrupt = vec![];
                 }
             }
@@ -59,16 +58,16 @@ impl Patcher {
     }
 }
 
-fn get_peripheral(svd: &Device, peripheral_name: &str) -> Result<svd::Peripheral> {
-    let peripheral: Vec<&svd::Peripheral> = svd
+fn get_peripheral(svd: &Device, peripheral_name: &str) -> Option<svd::Peripheral> {
+    let peripherals: Vec<&svd::Peripheral> = svd
         .peripherals
         .iter()
         .filter(|p| p.name == peripheral_name)
         .collect();
-    if peripheral.len() != 1 {
-        Err(anyhow!("peripheral {} not found", peripheral_name))
+    if peripherals.len() != 1 {
+        None
     } else {
-        Ok(peripheral[0].clone())
+        Some(peripherals[0].clone())
     }
 }
 
