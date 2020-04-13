@@ -85,8 +85,8 @@ pub struct PeripheralCommand {
     #[serde(default, rename = "_delete")]
     pub delete: Vec<String>,
 
-    #[serde(default, rename = "_modify")]
-    pub modify: HashMap<String, CpuPeripheral>,
+    #[serde(rename = "_modify")]
+    pub modify: Option<ModifyPeripheral>,
 
     #[serde(default, rename = "_add")]
     pub add: Mapping,
@@ -97,9 +97,11 @@ pub struct PeripheralCommand {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub enum CpuPeripheral {
-    Cpu(Cpu),
-    Peripheral(Peripheral),
+pub struct ModifyPeripheral {
+    cpu: Option<Cpu>,
+
+    #[serde(flatten)]
+    pub peripherals: HashMap<String, Peripheral>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -178,9 +180,16 @@ impl Merge for YamlBody {
 impl Merge for PeripheralCommand {
     fn merge(&mut self, other: &Self) {
         self.delete.extend(other.delete.clone());
-        merge_hashmap(&mut self.modify, &other.modify);
+        merge_option(&mut self.modify, &other.modify);
         // TODO merge add
         // TODO merge copy
+    }
+}
+
+impl Merge for ModifyPeripheral {
+    fn merge(&mut self, other: &Self) {
+        merge_option(&mut self.cpu, &other.cpu);
+        merge_hashmap(&mut self.peripherals, &other.peripherals);
     }
 }
 
@@ -244,21 +253,6 @@ impl Merge for Field {
         merge_option(&mut self.description, &other.description);
         merge_option(&mut self.bit_offset, &other.bit_offset);
         merge_option(&mut self.bit_width, &other.bit_width);
-    }
-}
-
-impl Merge for CpuPeripheral {
-    fn merge(&mut self, other: &Self) {
-        if let CpuPeripheral::Cpu(self_cpu) = self {
-            if let CpuPeripheral::Cpu(other_cpu) = other {
-                self_cpu.merge(other_cpu);
-            }
-        }
-        if let CpuPeripheral::Peripheral(self_periph) = self {
-            if let CpuPeripheral::Peripheral(other_periph) = other {
-                self_periph.merge(other_periph);
-            }
-        }
     }
 }
 
