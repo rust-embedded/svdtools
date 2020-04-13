@@ -1,0 +1,5 @@
+_svd: stm32l4x2.svd
+
+_copy:
+  DAC2:
+    from: DAC1
