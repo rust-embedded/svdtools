@@ -1,4 +1,3 @@
-use crate::patch::modify;
 use crate::{common::svd_reader, patch::yaml::yaml_parser::YamlBody};
 use std::path::Path;
 use svd::Device;
@@ -60,29 +59,10 @@ impl Patcher {
     }
 
     fn modify_device(&mut self) {
-        if let Some(modify) = &self.yaml.commands.modify {
-            if let Some(new_cpu) = &modify.cpu {
-                modify::modify_cpu(&mut self.svd.cpu, new_cpu);
-            }
-            for (periph_name, new_periph) in &modify.peripherals {
-                // TODO At the moment we ignore addressBlocks feature since it is
-                //      never used in the stm32-rs repository. Is it ok?
-                let mut old_periph = get_peripheral_mut(&mut self.svd, periph_name)
-                    .expect("peripheral {} of _modify not found in svd");
-                new_periph.modify(&mut old_periph);
-            }
+        if let Some(device) = &self.yaml.commands.modify {
+            device.modify(&mut self.svd);
         }
     }
-}
-
-fn get_peripheral_mut<'a>(
-    svd: &'a mut Device,
-    peripheral_name: &str,
-) -> Option<&'a mut svd::Peripheral> {
-    svd.peripherals
-        .iter_mut()
-        .filter(|p| p.name == peripheral_name)
-        .next()
 }
 
 fn get_peripheral_copy(svd: &Device, peripheral_name: &str) -> Option<svd::Peripheral> {

@@ -1,6 +1,6 @@
 use super::yaml_parser::{
-    Cpu, Field, FieldCommand, ModifyPeripheral, Peripheral, PeripheralCommand, PeripheralNode,
-    Register, RegisterCommand, RegisterNode, YamlBody,
+    Cpu, Device, Field, FieldCommand, Peripheral, PeripheralCommand, PeripheralNode, Register,
+    RegisterCommand, RegisterNode, YamlBody,
 };
 use std::{collections::HashMap, hash::Hash};
 
@@ -24,7 +24,7 @@ impl Merge for PeripheralCommand {
     }
 }
 
-impl Merge for ModifyPeripheral {
+impl Merge for Device {
     fn merge(&mut self, other: &Self) {
         merge_option(&mut self.cpu, &other.cpu);
         merge_hashmap(&mut self.peripherals, &other.peripherals);

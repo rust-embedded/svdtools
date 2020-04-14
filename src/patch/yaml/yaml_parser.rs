@@ -95,7 +95,7 @@ pub struct PeripheralCommand {
     pub delete: Vec<String>,
 
     #[serde(rename = "_modify")]
-    pub modify: Option<ModifyPeripheral>,
+    pub modify: Option<Device>,
 
     #[serde(default, rename = "_add")]
     pub add: Mapping,
@@ -106,11 +106,50 @@ pub struct PeripheralCommand {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct ModifyPeripheral {
+#[serde(rename_all = "camelCase")]
+pub struct Device {
+    pub name: Option<String>,
+    pub version: Option<String>,
+    pub description: Option<String>,
+    pub address_unit_bits: Option<u32>,
+    pub width: Option<u32>,
     pub cpu: Option<Cpu>,
 
     #[serde(flatten)]
+    pub default_register_properties: RegisterProperties,
+
+    #[serde(flatten)]
     pub peripherals: HashMap<String, Peripheral>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct RegisterProperties {
+    pub size: Option<u32>,
+    pub reset_value: Option<u32>,
+    pub reset_mask: Option<u32>,
+    pub access: Option<Access>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum Access {
+    ReadOnly,
+    ReadWrite,
+    ReadWriteOnce,
+    WriteOnce,
+    WriteOnly,
+}
+
+impl Access {
+    pub fn to_svd(&self) -> svd::Access {
+        match self {
+            Self::ReadOnly => svd::Access::ReadOnly,
+            Self::ReadWrite => svd::Access::ReadWrite,
+            Self::ReadWriteOnce => svd::Access::ReadWriteOnce,
+            Self::WriteOnce => svd::Access::WriteOnce,
+            Self::WriteOnly => svd::Access::WriteOnly,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
