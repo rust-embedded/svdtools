@@ -13,7 +13,7 @@ impl Patcher {
     pub fn process_device(&mut self) {
         self.delete_peripherals();
         self.copy_peripherals();
-        self.modify_peripherals();
+        self.modify_device();
     }
 
     fn delete_peripherals(&mut self) {
@@ -59,7 +59,7 @@ impl Patcher {
         }
     }
 
-    fn modify_peripherals(&mut self) {
+    fn modify_device(&mut self) {
         if let Some(modify) = &self.yaml.commands.modify {
             if let Some(new_cpu) = &modify.cpu {
                 modify::modify_cpu(&mut self.svd.cpu, new_cpu);
@@ -125,19 +125,26 @@ mod tests {
     }
 
     #[test]
-    fn modify_peripherals() {
+    fn modify_device() {
         let mut patcher = test_utils::get_patcher(Path::new("modify"));
+
+        // check cpu initial config
+        let cpu = &patcher.svd.cpu.clone().unwrap();
+        assert_eq!(cpu.nvic_priority_bits, 3);
+
+        // check peripheral initial config
         assert_eq!(patcher.svd.peripherals.len(), 2);
         let dac1 = get_peripheral_copy(&patcher.svd, "DAC1").unwrap();
         assert_eq!(dac1.name, "DAC1");
         assert_eq!(dac1.description, None);
 
-        dbg!(&patcher.svd);
+        patcher.modify_device();
 
-        patcher.modify_peripherals();
+        // check cpu final config
+        let cpu = &patcher.svd.cpu.clone().unwrap();
+        assert_eq!(cpu.nvic_priority_bits, 4);
 
-        dbg!(&patcher.svd);
-
+        // check peripheral final config
         let dac1 = get_peripheral_copy(&patcher.svd, "DAC11").unwrap();
         assert_eq!(dac1.name, "DAC11");
         assert_eq!(

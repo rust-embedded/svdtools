@@ -3,6 +3,17 @@
 xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
 xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
   <name>STM32L4x2</name>
+
+  <cpu>
+    <name>CM4</name>
+    <revision>r1p0</revision>
+    <endian>little</endian>
+    <mpuPresent>false</mpuPresent>
+    <fpuPresent>false</fpuPresent>
+    <nvicPrioBits>3</nvicPrioBits>
+    <vendorSystickConfig>false</vendorSystickConfig>
+  </cpu>
+
   <peripherals>
     <peripheral>
       <name>DAC1</name>
