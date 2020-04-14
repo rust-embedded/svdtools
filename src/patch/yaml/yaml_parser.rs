@@ -6,6 +6,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
+use svd_parser as svd;
 
 #[derive(Debug, Deserialize)]
 pub struct YamlRoot {
@@ -29,11 +30,20 @@ pub struct YamlBody {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Peripheral {
     pub name: Option<String>,
+    pub version: Option<String>,
+    pub display_name: Option<String>,
     pub description: Option<String>,
     pub group_name: Option<String>,
-    pub base_address: Option<String>,
-    pub address_block: Option<Mapping>,
+    pub base_address: Option<u32>,
+    pub address_block: Option<AddressBlock>,
     pub registers: Option<Vec<Register>>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AddressBlock {
+    pub offset: Option<u32>,
+    pub size: Option<u32>,
+    pub usage: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -112,8 +122,7 @@ pub struct Cpu {
     pub revision: Option<String>,
 
     /// Endianness
-    // TODO enum
-    pub endian: Option<String>,
+    pub endian: Option<Endian>,
 
     /// Indicate whether the processor is equipped with a memory protection unit (MPU)
     pub mpu_present: Option<bool>,
@@ -126,6 +135,25 @@ pub struct Cpu {
 
     /// Indicate whether the processor implements a vendor-specific System Tick Timer
     pub vendor_systick_config: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+pub enum Endian {
+    Little,
+    Big,
+    Selectable,
+    Other,
+}
+
+impl Endian {
+    pub fn to_svd(&self) -> svd::Endian {
+        match self {
+            Self::Little => svd::Endian::Little,
+            Self::Big => svd::Endian::Big,
+            Self::Selectable => svd::Endian::Selectable,
+            Self::Other => svd::Endian::Other,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

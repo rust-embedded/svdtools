@@ -1,0 +1,6 @@
+_svd: stm32l4x2.svd
+
+_modify:
+  DAC1:
+    name: DAC11
+    description: Digital-to-analog converter
