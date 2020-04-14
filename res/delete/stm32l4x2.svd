@@ -3,27 +3,6 @@
 xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
 xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
   <name>STM32L4x2</name>
-  <version>1.6</version>
-  <description>STM32L4x2</description>
-  <!-- details about the cpu embedded in the device -->
-  <cpu>
-    <name>CM4</name>
-    <revision>r1p0</revision>
-    <endian>little</endian>
-    <mpuPresent>false</mpuPresent>
-    <fpuPresent>false</fpuPresent>
-    <nvicPrioBits>3</nvicPrioBits>
-    <vendorSystickConfig>false</vendorSystickConfig>
-  </cpu>
-  <!--Bus Interface Properties-->
-  <!--Cortex-M3 is byte addressable-->
-  <addressUnitBits>8</addressUnitBits>
-  <!--the maximum data bit width accessible within a single transfer-->
-  <width>32</width>
-  <!--Register Default Properties-->
-  <size>0x20</size>
-  <resetValue>0x0</resetValue>
-  <resetMask>0xFFFFFFFF</resetMask>
   <peripherals>
     <peripheral>
       <name>DAC1</name>
