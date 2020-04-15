@@ -40,7 +40,13 @@ impl yaml::RegisterProperties {
         modify_option(&mut dest.size, &self.size);
         modify_option(&mut dest.reset_value, &self.reset_value);
         modify_option(&mut dest.reset_mask, &self.reset_mask);
-        // TODO modify access
+        modify_access(&mut dest.access, &self.access);
+    }
+}
+
+fn modify_access(dest: &mut Option<svd::Access>, src: &Option<yaml::Access>) {
+    if let Some(src) = src {
+        *dest = Some(src.to_svd());
     }
 }
 
@@ -93,10 +99,7 @@ impl yaml::Peripheral {
             addr_block.modify(&mut dest.address_block);
         }
 
-        // TODO registers?
-        // TODO derived_from?
-        // TODO interrupt?
-        // TODO default_register_properties?
+        // TODO should I use derived_from attribute?
     }
 }
 

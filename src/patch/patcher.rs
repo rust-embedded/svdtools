@@ -108,6 +108,10 @@ mod tests {
     fn modify_device() {
         let mut patcher = test_utils::get_patcher(Path::new("modify"));
 
+        // check device initial config
+        assert_eq!(&patcher.svd.version, &Some("1.6".to_string()));
+        assert_eq!(&patcher.svd.description, &None);
+
         // check cpu initial config
         let cpu = &patcher.svd.cpu.clone().unwrap();
         assert_eq!(cpu.nvic_priority_bits, 3);
@@ -119,6 +123,10 @@ mod tests {
         assert_eq!(dac1.description, None);
 
         patcher.modify_device();
+
+        // check device final config
+        assert_eq!(&patcher.svd.version, &Some("1.7".to_string()));
+        assert_eq!(&patcher.svd.description, &Some("STM32L4x2".to_string()));
 
         // check cpu final config
         let cpu = &patcher.svd.cpu.clone().unwrap();
