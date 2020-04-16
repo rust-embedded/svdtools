@@ -67,8 +67,8 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::patch::yaml::yaml_parser::Field;
-    use crate::{patch::yaml::yaml_parser::YamlRoot, test_utils};
+    use crate::patch::yaml::yaml_parser::{Field, YamlRoot};
+    use crate::test_utils;
 
     #[test]
     fn all_yamls_are_included() {
