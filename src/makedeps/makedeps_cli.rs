@@ -1,5 +1,5 @@
-use crate::patch::yaml_parser::YamlBody;
-use crate::patch::{include, yaml_parser};
+use crate::patch::include;
+use crate::patch::yaml::yaml_parser::{self, YamlBody};
 use anyhow::Result;
 use std::error::Error;
 use std::io::Write;
