@@ -1,7 +1,6 @@
 use crate::patch::include;
 use crate::patch::yaml::yaml_parser::{self, YamlBody};
 use anyhow::Result;
-use std::error::Error;
 use std::io::Write;
 use std::{
     fs::File,
@@ -20,7 +19,7 @@ fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
         Err(why) => panic!(
             "couldn't create {}: {}",
             file_name.display(),
-            why.description()
+            why.to_string()
         ),
         Ok(file) => file,
     };
@@ -43,11 +42,7 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
     let deps = include::yaml_includes(&mut yaml, yaml_dir);
 
     if let Err(e) = write_file(deps_file, deps) {
-        eprintln!(
-            "couldn't create {}: {}",
-            deps_file.display(),
-            e.description()
-        )
+        eprintln!("couldn't create {}: {}", deps_file.display(), e.to_string())
     };
 }
 
