@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::{interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli, patch::patch_cli};
+use svdtools::{
+    interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli, patch::patch_cli,
+};
 
 #[derive(StructOpt, Debug)]
 enum Command {
