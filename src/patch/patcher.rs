@@ -1,4 +1,5 @@
 use crate::{common::svd_reader, patch::yaml::yaml_parser::YamlBody};
+use anyhow::Result;
 use std::path::Path;
 use svd::Device;
 use svd_parser as svd;
@@ -9,10 +10,11 @@ pub struct Patcher {
 }
 
 impl Patcher {
-    pub fn process_device(&mut self) {
+    pub fn process_device(&mut self) -> Result<()> {
         self.delete_peripherals();
-        self.copy_peripherals();
+        self.copy_peripherals()?;
         self.modify_device();
+        Ok(())
     }
 
     fn delete_peripherals(&mut self) {
@@ -21,7 +23,7 @@ impl Patcher {
         self.svd.peripherals.retain(|p| !delete.contains(&p.name));
     }
 
-    fn copy_peripherals(&mut self) {
+    fn copy_peripherals(&mut self) -> Result<()> {
         let copy = &self.yaml.commands.copy;
         for (dest, src) in copy {
             let src = &src.from;
@@ -31,7 +33,7 @@ impl Patcher {
                 2 => {
                     let svd_path = Path::new(&src[0]);
                     // TODO add yaml path here
-                    let svd = svd_reader::device(svd_path);
+                    let svd = svd_reader::device(svd_path)?;
                     get_peripheral_copy(&svd, src[1])
                 }
                 _ => panic!("_copy - from has too many ':'"),
@@ -56,6 +58,7 @@ impl Patcher {
             }
             self.svd.peripherals.push(src_peripheral);
         }
+        Ok(())
     }
 
     fn modify_device(&mut self) {
@@ -97,7 +100,7 @@ mod tests {
         let dac2 = get_peripheral_copy(&patcher.svd, "DAC2").unwrap();
         assert_ne!(dac1.registers, dac2.registers);
 
-        patcher.copy_peripherals();
+        patcher.copy_peripherals().unwrap();
         assert_eq!(patcher.svd.peripherals.len(), 3);
 
         let dac2 = get_peripheral_copy(&patcher.svd, "DAC2").unwrap();

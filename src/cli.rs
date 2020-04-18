@@ -48,7 +48,9 @@ impl Command {
                 mmap_cli::parse_device(svd_file);
             }
             Self::Patch { svd_file } => {
-                patch_cli::patch(svd_file);
+                if let Err(e) = patch_cli::patch(svd_file) {
+                    eprintln!("error: {}", e.to_string());
+                }
             }
             Self::Makedeps {
                 yaml_file,

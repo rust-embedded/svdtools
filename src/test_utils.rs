@@ -17,7 +17,7 @@ pub fn get_patcher(test_subdir: &Path) -> Patcher {
     let yaml: YamlRoot = yaml_parser::from_path(&yaml_file);
 
     let svdpath = test_subdir.join(&yaml.svd);
-    let svd = svd_reader::device(&svdpath);
+    let svd = svd_reader::device(&svdpath).unwrap();
 
     Patcher {
         svd,

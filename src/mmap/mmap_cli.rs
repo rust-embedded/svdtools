@@ -1,5 +1,6 @@
 use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
+use anyhow::Result;
 use std::{fs::File, io::Read, path::Path};
 use svd_parser::{Peripheral, Register, RegisterCluster};
 
@@ -7,13 +8,18 @@ use svd_parser::{Peripheral, Register, RegisterCluster};
 /// in the device, such that automated diffing is possible.
 pub fn parse_device(svd_file: &Path) {
     let mut file = File::open(svd_file).expect("svd file doesn't exist");
-    let text = get_text(&mut file);
-    println!("{}", text);
+    match get_text(&mut file) {
+        Err(e) => {
+            let path_str = svd_file.display();
+            eprintln!("cannot parse {}: {}", path_str, e.to_string());
+        }
+        Ok(text) => println!("{}", text),
+    }
 }
 
-fn get_text<R: Read>(svd: &mut R) -> String {
-    let peripherals = svd_reader::peripherals(svd);
-    to_text(&peripherals)
+fn get_text<R: Read>(svd: &mut R) -> Result<String> {
+    let peripherals = svd_reader::peripherals(svd)?;
+    Ok(to_text(&peripherals))
 }
 
 fn to_text(peripherals: &[Peripheral]) -> String {
@@ -192,7 +198,7 @@ INTERRUPT 002: INT_B2 (PeriphB): Interrupt B2";
     #[test]
     fn mmap() {
         let mut svd = SVD.as_bytes();
-        let actual_mmap = get_text(&mut svd);
+        let actual_mmap = get_text(&mut svd).unwrap();
         assert_eq!(EXPECTED_MMAP, actual_mmap);
     }
 }

@@ -1,18 +1,19 @@
+use anyhow::Result;
 use std::{fs::File, io::Read, path::Path};
 use svd_parser::{Device, Peripheral};
 
-pub fn peripherals<R: Read>(svd: &mut R) -> Vec<Peripheral> {
+pub fn peripherals<R: Read>(svd: &mut R) -> Result<Vec<Peripheral>> {
     let xml = &mut String::new();
     svd.read_to_string(xml).unwrap();
-    let device = parse_device(xml);
-    device.peripherals
+    let device = parse_device(xml)?;
+    Ok(device.peripherals)
 }
 
-fn parse_device(xml: &str) -> Device {
-    svd_parser::parse(xml).expect("svd not formatted correctly")
+fn parse_device(xml: &str) -> Result<Device> {
+    svd_parser::parse(xml)
 }
 
-pub fn device(path: &Path) -> Device {
+pub fn device(path: &Path) -> Result<Device> {
     let xml = &mut String::new();
     let mut svd_file = File::open(path).expect("svd path is not correct");
     svd_file.read_to_string(xml).unwrap();
