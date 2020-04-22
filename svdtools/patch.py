@@ -831,6 +831,8 @@ class Register:
     def add_field(self, fname, fadd):
         """Add fname given by fadd to rtag."""
         parent = self.rtag.find("fields")
+        if parent is None:
+            parent = ET.SubElement(self.rtag, "fields")
         for ftag in parent.iter("field"):
             if ftag.find("name").text == fname:
                 raise SvdPatchError(
