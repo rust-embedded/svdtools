@@ -10,9 +10,11 @@ fn read_and_write() {
     let svd = svd_reader::device(&svd_path).unwrap();
 
     // write the svd in xml
-    let _xml = svd_parser::encode(&svd).unwrap();
+    let xml = svd_parser::encode(&svd).unwrap();
 
     // read again the svd
-    // BUG in svd_parser crate probably: this panics
-    // let same_svd = svd_parser::parse(&xml).unwrap();
+    let _same_svd = svd_parser::parse(&xml).unwrap();
+
+    // TODO assert_eq when https://github.com/rust-embedded/svd/issues/111
+    //      is solved
 }
