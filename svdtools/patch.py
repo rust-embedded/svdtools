@@ -9,7 +9,7 @@ import copy
 import os.path
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from fnmatch import fnmatch
+from fnmatch import fnmatchcase
 
 import yaml
 
@@ -46,7 +46,7 @@ yaml.add_constructor(_mapping_tag, dict_constructor, yaml.SafeLoader)
 def matchname(name, spec):
     """Check if name matches against a specification."""
     return (not spec.startswith("_")) and any(
-        fnmatch(name, subspec) for subspec in spec.split(",")
+        fnmatchcase(name, subspec) for subspec in spec.split(",")
     )
 
 
