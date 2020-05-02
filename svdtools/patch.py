@@ -398,6 +398,9 @@ class Device:
                 elif rspec == "_interrupts":
                     for ispec in rmod:
                         p.modify_interrupt(ispec, rmod[ispec])
+                elif rspec == "_cluster":
+                    for cspec in rmod:
+                        p.modify_cluster(cspec, rmod[cspec])
                 else:
                     p.modify_register(rspec, rmod)
             # Handle strips
@@ -465,6 +468,15 @@ class Peripheral:
             name = itag.find("name").text
             if matchname(name, ispec):
                 yield itag
+
+    def iter_clusters(self, cspec):
+        """
+        Iterate over all clusters that match cpsec and live inside ptag.
+        """
+        for ctag in self.ptag.iter("cluster"):
+            name = ctag.find("name").text
+            if matchname(name, cspec):
+                yield ctag
 
     def add_interrupt(self, iname, iadd):
         """Add iname given by iadd to ptag."""
@@ -571,6 +583,16 @@ class Peripheral:
         """Delete registers matched by rspec inside ptag."""
         for rtag in list(self.iter_registers(rspec)):
             self.ptag.find("registers").remove(rtag)
+
+    def modify_cluster(self, cspec, cmod):
+        """Modify cspec inside ptag according to cmod."""
+        for ctag in self.iter_clusters(cspec):
+            for (key, value) in cmod.items():
+                tag = ctag.find(key)
+                if value == "":
+                    ctag.remove(tag)
+                else:
+                    tag.text = str(value)
 
     def strip(self, substr, strip_end=False):
         """
