@@ -13,8 +13,7 @@ fn read_and_write() {
     let xml = svd_parser::encode(&svd).unwrap();
 
     // read again the svd
-    let _same_svd = svd_parser::parse(&xml).unwrap();
+    let same_svd = svd_parser::parse(&xml).unwrap();
 
-    // TODO assert_eq when https://github.com/rust-embedded/svd/issues/111
-    //      is solved
+    assert_eq!(svd, same_svd)
 }
