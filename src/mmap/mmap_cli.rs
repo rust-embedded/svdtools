@@ -158,8 +158,6 @@ mod tests {
                     <name>REG2</name>
                     <addressOffset>0x14</addressOffset>
                     <description>Register A2</description>
-                    <fields>
-                    </fields>
                 </register>
             </registers>
         </peripheral>
@@ -177,8 +175,6 @@ mod tests {
                     <name>REG1</name>
                     <addressOffset>0x10</addressOffset>
                     <description>Register B1</description>
-                    <fields>
-                    </fields>
                 </register>
             </registers>
         </peripheral>
