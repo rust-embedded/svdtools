@@ -1,7 +1,7 @@
-use crate::patch::yaml::yaml_parser as yaml;
+use crate::patch::yaml::yaml_parser as yml;
 use svd_parser as svd;
 
-pub fn modify_cpu(dest: &mut Option<svd::Cpu>, src: &yaml::Cpu) {
+pub fn modify_cpu(dest: &mut Option<svd::Cpu>, src: &yml::Cpu) {
     match dest {
         None => {
             unimplemented!("cannot instanciate a cpu struct at the moment, pending until https://github.com/rust-embedded/svd/pull/101/ is merged");
@@ -26,7 +26,7 @@ pub fn modify_cpu(dest: &mut Option<svd::Cpu>, src: &yaml::Cpu) {
         Some(dest) => {
             modify_if_some(&mut dest.name, &src.name);
             modify_if_some(&mut dest.revision, &src.revision);
-            modify_endian(&mut dest.endian, src.endian);
+            modify_if_some(&mut dest.endian, &src.endian);
             modify_if_some(&mut dest.mpu_present, &src.mpu_present);
             modify_if_some(&mut dest.fpu_present, &src.fpu_present);
             modify_if_some(&mut dest.nvic_priority_bits, &src.nvic_prio_bits);
@@ -35,7 +35,7 @@ pub fn modify_cpu(dest: &mut Option<svd::Cpu>, src: &yaml::Cpu) {
     };
 }
 
-impl yaml::RegisterProperties {
+impl yml::RegisterProperties {
     pub fn modify(&self, dest: &mut svd::RegisterProperties) {
         modify_option(&mut dest.size, &self.size);
         modify_option(&mut dest.reset_value, &self.reset_value);
@@ -44,13 +44,13 @@ impl yaml::RegisterProperties {
     }
 }
 
-fn modify_access(dest: &mut Option<svd::Access>, src: &Option<yaml::Access>) {
+fn modify_access(dest: &mut Option<svd::Access>, src: &Option<yml::Access>) {
     if let Some(src) = src {
         *dest = Some(src.to_svd());
     }
 }
 
-impl yaml::Device {
+impl yml::Device {
     pub fn modify(&self, dest: &mut svd::Device) {
         modify_if_some(&mut dest.name, &self.name);
         modify_option(&mut dest.version, &self.version);
@@ -87,14 +87,14 @@ fn get_peripheral_mut<'a>(
         .next()
 }
 
-impl yaml::Peripheral {
+impl yml::Peripheral {
     pub fn modify(&self, dest: &mut svd::Peripheral) {
         modify_if_some(&mut dest.name, &self.name);
-        modify_option(&mut dest.version, &self.version);
-        modify_option(&mut dest.display_name, &self.display_name);
-        modify_option(&mut dest.description, &self.description);
-        modify_option(&mut dest.group_name, &self.group_name);
-        modify_if_some(&mut dest.base_address, &self.base_address);
+        modify_option(&mut dest.version, &self.body.version);
+        modify_option(&mut dest.display_name, &self.body.display_name);
+        modify_option(&mut dest.description, &self.body.description);
+        modify_option(&mut dest.group_name, &self.body.group_name);
+        modify_if_some(&mut dest.base_address, &self.body.base_address);
         if let Some(addr_block) = &self.address_block {
             addr_block.modify(&mut dest.address_block);
         }
@@ -103,7 +103,7 @@ impl yaml::Peripheral {
     }
 }
 
-impl yaml::AddressBlock {
+impl yml::OptAddressBlock {
     fn modify(&self, dest: &mut Option<svd::AddressBlock>) {
         match dest {
             Some(dest) => {
@@ -119,12 +119,6 @@ impl yaml::AddressBlock {
                 })
             }
         }
-    }
-}
-
-fn modify_endian(dest: &mut svd::Endian, src: Option<yaml::Endian>) {
-    if let Some(src) = src {
-        *dest = src.to_svd();
     }
 }
 

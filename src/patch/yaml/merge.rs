@@ -64,11 +64,11 @@ impl Merge for FieldCommand {
 impl Merge for Peripheral {
     fn merge(&mut self, other: &Self) {
         merge_option(&mut self.name, &other.name);
-        merge_option(&mut self.description, &other.description);
-        merge_option(&mut self.group_name, &other.group_name);
-        merge_option(&mut self.base_address, &other.base_address);
+        merge_option(&mut self.body.description, &other.body.description);
+        merge_option(&mut self.body.group_name, &other.body.group_name);
+        merge_option(&mut self.body.base_address, &other.body.base_address);
         merge_option(&mut self.address_block, &other.address_block);
-        merge_opt_vec(&mut self.registers, &other.registers)
+        merge_opt_vec(&mut self.body.registers, &other.body.registers)
     }
 }
 

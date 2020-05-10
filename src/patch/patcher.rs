@@ -1,5 +1,8 @@
-use crate::{common::svd_reader, patch::yaml::yaml_parser::YamlBody};
-use anyhow::Result;
+use crate::common::svd_reader;
+use crate::patch::yaml::yaml_parser as yml;
+use yml::YamlBody;
+
+use anyhow::{anyhow, Result};
 use std::path::Path;
 use svd::Device;
 use svd_parser as svd;
@@ -14,6 +17,7 @@ impl Patcher {
         self.delete_peripherals();
         self.copy_peripherals()?;
         self.modify_device();
+        self.add_peripherals()?;
         Ok(())
     }
 
@@ -65,6 +69,30 @@ impl Patcher {
         if let Some(device) = &self.yaml.commands.modify {
             device.modify(&mut self.svd);
         }
+    }
+
+    fn add_peripherals(&mut self) -> Result<()> {
+        let add = &self.yaml.commands.add;
+        for (peripheral_name, peripheral) in add {
+            let peripheral_already_exists = self
+                .svd
+                .peripherals
+                .iter()
+                .any(|p| &p.name == peripheral_name);
+
+            if peripheral_already_exists {
+                return Err(anyhow!(
+                    "device already has a peripheral {}",
+                    peripheral_name
+                ));
+            }
+
+            let svd_peripheral = peripheral.to_svd(peripheral_name)?;
+            self.svd.peripherals.push(svd_peripheral);
+            // TODO handle derivedFrom
+        }
+
+        Ok(())
     }
 }
 

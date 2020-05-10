@@ -1,3 +1,4 @@
+use anyhow::Result;
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_yaml::Mapping;
 use std::{
@@ -30,17 +31,65 @@ pub struct YamlBody {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Peripheral {
     pub name: Option<String>,
+
+    #[serde(flatten)]
+    pub body: PeripheralBody,
+
+    pub address_block: Option<OptAddressBlock>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct AddedPeripheral {
+    #[serde(flatten)]
+    pub body: PeripheralBody,
+
+    pub address_block: Option<svd::AddressBlock>,
+
+    #[serde(default)]
+    interrupts: HashMap<String, InterruptBody>,
+
+    // TODO handle addressBlocks? they are not used in stm32-rs
+    derived_from: Option<String>,
+}
+
+impl AddedPeripheral {
+    fn interrupts(&self) -> Vec<svd::Interrupt> {
+        self.interrupts
+            .iter()
+            .map(|i| {
+                let name = i.0;
+                let body = i.1;
+                svd::Interrupt {
+                    name: name.clone(),
+                    description: body.description.clone(),
+                    value: body.value,
+                }
+            })
+            .collect()
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct InterruptBody {
+    description: Option<String>,
+    value: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct PeripheralBody {
     pub version: Option<String>,
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub group_name: Option<String>,
     pub base_address: Option<u32>,
-    pub address_block: Option<AddressBlock>,
     pub registers: Option<Vec<Register>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct AddressBlock {
+pub struct OptAddressBlock {
     pub offset: Option<u32>,
     pub size: Option<u32>,
     pub usage: Option<String>,
@@ -98,7 +147,7 @@ pub struct PeripheralCommand {
     pub modify: Option<Device>,
 
     #[serde(default, rename = "_add")]
-    pub add: Mapping,
+    pub add: HashMap<String, AddedPeripheral>,
 
     /// Copy everything except `baseAddress` and `name` from another peripheral
     #[serde(default, rename = "_copy")]
@@ -131,12 +180,16 @@ pub struct RegisterProperties {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "kebab-case")]
 pub enum Access {
+    #[serde(rename = "read-only")]
     ReadOnly,
+    #[serde(rename = "read-write")]
     ReadWrite,
+    #[serde(rename = "read-writeOnce")]
     ReadWriteOnce,
+    #[serde(rename = "writeOnce")]
     WriteOnce,
+    #[serde(rename = "write-only")]
     WriteOnly,
 }
 
@@ -161,7 +214,7 @@ pub struct Cpu {
     pub revision: Option<String>,
 
     /// Endianness
-    pub endian: Option<Endian>,
+    pub endian: Option<svd::Endian>,
 
     /// Indicate whether the processor is equipped with a memory protection unit (MPU)
     pub mpu_present: Option<bool>,
@@ -174,25 +227,6 @@ pub struct Cpu {
 
     /// Indicate whether the processor implements a vendor-specific System Tick Timer
     pub vendor_systick_config: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, Clone, Copy)]
-pub enum Endian {
-    Little,
-    Big,
-    Selectable,
-    Other,
-}
-
-impl Endian {
-    pub fn to_svd(&self) -> svd::Endian {
-        match self {
-            Self::Little => svd::Endian::Little,
-            Self::Big => svd::Endian::Big,
-            Self::Selectable => svd::Endian::Selectable,
-            Self::Other => svd::Endian::Other,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -234,4 +268,26 @@ where
     let file = File::open(yaml_file).expect("yaml file doesn't exist");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("yaml not formatted correctly")
+}
+
+impl AddedPeripheral {
+    pub fn to_svd(&self, peripheral_name: &str) -> Result<svd::Peripheral> {
+        let mut pb: svd::peripheral::PeripheralBuilder = Default::default();
+        pb = pb.name(peripheral_name.to_string());
+        if let Some(base_address) = &self.body.base_address {
+            pb = pb.base_address(*base_address);
+        }
+        pb = pb.version(self.body.version.clone());
+        pb = pb.display_name(self.body.display_name.clone());
+        pb = pb.group_name(self.body.group_name.clone());
+        pb = pb.description(self.body.description.clone());
+        pb = pb.address_block(self.address_block.clone());
+
+        pb = pb.interrupt(self.interrupts());
+
+        // TODO pb = pb.registers(self.body.registers);
+        pb = pb.derived_from(self.derived_from.clone());
+
+        pb.build()
+    }
 }
