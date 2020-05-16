@@ -1,0 +1,28 @@
+_svd: stm32l4x2.svd
+
+_add:
+  CPUID:
+    description: CPUID descr
+    baseAddress: 0xE000ED00
+    addressBlock:
+      offset: 0x0
+      size: 4
+      usage: registers
+    registers:
+      REG01:
+        description: I-cache invalidate all to PoU
+        addressOffset: 0x0
+        access: write-only
+      REG02:
+        description: I-cache invalidate by MVA to PoU
+        addressOffset: 0x8
+        access: read-only
+        fields:
+          FIELDA:
+            description: This field defines the implementer
+            bitOffset: 24
+            bitWidth: 7
+          FIELDB:
+            description: Implementation defined
+            bitOffset: 20
+            bitWidth: 4

@@ -68,19 +68,19 @@ impl Merge for Peripheral {
         merge_option(&mut self.body.group_name, &other.body.group_name);
         merge_option(&mut self.body.base_address, &other.body.base_address);
         merge_option(&mut self.address_block, &other.address_block);
-        merge_opt_vec(&mut self.body.registers, &other.body.registers)
+        merge_opt_vec(&mut self.registers, &other.registers)
     }
 }
 
 impl Merge for Register {
     fn merge(&mut self, other: &Self) {
         merge_option(&mut self.name, &other.name);
-        merge_option(&mut self.display_name, &other.display_name);
-        merge_option(&mut self.description, &other.description);
-        merge_option(&mut self.address_offset, &other.address_offset);
-        merge_option(&mut self.size, &other.size);
-        merge_option(&mut self.access, &other.access);
-        merge_option(&mut self.reset_value, &other.reset_value);
+        merge_option(&mut self.body.display_name, &other.body.display_name);
+        merge_option(&mut self.body.description, &other.body.description);
+        merge_option(&mut self.body.address_offset, &other.body.address_offset);
+        merge_option(&mut self.body.size, &other.body.size);
+        merge_option(&mut self.body.access, &other.body.access);
+        merge_option(&mut self.body.reset_value, &other.body.reset_value);
         merge_opt_vec(&mut self.fields, &other.fields)
     }
 }
@@ -88,9 +88,9 @@ impl Merge for Register {
 impl Merge for Field {
     fn merge(&mut self, other: &Self) {
         merge_option(&mut self.name, &other.name);
-        merge_option(&mut self.description, &other.description);
-        merge_option(&mut self.bit_offset, &other.bit_offset);
-        merge_option(&mut self.bit_width, &other.bit_width);
+        merge_option(&mut self.body.description, &other.body.description);
+        merge_option(&mut self.body.bit_offset, &other.body.bit_offset);
+        merge_option(&mut self.body.bit_width, &other.body.bit_width);
     }
 }
 

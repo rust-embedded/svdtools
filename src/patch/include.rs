@@ -67,7 +67,7 @@ pub fn yaml_includes(parent: &mut YamlBody, parent_dir: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::patch::yaml::yaml_parser::{Field, YamlRoot};
+    use crate::patch::yaml::yaml_parser::{Field, FieldBody, YamlRoot};
     use crate::test_utils;
 
     #[test]
@@ -86,9 +86,11 @@ mod tests {
         let en1_field = cr_reg.commands.modify.get("EN1").unwrap();
         let expected_field = Field {
             name: None,
-            description: Some("EN2 description".to_string()),
-            bit_offset: Some(2),
-            bit_width: Some(4),
+            body: FieldBody {
+                description: Some("EN2 description".to_string()),
+                bit_offset: Some(2),
+                bit_width: Some(4),
+            },
         };
         assert_eq!(en1_field, &expected_field);
     }
