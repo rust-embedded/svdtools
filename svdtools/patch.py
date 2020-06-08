@@ -189,6 +189,134 @@ def check_bitmasks(masks, mask):
     return True
 
 
+def sort_element(tag):
+    """
+    The SVD schema requires that all child elements appear in a defined order
+    inside their parent element.
+    However, new elements may have been been specified in any order,
+    so we sort all elements after processing a file.
+    """
+    arr = ("dim", "dimIncrement", "dimIndex", "dimName", "dimArrayIndex")
+    acc = ("size", "access", "protection", "resetValue", "resetMask")
+    orders = {
+        "enumeratedValue": ("name", "description", "value", "isDefault"),
+        "enumeratedValues": ("name", "headerEnumName", "usage", "enumeratedValue"),
+        "field": arr
+        + (
+            "name",
+            "description",
+            "bitOffset",
+            "bitWidth",
+            "lsb",
+            "msb",
+            "bitRange",
+            "access",
+            "modifiedWriteValues",
+            "writeConstraint",
+            "readAction",
+            "enumeratedValues",
+        ),
+        "fields": ("field"),
+        "writeConstraint": ("writeAsRead", "useEnumeratedValues", "range"),
+        "range": ("minimum", "maximum"),
+        "register": arr
+        + (
+            "name",
+            "displayName",
+            "description",
+            "alternateGroup",
+            "alternateRegister",
+            "addressOffset",
+        )
+        + acc
+        + (
+            "dataType",
+            "modifiedWriteValues",
+            "writeConstraint",
+            "readAction",
+            "fields",
+        ),
+        "cluster": arr
+        + (
+            "name",
+            "description",
+            "alternateCluster",
+            "headerStructName",
+            "addressOffset",
+        )
+        + acc
+        + ("register", "cluster"),
+        "registers": ("cluster", "register"),
+        "interrupt": ("name", "description", "value"),
+        "addressBlock": ("offset", "size", "usage", "protection"),
+        "peripheral": arr
+        + (
+            "name",
+            "version",
+            "description",
+            "alternatePeripheral",
+            "groupName",
+            "prependToName",
+            "appendToName",
+            "headerStructName",
+            "disableCondition",
+            "baseAddress",
+        )
+        + acc
+        + ("addressBlock", "interrupt", "registers"),
+        "peripherals": ("peripheral"),
+        "cpu": (
+            "name",
+            "revision",
+            "endian",
+            "mpuPresent",
+            "fpuPresent",
+            "fpuDP",
+            "dspPresent",
+            "icachePresent",
+            "dcachePresent",
+            "itcmPresent",
+            "dtcmPresent",
+            "vtorPresent",
+            "nvicPrioBits",
+            "vendorSystickConfig",
+            "deviceNumInterrupts",
+            "sauNumRegions",
+            "sauRegionsConfig",
+        ),
+        "sauRegionsConfig": ("region"),
+        "region": ("base", "limit", "access"),
+        "device": (
+            "vendor",
+            "vendorID",
+            "name",
+            "series",
+            "version",
+            "description",
+            "licenseText",
+            "cpu",
+            "headerSystemFilename",
+            "headerDefinitionsPrefix",
+            "addressUnitBits",
+            "width",
+        )
+        + acc
+        + ("peripherals", "vendorExtensions"),
+    }
+    if len(tag) > 0 and tag.tag not in orders:
+        raise UnknownTagError(tag.tag)
+    for child in tag:
+        if child.tag not in orders[tag.tag]:
+            raise UnknownTagError((tag.tag, child.tag))
+    tag[:] = sorted(tag, key=lambda e: orders[tag.tag].index(e.tag))
+
+
+def sort_recursive(tag):
+    sort_element(tag)
+    for child in tag:
+        sort_recursive(child)
+
+
 class SvdPatchError(ValueError):
     pass
 
@@ -206,6 +334,10 @@ class MissingRegisterError(SvdPatchError):
 
 
 class MissingPeripheralError(SvdPatchError):
+    pass
+
+
+class UnknownTagError(SvdPatchError):
     pass
 
 
@@ -247,6 +379,8 @@ class Device:
                 if key == "addressBlock":
                     ab = ptag.find(key)
                     for (ab_key, ab_value) in value.items():
+                        if ab.find(ab_key) is not None:
+                            ab.remove(ab.find(ab_key))
                         ET.SubElement(ab, ab_key).text = str(ab_value)
                 elif key == "addressBlocks":
                     for ab in ptag.findall("addressBlock"):
@@ -254,9 +388,14 @@ class Device:
                     for ab in value:
                         ab_el = ET.SubElement(ptag, "addressBlock")
                         for (ab_key, ab_value) in ab.items():
+                            if ab.find(ab_key):
+                                ab.remove(ab.find(ab_key))
                             ET.SubElement(ab_el, ab_key).text = str(ab_value)
                 else:
-                    ptag.find(key).text = str(value)
+                    tag = ptag.find(key)
+                    if tag is None:
+                        tag = ET.SubElement(ptag, key)
+                    tag.text = str(value)
 
     def add_peripheral(self, pname, padd):
         """Add pname given by padd to device."""
@@ -347,8 +486,9 @@ class Device:
                 if value.tag in ("name", "baseAddress", "interrupt"):
                     tag = pcopy.find(value.tag)
                     if tag is not None:
-                        pcopy.remove(tag)
-                    pcopy.append(value)
+                        tag.text = value.text
+                    else:
+                        pcopy.append(value)
             parent.remove(ptag)
         parent.append(pcopy)
 
@@ -567,9 +707,9 @@ class Peripheral:
                 )
         rnew = ET.SubElement(parent, "register")
         ET.SubElement(rnew, "name").text = rname
-        ET.SubElement(rnew, "fields")
         for (key, value) in radd.items():
             if key == "fields":
+                ET.SubElement(rnew, "fields")
                 for fname in value:
                     Register(rnew).add_field(fname, value[fname])
             else:
@@ -697,8 +837,8 @@ class Peripheral:
         rtag.find("name").text = name
         self.process_register(name, rmod)
         ET.SubElement(rtag, "dim").text = str(dim)
-        ET.SubElement(rtag, "dimIndex").text = dimIndex
         ET.SubElement(rtag, "dimIncrement").text = hex(dimIncrement)
+        ET.SubElement(rtag, "dimIndex").text = dimIndex
 
     def collect_in_cluster(self, cname, cmod):
         """Collect registers in peripheral into clusters."""
@@ -780,8 +920,8 @@ class Peripheral:
             offset.text = hex(int(offset.text, 0) - addressOffset)
             ctag.append(new_rtag)
         ET.SubElement(ctag, "dim").text = str(dim)
-        ET.SubElement(ctag, "dimIndex").text = dimIndex
         ET.SubElement(ctag, "dimIncrement").text = hex(dimIncrement)
+        ET.SubElement(ctag, "dimIndex").text = dimIndex
 
     def process_register(self, rspec, register, update_fields=True):
         """Work through a register, handling all fields."""
@@ -833,10 +973,12 @@ class Register:
         """
         Iterates over all fields that match fspec and live inside rtag.
         """
-        for ftag in self.rtag.find("fields").iter("field"):
-            name = ftag.find("name").text
-            if matchname(name, fspec):
-                yield ftag
+        fields = self.rtag.find("fields")
+        if fields:
+            for ftag in fields.iter("field"):
+                name = ftag.find("name").text
+                if matchname(name, fspec):
+                    yield ftag
 
     def strip(self, substr, strip_end=False):
         """
@@ -1104,6 +1246,9 @@ def process_device(svd, device, update_fields=True):
         if not periphspec.startswith("_"):
             device[periphspec]["_path"] = device["_path"]
             d.process_peripheral(periphspec, device[periphspec], update_fields)
+
+    # Finally apply the SVD schema sort order
+    sort_recursive(svd.getroot())
 
 
 def main(yaml_file):
