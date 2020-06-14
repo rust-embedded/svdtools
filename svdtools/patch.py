@@ -6,12 +6,12 @@ Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
 import copy
+import fnmatch
 import os.path
+import re
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-import fnmatch
 from fnmatch import fnmatchcase
-import re
 
 import yaml
 
@@ -51,14 +51,15 @@ def matchname(name, spec):
         fnmatchcase(name, subspec) for subspec in spec.split(",")
     )
 
+
 def create_regex_from_pattern(substr, strip_end):
     """Create regex from pattern to match start or end of string."""
     regex = fnmatch.translate(substr)
     # make matching non-greedy
-    regex=re.sub('\\*', '*?', regex)
+    regex = re.sub("\\*", "*?", regex)
     # change to start of string search
     if not strip_end:
-        regex="^"+re.sub('\\\\Z$', '', regex)
+        regex = "^" + re.sub("\\\\Z$", "", regex)
     return re.compile(regex)
 
 
@@ -611,14 +612,14 @@ class Peripheral:
         Delete substring from register names inside ptag. Strips from the
         beginning of the name by default.
         """
-        regex = create_regex_from_pattern(substr, strip_end)        
+        regex = create_regex_from_pattern(substr, strip_end)
         for rtag in self.ptag.iter("register"):
             nametag = rtag.find("name")
-            nametag.text=regex.sub("",nametag.text)
+            nametag.text = regex.sub("", nametag.text)
 
             dnametag = rtag.find("displayName")
             if dnametag is not None:
-                dnametag.text=regex.sub("",dnametag.text)
+                dnametag.text = regex.sub("", dnametag.text)
 
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
@@ -818,14 +819,14 @@ class Register:
         Delete substring from bitfield names inside rtag. Strips from the
         beginning of the name by default.
         """
-        regex = create_regex_from_pattern(substr, strip_end)        
+        regex = create_regex_from_pattern(substr, strip_end)
         for ftag in self.rtag.iter("field"):
             nametag = ftag.find("name")
-            nametag.text = regex.sub("",nametag.text)
+            nametag.text = regex.sub("", nametag.text)
 
             dnametag = ftag.find("displayName")
             if dnametag is not None:
-                dnametag.text = regex.sub("",dnametag.text)
+                dnametag.text = regex.sub("", dnametag.text)
 
     def modify_field(self, fspec, fmod):
         """Modify fspec inside rtag according to fmod."""
