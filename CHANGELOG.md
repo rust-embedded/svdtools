@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.1.6] 2020-06-16
+
+* Add the ability to modify clusters
+* Allow patterns in _strip/_strip_end
+
 ## [v0.1.5] 2020-03-20
 
 * Manipulate multiple peripheral address blocks - @arjanmels
