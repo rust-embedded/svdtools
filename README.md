@@ -298,7 +298,7 @@ _rebase:
             # This would split MR into MRi where i = 0 ... bitlength
             _split: [MR]
 
-            # If fiels have unnecessary common prefix/postfix,
+            # If fields have unnecessary common prefix/postfix,
             # you can clean it in all registers in peripheral by:
             _strip:
                 - "PREFIX_*_"
