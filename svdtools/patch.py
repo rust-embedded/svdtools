@@ -6,7 +6,9 @@ Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
 import copy
+import fnmatch
 import os.path
+import re
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from fnmatch import fnmatchcase
@@ -48,6 +50,17 @@ def matchname(name, spec):
     return (not spec.startswith("_")) and any(
         fnmatchcase(name, subspec) for subspec in spec.split(",")
     )
+
+
+def create_regex_from_pattern(substr, strip_end):
+    """Create regex from pattern to match start or end of string."""
+    regex = fnmatch.translate(substr)
+    # make matching non-greedy
+    regex = re.sub("\\*", "*?", regex)
+    # change to start of string search
+    if not strip_end:
+        regex = "^" + re.sub("\\\\Z$", "", regex)
+    return re.compile(regex)
 
 
 def abspath(frompath, relpath):
@@ -599,25 +612,14 @@ class Peripheral:
         Delete substring from register names inside ptag. Strips from the
         beginning of the name by default.
         """
+        regex = create_regex_from_pattern(substr, strip_end)
         for rtag in self.ptag.iter("register"):
             nametag = rtag.find("name")
-            name = nametag.text
-
-            if strip_end:
-                if name.endswith(substr):
-                    nametag.text = name[: -len(substr)]
-            elif name.startswith(substr):
-                nametag.text = name[len(substr) :]
+            nametag.text = regex.sub("", nametag.text)
 
             dnametag = rtag.find("displayName")
             if dnametag is not None:
-                dname = dnametag.text
-
-                if strip_end:
-                    if dname.endswith(substr):
-                        dnametag.text = dname[: -len(substr)]
-                elif dname.startswith(substr):
-                    dnametag.text = dname[len(substr) :]
+                dnametag.text = regex.sub("", dnametag.text)
 
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
@@ -817,25 +819,14 @@ class Register:
         Delete substring from bitfield names inside rtag. Strips from the
         beginning of the name by default.
         """
+        regex = create_regex_from_pattern(substr, strip_end)
         for ftag in self.rtag.iter("field"):
             nametag = ftag.find("name")
-            name = nametag.text
-
-            if strip_end:
-                if name.endswith(substr):
-                    nametag.text = name[: -len(substr)]
-            elif name.startswith(substr):
-                nametag.text = name[len(substr) :]
+            nametag.text = regex.sub("", nametag.text)
 
             dnametag = ftag.find("displayName")
             if dnametag is not None:
-                dname = dnametag.text
-
-                if strip_end:
-                    if dname.endswith(substr):
-                        dnametag.text = dname[: -len(substr)]
-                elif dname.startswith(substr):
-                    dnametag.text = dname[len(substr) :]
+                dnametag.text = regex.sub("", dnametag.text)
 
     def modify_field(self, fspec, fmod):
         """Modify fspec inside rtag according to fmod."""

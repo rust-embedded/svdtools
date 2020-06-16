@@ -221,10 +221,12 @@ _rebase:
         _interrupts:
             - USART1
 
-    # If registers have unnecessary common prefix,
+    # If registers have unnecessary common prefix/postfix,
     # you can clean it in all registers in peripheral by:
     _strip:
-        - PREFIX_
+        - "PREFIX_*_"
+    _strip_end:
+        - "_POSTFIX_"
 
     # You can collect several same registers into one register array
     # that will be represented with svd2rust as array or elements
@@ -295,6 +297,15 @@ _rebase:
           IMR:
             # This would split MR into MRi where i = 0 ... bitlength
             _split: [MR]
+
+            # If fields have unnecessary common prefix/postfix,
+            # you can clean it in all registers in peripheral by:
+            _strip:
+                - "PREFIX_*_"
+            _strip_end:
+                - "_POSTFIX_"
+
+
 ```
 
 ### Name Matching
