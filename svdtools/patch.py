@@ -832,10 +832,35 @@ class Register:
         """Modify fspec inside rtag according to fmod."""
         for ftag in self.iter_fields(fspec):
             for (key, value) in fmod.items():
+                if key == "_write_constraint":
+                    key = "writeConstraint"
+
                 tag = ftag.find(key)
                 if tag is None:
                     tag = ET.SubElement(ftag, key)
-                tag.text = str(value)
+
+                if key == "writeConstraint":
+                    # Remove existing constraint contents
+                    for child in list(tag):
+                        tag.remove(child)
+                    if value == "none":
+                        # Completely remove the existing writeConstraint
+                        ftag.remove(tag)
+                    elif value == "enum":
+                        # Only allow enumerated values
+                        enum_tag = ET.SubElement(tag, "useEnumeratedValues")
+                        enum_tag.text = "true"
+                    elif isinstance(value, list):
+                        # Allow a certain range
+                        range_tag = make_write_constraint(value).find("range")
+                        tag.append(range_tag)
+                    else:
+                        raise SvdPatchError(
+                            "Unknown writeConstraint type {}".format(repr(value))
+                        )
+                else:
+                    # For all other tags, just set the value
+                    tag.text = str(value)
 
     def add_field(self, fname, fadd):
         """Add fname given by fadd to rtag."""
