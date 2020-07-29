@@ -923,6 +923,11 @@ class Register:
 
     def process_field_enum(self, pname, fspec, field, usage="read-write"):
         """Add an enumeratedValues given by field to all fspec in rtag."""
+        replace_if_exists = False
+        if "_replace_enum" in field:
+            field = field["_replace_enum"]
+            replace_if_exists = True
+
         derived, enum, enum_name, enum_usage = None, None, None, None
         for ftag in self.iter_fields(fspec):
             name = ftag.find("name").text
@@ -934,7 +939,10 @@ class Register:
 
             for ev in ftag.iter("enumeratedValues"):
                 if len(ev) > 0:
-                    ev_usage = ev.find("usage").text
+                    ev_usage_tag = ev.find("usage")
+                    ev_usage = (
+                        ev_usage_tag.text if ev_usage_tag is not None else "read-write"
+                    )
                 else:
                     # This is a derived enumeratedValues => Try to find the
                     # original definition to extract its <usage>
@@ -961,12 +969,15 @@ class Register:
                     ev_usage = derived_enums[0].find("usage").text
 
                 if ev_usage == enum_usage or ev_usage == "read-write":
-                    print(pname, fspec, field)
-                    raise SvdPatchError(
-                        "{}: field {} already has enumeratedValues for {}".format(
-                            pname, name, ev_usage
+                    if replace_if_exists:
+                        ftag.remove(ev)
+                    else:
+                        print(pname, fspec, field)
+                        raise SvdPatchError(
+                            "{}: field {} already has enumeratedValues for {}".format(
+                                pname, name, ev_usage
+                            )
                         )
-                    )
 
             if derived is None:
                 ftag.append(enum)
