@@ -832,14 +832,10 @@ class Register:
         """Modify fspec inside rtag according to fmod."""
         for ftag in self.iter_fields(fspec):
             for (key, value) in fmod.items():
-                try:
-                    ftag.find(key).text = str(value)
-                except AttributeError:
-                    raise SvdPatchError(
-                        "invalid attribute {!r} for register {}, field {}".format(
-                            key, self.rtag.find("name").text, ftag.find("name").text
-                        )
-                    )
+                tag = ftag.find(key)
+                if tag is None:
+                    tag = ET.SubElement(ftag, key)
+                tag.text = str(value)
 
     def add_field(self, fname, fadd):
         """Add fname given by fadd to rtag."""
