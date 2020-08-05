@@ -526,9 +526,11 @@ class Peripheral:
         for rtag in self.iter_registers(rspec):
             for (key, value) in rmod.items():
                 tag = rtag.find(key)
-                if value == "":
+                if value == "" and tag is not None:
                     rtag.remove(tag)
-                else:
+                elif value != "":
+                    if tag is None:
+                        tag = ET.SubElement(rtag, key)
                     tag.text = str(value)
 
     def add_register(self, rname, radd):
