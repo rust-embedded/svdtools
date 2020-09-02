@@ -526,9 +526,11 @@ class Peripheral:
         for rtag in self.iter_registers(rspec):
             for (key, value) in rmod.items():
                 tag = rtag.find(key)
-                if value == "":
+                if value == "" and tag is not None:
                     rtag.remove(tag)
-                else:
+                elif value != "":
+                    if tag is None:
+                        tag = ET.SubElement(rtag, key)
                     tag.text = str(value)
 
     def add_register(self, rname, radd):
@@ -832,14 +834,35 @@ class Register:
         """Modify fspec inside rtag according to fmod."""
         for ftag in self.iter_fields(fspec):
             for (key, value) in fmod.items():
-                try:
-                    ftag.find(key).text = str(value)
-                except AttributeError:
-                    raise SvdPatchError(
-                        "invalid attribute {!r} for register {}, field {}".format(
-                            key, self.rtag.find("name").text, ftag.find("name").text
+                if key == "_write_constraint":
+                    key = "writeConstraint"
+
+                tag = ftag.find(key)
+                if tag is None:
+                    tag = ET.SubElement(ftag, key)
+
+                if key == "writeConstraint":
+                    # Remove existing constraint contents
+                    for child in list(tag):
+                        tag.remove(child)
+                    if value == "none":
+                        # Completely remove the existing writeConstraint
+                        ftag.remove(tag)
+                    elif value == "enum":
+                        # Only allow enumerated values
+                        enum_tag = ET.SubElement(tag, "useEnumeratedValues")
+                        enum_tag.text = "true"
+                    elif isinstance(value, list):
+                        # Allow a certain range
+                        range_tag = make_write_constraint(value).find("range")
+                        tag.append(range_tag)
+                    else:
+                        raise SvdPatchError(
+                            "Unknown writeConstraint type {}".format(repr(value))
                         )
-                    )
+                else:
+                    # For all other tags, just set the value
+                    tag.text = str(value)
 
     def add_field(self, fname, fadd):
         """Add fname given by fadd to rtag."""
@@ -923,22 +946,63 @@ class Register:
 
     def process_field_enum(self, pname, fspec, field, usage="read-write"):
         """Add an enumeratedValues given by field to all fspec in rtag."""
-        derived = None
+        replace_if_exists = False
+        if "_replace_enum" in field:
+            field = field["_replace_enum"]
+            replace_if_exists = True
+
+        derived, enum, enum_name, enum_usage = None, None, None, None
         for ftag in self.iter_fields(fspec):
             name = ftag.find("name").text
-            if derived is None:
+
+            if enum is None:
                 enum = make_enumerated_values(name, field, usage=usage)
                 enum_name = enum.find("name").text
                 enum_usage = enum.find("usage").text
-                for ev in ftag.iter("enumeratedValues"):
-                    ev_usage = ev.find("usage").text
-                    if ev_usage == enum_usage or ev_usage == "read-write":
+
+            for ev in ftag.iter("enumeratedValues"):
+                if len(ev) > 0:
+                    ev_usage_tag = ev.find("usage")
+                    ev_usage = (
+                        ev_usage_tag.text if ev_usage_tag is not None else "read-write"
+                    )
+                else:
+                    # This is a derived enumeratedValues => Try to find the
+                    # original definition to extract its <usage>
+                    derived_name = ev.attrib["derivedFrom"]
+                    derived_enums = self.rtag.findall(
+                        "./fields/field/enumeratedValues/[name='{}']".format(
+                            derived_name
+                        )
+                    )
+
+                    if derived_enums == []:
+                        raise SvdPatchError(
+                            "{}: field {} derives enumeratedValues {} which could not be found".format(
+                                pname, name, derived_name
+                            )
+                        )
+                    elif len(derived_enums) != 1:
+                        raise SvdPatchError(
+                            "{}: field {} derives enumeratedValues {} which was found multiple times".format(
+                                pname, name, derived_name
+                            )
+                        )
+
+                    ev_usage = derived_enums[0].find("usage").text
+
+                if ev_usage == enum_usage or ev_usage == "read-write":
+                    if replace_if_exists:
+                        ftag.remove(ev)
+                    else:
                         print(pname, fspec, field)
                         raise SvdPatchError(
                             "{}: field {} already has enumeratedValues for {}".format(
                                 pname, name, ev_usage
                             )
                         )
+
+            if derived is None:
                 ftag.append(enum)
                 derived = make_derived_enumerated_values(enum_name)
             else:

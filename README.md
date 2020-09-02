@@ -260,6 +260,15 @@ _rebase:
             FIELD:
               description: NEWDESC
 
+              # Change the writeConstraint of a field to enumerateValues
+              _write_constraint: "enum"
+
+              # Remove any writeConstraint from this field
+              _write_constraint: "none"
+
+              # Change the writeConstraint of a field to a range of values
+              _write_constraint: [MINIMUM, MAXIMUM]
+
         # Add new fields to this register
         _add:
             NEWFIELD:
@@ -280,6 +289,13 @@ _rebase:
             # By giving the field a dictionary we construct an enumerateValues
             VARIANT: [VALUE, DESCRIPTION]
             VARIANT: [VALUE, DESCRIPTION]
+
+        FIELD:
+            # If a field already has enumerateValues, drop them and
+            # replace them with entirely new ones.
+            _replace_enum:
+                VARIANT: [VALUE, DESCRIPTION]
+                VARIANT: [VALUE, DESCRIPTION]
 
         # Another field. A list of two numbers gives a range writeConstraint.
         FIELD: [MINIMUM, MAXIMUM]
