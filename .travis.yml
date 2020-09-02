@@ -17,10 +17,12 @@ jobs:
   include:
     - name: pytest
       script: pytest svdtools
-    - name: check_stm32
-      script: bash tools/check_stm32.sh
     - name: check_esp32
       script: bash tools/check_esp32.sh
+    - name: check_esp8266
+      script: bash tools/check_esp8266.sh
+    - name: check_stm32
+      script: bash tools/check_stm32.sh
     - name: check_lpc55
       script: bash tools/check_lpc55.sh
   allow_failures:
