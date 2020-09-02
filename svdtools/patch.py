@@ -933,7 +933,33 @@ class Register:
                 enum_usage = enum.find("usage").text
 
             for ev in ftag.iter("enumeratedValues"):
-                ev_usage = ev.find("usage").text
+                if len(ev) > 0:
+                    ev_usage = ev.find("usage").text
+                else:
+                    # This is a derived enumeratedValues => Try to find the
+                    # original definition to extract its <usage>
+                    derived_name = ev.attrib["derivedFrom"]
+                    derived_enums = self.rtag.findall(
+                        "./fields/field/enumeratedValues/[name='{}']".format(
+                            derived_name
+                        )
+                    )
+
+                    if derived_enums == []:
+                        raise SvdPatchError(
+                            "{}: field {} derives enumeratedValues {} which could not be found".format(
+                                pname, name, derived_name
+                            )
+                        )
+                    elif len(derived_enums) != 1:
+                        raise SvdPatchError(
+                            "{}: field {} derives enumeratedValues {} which was found multiple times".format(
+                                pname, name, derived_name
+                            )
+                        )
+
+                    ev_usage = derived_enums[0].find("usage").text
+
                 if ev_usage == enum_usage or ev_usage == "read-write":
                     print(pname, fspec, field)
                     raise SvdPatchError(
