@@ -2,10 +2,18 @@
 
 ## [Unreleased]
 
+# [v0.1.7] 2020-09-15
+
+* Allow overwriting enumeratedValues with `_replace_enum`
+* Allow field `_modify` to create new tags
+* Add `_write_constraint` field modifier
+* Allow register `_modify` to create new tags
+* Check for existing enums in fields with derived enumeratedValues
+
 ## [v0.1.6] 2020-06-16
 
 * Add the ability to modify clusters
-* Allow patterns in _strip/_strip_end
+* Allow patterns in `_strip`/`_strip_end`
 
 ## [v0.1.5] 2020-03-20
 
