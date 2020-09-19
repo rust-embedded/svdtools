@@ -384,10 +384,32 @@ class Device:
         """Work through a peripheral, handling all registers."""
         # Find all peripherals that match the spec
         pcount = 0
-        for ptag in self.iter_peripherals(pspec):
+        for ptag in self.iter_peripherals(pspec, check_derived=False):
             pcount += 1
-            # Handle deletions
             p = Peripheral(ptag)
+
+            # For derived peripherals, only process interrupts
+            if "derivedFrom" in ptag.attrib:
+                deletions = peripheral.get("_delete", [])
+                if isinstance(deletions, dict):
+                    for rspec in deletions:
+                        if rspec == "_interrupts":
+                            for ispec in deletions[rspec]:
+                                p.delete_interrupt(ispec)
+                for rspec in peripheral.get("_modify", {}):
+                    if rspec == "_interrupts":
+                        rmod = peripheral["_modify"][rspec]
+                        for ispec in rmod:
+                            p.modify_interrupt(ispec, rmod[ispec])
+                for rname in peripheral.get("_add", {}):
+                    if rname == "_interrupts":
+                        radd = peripheral["_add"][rname]
+                        for iname in radd:
+                            p.add_interrupt(iname, radd[iname])
+                # Don't do any further processing on derived peripherals
+                continue
+
+            # Handle deletions
             deletions = peripheral.get("_delete", [])
             if isinstance(deletions, list):
                 for rspec in deletions:
