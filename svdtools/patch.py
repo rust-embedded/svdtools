@@ -341,6 +341,10 @@ class UnknownTagError(SvdPatchError):
     pass
 
 
+class DuplicateTagError(SvdPatchError):
+    pass
+
+
 class Device:
     """Class collecting methods for processing device contents"""
 
@@ -388,8 +392,6 @@ class Device:
                     for ab in value:
                         ab_el = ET.SubElement(ptag, "addressBlock")
                         for (ab_key, ab_value) in ab.items():
-                            if ab.find(ab_key):
-                                ab.remove(ab.find(ab_key))
                             ET.SubElement(ab_el, ab_key).text = str(ab_value)
                 else:
                     tag = ptag.find(key)
@@ -1181,6 +1183,9 @@ class Register:
         """Add a writeConstraint range given by field to all fspec in rtag."""
         set_any = False
         for ftag in self.iter_fields(fspec):
+            if ftag.find("writeConstraint") is not None:
+                raise DuplicateTagError("Duplicate writeConstraint for {}"
+                                        .format(ftag.find("name").text))
             ftag.append(make_write_constraint(field))
             set_any = True
         if not set_any:
