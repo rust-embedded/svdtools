@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+# [v0.1.8] 2020-09-20
+
+* Permit adding/modifying/deleting interrupts from derived peripherals
+* Sort output SVDs into correct order for SVD schema
+* Fix bug where addressBlock modifications could lead to duplicate elements
+* Allow register `_modify` to create new tags, as done on field in 0.1.7
+
 # [v0.1.7] 2020-09-15
 
 * Allow overwriting enumeratedValues with `_replace_enum`
