@@ -341,10 +341,6 @@ class UnknownTagError(SvdPatchError):
     pass
 
 
-class DuplicateTagError(SvdPatchError):
-    pass
-
-
 class Device:
     """Class collecting methods for processing device contents"""
 
@@ -1183,9 +1179,6 @@ class Register:
         """Add a writeConstraint range given by field to all fspec in rtag."""
         set_any = False
         for ftag in self.iter_fields(fspec):
-            if ftag.find("writeConstraint") is not None:
-                raise DuplicateTagError("Duplicate writeConstraint for {}"
-                                        .format(ftag.find("name").text))
             ftag.append(make_write_constraint(field))
             set_any = True
         if not set_any:
