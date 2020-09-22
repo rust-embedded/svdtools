@@ -134,7 +134,8 @@ _add:
 # A new peripheral can have all its registers copied from another, in case
 # it cannot quite be derivedFrom (e.g. some fields need different enumerated
 # values) but it's otherwise almost exactly the same.
-# The registers are copied but not name or address or interrupts.
+# The registers are copied but not name or address or interrupts, which are
+# preserved if the target already exists.
 _copy:
     ADC3:
         from: ADC2
@@ -142,6 +143,7 @@ _copy:
 # The new peripheral can also be copied from another svd file for a different
 # device. This is useful when a peripheral is missing in a device but the exact
 # same peripheral already exist in another device.
+# When copying from another file, all fields including interrupts are copied.
 _copy:
     TIM1:
         from: ../svd/stm32f302.svd:TIM1
