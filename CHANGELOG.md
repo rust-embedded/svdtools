@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+# [v0.1.9] 2020-09-22
+
+* Fix a bug in `_copy` which resulted in the wrong interrupts ending up
+  in the newly copied peripheral.
+
 # [v0.1.8] 2020-09-20
 
 * Permit adding/modifying/deleting interrupts from derived peripherals
