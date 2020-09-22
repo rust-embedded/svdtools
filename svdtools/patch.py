@@ -473,21 +473,26 @@ class Device:
         pcopy = copy.deepcopy(source.find("./peripheral[name='{}']".format(pcopyname)))
         if pcopy is None:
             raise SvdPatchError("peripheral {} not found".format(pcopy))
-        if ptag is None:
-            pcopy.find("name").text = pname
-            if source is parent:
-                for value in list(pcopy):
-                    if value.tag in ("interrupt"):
-                        pcopy.remove(value)
-        else:
+
+        # When copying from a peripheral in the same file, remove the
+        # copied baseAddress and any interrupts.
+        if source is parent:
+            for value in list(pcopy):
+                if value.tag in ("interrupt", "baseAddress"):
+                    pcopy.remove(value)
+        # Always set the name of the new peripheral to the requested name.
+        pcopy.find("name").text = pname
+        if ptag is not None:
+            # When the target already exists, copy its baseAddress and
+            # any interrupts.
             for value in list(ptag):
-                if value.tag in ("name", "baseAddress", "interrupt"):
-                    tag = pcopy.find(value.tag)
-                    if tag is not None:
-                        tag.text = value.text
-                    else:
-                        pcopy.append(value)
+                if value.tag in ("interrupt", "baseAddress"):
+                    pcopy.append(value)
+
+            # Remove the original peripheral
             parent.remove(ptag)
+
+        # Add our new copied peripheral to the device
         parent.append(pcopy)
 
     def rebase_peripheral(self, pnew, pold):
