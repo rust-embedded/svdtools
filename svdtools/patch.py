@@ -52,6 +52,18 @@ def matchname(name, spec):
     )
 
 
+def matchsubspec(name, spec):
+    """If a name matches a specification, return the first sub-specification that it
+    matches.
+    """
+    if not matchname(name, spec):
+        return None
+    for subspec in spec.split(","):
+        if fnmatchcase(name, subspec):
+            return subspec
+    return None
+
+
 def create_regex_from_pattern(substr, strip_end):
     """Create regex from pattern to match start or end of string."""
     regex = fnmatch.translate(substr)
@@ -640,6 +652,17 @@ class Peripheral:
             if matchname(name, rspec):
                 yield rtag
 
+    def iter_registers_with_matches(self, rspec):
+        """Iterates over all registers that match rspec and live inside ptag.
+
+        Each element is a tuple of the matching register and the rspec substring
+        that it matched.
+        """
+        for rtag in self.ptag.iter("register"):
+            name = rtag.find("name").text
+            if matchname(name, rspec):
+                yield (rtag, matchsubspec(name, rspec))
+
     def iter_interrupts(self, ispec):
         """Iterates over all interrupts matching ispec"""
         for itag in self.ptag.iter("interrupt"):
@@ -851,9 +874,9 @@ class Peripheral:
         rspecs = [r for r in cmod if r != "description"]
         for rspec in rspecs:
             registers = []
-            li, ri = spec_ind(rspec)
-            for rtag in list(self.iter_registers(rspec)):
+            for (rtag, match_rspec) in list(self.iter_registers_with_matches(rspec)):
                 rname = rtag.findtext("name")
+                li, ri = spec_ind(match_rspec)
                 registers.append(
                     [
                         rtag,
