@@ -376,6 +376,9 @@ class Device:
     def modify_cpu(self, mod):
         """Modify the `cpu` node inside `device` according to `mod`."""
         cpu = self.device.find("cpu")
+        if cpu is None:
+            cpu = ET.SubElement(self.device.getroot(), "cpu")
+            cpu.tail = "\n  "
         for key, val in mod.items():
             field = cpu.find(key)
             if field is not None:
