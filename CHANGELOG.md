@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.11] 2021-01-08
+
+* Add `cpu` top-level element if it does not already exist when modifying it.
+
 ## [v0.1.10] 2020-11-14
 
 * Fix identifying dimIndex when matching with multiple comma-separated
@@ -76,7 +80,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.11...HEAD
+[v0.1.10]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.10...v0.1.11
 [v0.1.10]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.9...v0.1.10
 [v0.1.9]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.8...v0.1.9
 [v0.1.8]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.7...v0.1.8
