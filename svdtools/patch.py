@@ -201,6 +201,26 @@ def check_bitmasks(masks, mask):
     return True
 
 
+def get_field_offset_width(ftag):
+    """
+    Return the offset and width of a field, parsing either bitOffset+bitWidth,
+    or a bitRange tag, or lsb and msb tags.
+    """
+    if ftag.findtext("bitOffset") is not None:
+        offset = int(ftag.findtext("bitOffset"), 0)
+        width = int(ftag.findtext("bitWidth"), 0)
+    elif ftag.findtext("bitRange") is not None:
+        msb, lsb = ftag.findtext("bitRange")[1:-1].split(":")
+        offset = int(lsb, 0)
+        width = int(msb, 0) - offset + 1
+    elif ftag.findtext("lsb") is not None:
+        lsb = int(ftag.findtext("lsb"), 0)
+        msb = int(ftag.findtext("msb"), 0)
+        offset = lsb
+        fwidth = msb - lsb + 1
+    return offset, width
+
+
 def sort_element(tag):
     """
     The SVD schema requires that all child elements appear in a defined order
@@ -1091,8 +1111,8 @@ class Register:
         parent = self.rtag.find("fields")
         name = os.path.commonprefix([f.find("name").text for f in fields])
         desc = fields[0].find("description").text
-        bitwidth = sum(int(f.find("bitWidth").text) for f in fields)
-        bitoffset = min(int(f.find("bitOffset").text) for f in fields)
+        bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
+        bitoffset = min(get_field_offset_width(f)[0] for f in fields)
         for field in fields:
             parent.remove(field)
         fnew = ET.SubElement(parent, "field")
@@ -1112,7 +1132,7 @@ class Register:
         parent = self.rtag.find("fields")
         name = os.path.commonprefix([f.find("name").text for f in fields])
         desc = fields[0].find("description").text
-        bitwidth = sum(int(f.find("bitWidth").text) for f in fields)
+        bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
         parent.remove(fields[0])
         for i in range(bitwidth):
             fnew = ET.SubElement(parent, "field")
@@ -1222,8 +1242,7 @@ class Register:
         """Calculate filling of register"""
         mask = 0x0
         for ftag in self.iter_fields("*"):
-            foffset = int(ftag.findtext("bitOffset"), 0)
-            fwidth = int(ftag.findtext("bitWidth"), 0)
+            foffset, fwidth = get_field_offset_width(ftag)
             mask |= (0xFFFFFFFF >> (32 - fwidth)) << foffset
         return mask
 
