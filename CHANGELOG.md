@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.1.12] 2021-01-31
+
+* Support `bitRange` and `msb`/`lsb` as well as `bitOffset` and `bitWidth`
+  in field elements (#46).
+
 ## [v0.1.11] 2021-01-08
 
 * Add `cpu` top-level element if it does not already exist when modifying it.
@@ -80,8 +85,9 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.11...HEAD
-[v0.1.10]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.10...v0.1.11
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.12...HEAD
+[v0.1.12]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.11...v0.1.12
+[v0.1.11]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.10...v0.1.11
 [v0.1.10]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.9...v0.1.10
 [v0.1.9]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.8...v0.1.9
 [v0.1.8]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.7...v0.1.8
