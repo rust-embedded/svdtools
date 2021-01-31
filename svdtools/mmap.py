@@ -9,6 +9,26 @@ import copy
 import xml.etree.ElementTree as ET
 
 
+def get_field_offset_width(ftag):
+    """
+    Return the offset and width of a field, parsing either bitOffset+bitWidth,
+    or a bitRange tag, or lsb and msb tags.
+    """
+    if ftag.findtext("bitOffset") is not None:
+        offset = int(ftag.findtext("bitOffset"), 0)
+        width = int(ftag.findtext("bitWidth"), 0)
+    elif ftag.findtext("bitRange") is not None:
+        msb, lsb = ftag.findtext("bitRange")[1:-1].split(":")
+        offset = int(lsb, 0)
+        width = int(msb, 0) - offset + 1
+    elif ftag.findtext("lsb") is not None:
+        lsb = int(ftag.findtext("lsb"), 0)
+        msb = int(ftag.findtext("msb"), 0)
+        offset = lsb
+        fwidth = msb - lsb + 1
+    return offset, width
+
+
 def iter_clusters(ptag):
     registers = ptag.find("registers")
     if registers is None:
@@ -144,8 +164,7 @@ def parse_register(rtag):
     roffset = get_int(rtag, "addressOffset")
     for ftag in iter_fields(rtag):
         fname = get_string(ftag, "name")
-        foffset = get_int(ftag, "bitOffset")
-        fwidth = get_int(ftag, "bitWidth")
+        foffset, fwidth = get_field_offset_width(ftag)
         fdesc = get_string(ftag, "description")
         faccess = get_access(ftag)
         fields[fname] = {
