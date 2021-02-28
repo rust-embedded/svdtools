@@ -747,6 +747,8 @@ class Peripheral:
     def add_register(self, rname, radd):
         """Add rname given by radd to ptag."""
         parent = self.ptag.find("registers")
+        if parent is None:
+            parent = ET.SubElement(self.rtag, "registers")
         for rtag in parent.iter("register"):
             if rtag.find("name").text == rname:
                 raise SvdPatchError(
