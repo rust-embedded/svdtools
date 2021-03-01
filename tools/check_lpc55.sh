@@ -6,7 +6,6 @@ make install-svd2rust-form-rustfmt
 
 git clone https://github.com/lpc55/lpc55-pac --depth 1
 
-make -C lpc55-pac/ patch generate
-(cd lpc55-pac && cargo check)
+make -C lpc55-pac/ check
 
-rm -rf lpc55-pacs
+rm -rf lpc55-pac
