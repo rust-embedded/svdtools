@@ -6,6 +6,7 @@ Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
 import copy
+
 import lxml.etree as ET
 
 

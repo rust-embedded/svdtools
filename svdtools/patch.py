@@ -9,10 +9,10 @@ import copy
 import fnmatch
 import os.path
 import re
-import lxml.etree as ET
 from collections import OrderedDict
 from fnmatch import fnmatchcase
 
+import lxml.etree as ET
 import yaml
 
 DEVICE_CHILDREN = [
