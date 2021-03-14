@@ -24,10 +24,10 @@ apply-black:
 	venv/bin/black svdtools/
 
 apply-isort:
-	venv/bin/isort -y --recursive svdtools/
+	venv/bin/isort svdtools/
 
 check-isort:
-	venv/bin/isort --check-only --recursive svdtools/
+	venv/bin/isort --check-only svdtools/
 
 semi-clean:
 	rm -rf **/__pycache__

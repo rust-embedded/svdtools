@@ -9,10 +9,10 @@ import copy
 import fnmatch
 import os.path
 import re
-import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from fnmatch import fnmatchcase
 
+import lxml.etree as ET
 import yaml
 
 DEVICE_CHILDREN = [
@@ -337,9 +337,15 @@ def sort_element(tag):
     }
     if len(tag) > 0 and tag.tag not in orders:
         raise UnknownTagError(tag.tag)
+    comments = []
     for child in tag:
-        if child.tag not in orders[tag.tag]:
+        if child.tag is ET.Comment:
+            comments.append(child)
+        elif child.tag not in orders[tag.tag]:
             raise UnknownTagError((tag.tag, child.tag))
+    for comment in comments:
+        # Remove interior comments, which we cannot sort.
+        tag.remove(comment)
     tag[:] = sorted(tag, key=lambda e: orders[tag.tag].index(e.tag))
 
 
@@ -1025,7 +1031,7 @@ class Register:
         Iterates over all fields that match fspec and live inside rtag.
         """
         fields = self.rtag.find("fields")
-        if fields:
+        if fields is not None:
             for ftag in fields.iter("field"):
                 name = ftag.find("name").text
                 if matchname(name, fspec):
@@ -1219,9 +1225,9 @@ class Register:
 
             if derived is None:
                 ftag.append(enum)
-                derived = make_derived_enumerated_values(enum_name)
+                derived = enum_name
             else:
-                ftag.append(derived)
+                ftag.append(make_derived_enumerated_values(derived))
         if derived is None:
             rname = self.rtag.find("name").text
             raise MissingFieldError(

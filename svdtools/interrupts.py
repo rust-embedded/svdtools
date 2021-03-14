@@ -4,7 +4,7 @@ Copyright 2018-2020 Adam Greig
 Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 
 
 def parse_device(svd_file):
