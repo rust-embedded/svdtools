@@ -1223,9 +1223,9 @@ class Register:
 
             if derived is None:
                 ftag.append(enum)
-                derived = make_derived_enumerated_values(enum_name)
+                derived = enum_name
             else:
-                ftag.append(derived)
+                ftag.append(make_derived_enumerated_values(derived))
         if derived is None:
             rname = self.rtag.find("name").text
             raise MissingFieldError(
