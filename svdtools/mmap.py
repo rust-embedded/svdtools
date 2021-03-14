@@ -6,7 +6,7 @@ Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
 import copy
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 
 
 def get_field_offset_width(ftag):

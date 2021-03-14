@@ -9,7 +9,7 @@ import copy
 import fnmatch
 import os.path
 import re
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from collections import OrderedDict
 from fnmatch import fnmatchcase
 

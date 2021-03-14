@@ -15,6 +15,7 @@ description-file = "README.md"
 requires = [
   "click ~= 7.0",
   "PyYAML ~= 5.3",
+  "lxml ~= 4.6",
 ]
 classifiers=[
     "License :: OSI Approved :: MIT License",
