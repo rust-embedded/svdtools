@@ -127,7 +127,7 @@ def expand_dim(node):
         dim_node.find("name").text = name
         addr = get_int(dim_node, "addressOffset") + cnt * inc
         dim_node.find("addressOffset").text = f"0x{addr:08x}"
-        dim_node.attrib["dim_index"] = idx
+        dim_node.attrib["dim_index"] = str(idx)
         nodes.append(dim_node)
     return nodes
 
