@@ -335,6 +335,9 @@ def sort_element(tag):
         + acc
         + ("peripherals", "vendorExtensions"),
     }
+    if tag.tag == "vendorExtensions":
+        # We can't sort inside vendorExtensions.
+        return
     if len(tag) > 0 and tag.tag not in orders:
         raise UnknownTagError(tag.tag)
     comments = []
@@ -351,8 +354,10 @@ def sort_element(tag):
 
 def sort_recursive(tag):
     sort_element(tag)
-    for child in tag:
-        sort_recursive(child)
+    # Don't process children inside vendorExtensions.
+    if tag.tag != "vendorExtensions":
+        for child in tag:
+            sort_recursive(child)
 
 
 class SvdPatchError(ValueError):
