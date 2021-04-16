@@ -54,11 +54,7 @@ def iter_fields(rtag):
         return fields.findall("field")
 
 
-ACCESS = {
-    "read-only": "ro",
-    "read-write": "rw",
-    "write-only": "wo",
-}
+ACCESS = {"read-only": "ro", "read-write": "rw", "write-only": "wo"}
 
 
 def get_access(tag):
