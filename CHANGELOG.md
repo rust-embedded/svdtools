@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.1.13] 2021-04-16
+
+* Fix use of `vendorExtensions` tag in SVD files (#53)
+* Preserve top-level comments in SVD files by swapping to LXML (#52)
+* Add registers element if missing (#22)
+
 ## [v0.1.12] 2021-01-31
 
 * Support `bitRange` and `msb`/`lsb` as well as `bitOffset` and `bitWidth`
@@ -85,7 +91,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.13...HEAD
+[v0.1.13]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.12...v0.1.13
 [v0.1.12]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.11...v0.1.12
 [v0.1.11]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.10...v0.1.11
 [v0.1.10]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.9...v0.1.10
