@@ -1001,7 +1001,10 @@ class Peripheral:
             rcount += 1
             # Handle deletions
             for fspec in register.get("_delete", []):
-                r.delete(fspec)
+                r.delete_field(fspec)
+            # Handle field clearing
+            for fspec in register.get("_clear", []):
+                r.clear_field(fspec)
             # Handle modifications
             for fspec in register.get("_modify", []):
                 fmod = register["_modify"][fspec]
@@ -1118,10 +1121,18 @@ class Register:
             ET.SubElement(fnew, key).text = str(value)
         fnew.tail = "\n            "
 
-    def delete(self, fspec):
+    def delete_field(self, fspec):
         """Delete fields matched by fspec inside rtag."""
         for ftag in list(self.iter_fields(fspec)):
             self.rtag.find("fields").remove(ftag)
+
+    def clear_field(self, fspec):
+        """Clear contents of fields matched by fspec inside rtag."""
+        for ftag in list(self.iter_fields(fspec)):
+            for tag in ftag.findall("enumeratedValues"):
+                ftag.remove(tag)
+            for tag in ftag.findall("writeConstraint"):
+                ftag.remove(tag)
 
     def merge_fields(self, fspec):
         """Merge all fspec in rtag."""
