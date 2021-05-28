@@ -892,11 +892,17 @@ class Peripheral:
         for rtag, _, _ in registers[1:]:
             self.ptag.find("registers").remove(rtag)
         rtag = registers[0][0]
+        nametag = rtag.find("name")
         if "name" in rmod:
             name = rmod["name"]
         else:
             name = rspec[:li] + "%s" + rspec[len(rspec) - ri :]
-        rtag.find("name").text = name
+        if dimIndex[0] == "0":
+            desc = rtag.find("description")
+            desc.text = desc.text.replace(
+                nametag.text[li : len(nametag.text) - ri], "%s"
+            )
+        nametag.text = name
         self.process_register(name, rmod)
         ET.SubElement(rtag, "dim").text = str(dim)
         ET.SubElement(rtag, "dimIncrement").text = hex(dimIncrement)
@@ -1024,6 +1030,10 @@ class Peripheral:
                     if not fspec.startswith("_"):
                         field = register[fspec]
                         r.process_field(pname, fspec, field)
+            # Handle field arrays
+            for fspec in register.get("_array", {}):
+                fmod = register["_array"][fspec]
+                r.collect_fields_in_array(fspec, fmod)
         if rcount == 0:
             raise MissingRegisterError("Could not find {}:{}".format(pname, rspec))
 
@@ -1145,6 +1155,56 @@ class Register:
         ET.SubElement(fnew, "bitOffset").text = str(bitoffset)
         ET.SubElement(fnew, "bitWidth").text = str(bitwidth)
 
+    def collect_fields_in_array(self, fspec, fmod):
+        """Collect same fields in peripheral into register array."""
+        fields = []
+        li, ri = spec_ind(fspec)
+        for ftag in list(self.iter_fields(fspec)):
+            fname = ftag.findtext("name")
+            fields.append(
+                [ftag, fname[li : len(fname) - ri], int(ftag.findtext("bitOffset"), 0)]
+            )
+        dim = len(fields)
+        if dim == 0:
+            raise SvdPatchError(
+                "{}: fields {} not found".format(self.rtag.findtext("name"), fspec)
+            )
+        fields = sorted(fields, key=lambda f: f[2])
+
+        if fmod.get("_start_from_zero", ""):
+            dimIndex = ",".join([str(i) for i in range(dim)])
+        else:
+            if dim == 1:
+                dimIndex = "{0}-{0}".format(fields[0][1])
+            else:
+                dimIndex = ",".join(f[1] for f in fields)
+        offsets = [f[2] for f in fields]
+        dimIncrement = 0
+        if dim > 1:
+            dimIncrement = offsets[1] - offsets[0]
+
+        if not check_offsets(offsets, dimIncrement):
+            raise SvdPatchError(
+                "{}: fields cannot be collected into {} array".format(
+                    self.rtag.findtext("name"), fspec
+                )
+            )
+        for ftag, _, _ in fields[1:]:
+            self.rtag.find("fields").remove(ftag)
+        ftag = fields[0][0]
+        nametag = ftag.find("name")
+        if "name" in fmod:
+            name = fmod["name"]
+        else:
+            name = fspec[:li] + "%s" + fspec[len(fspec) - ri :]
+        desc = ftag.find("description")
+        desc.text = desc.text.replace(nametag.text[li : len(nametag.text) - ri], "%s")
+        nametag.text = name
+        # self.process_field(name, fmod)
+        ET.SubElement(ftag, "dim").text = str(dim)
+        ET.SubElement(ftag, "dimIndex").text = dimIndex
+        ET.SubElement(ftag, "dimIncrement").text = hex(dimIncrement)
+
     def split_fields(self, fspec):
         """split all fspec in rtag."""
         fields = list(self.iter_fields(fspec))
@@ -1190,56 +1250,60 @@ class Register:
 
         derived, enum, enum_name, enum_usage = None, None, None, None
         for ftag in self.iter_fields(fspec):
-            name = ftag.find("name").text
-
-            if enum is None:
-                enum = make_enumerated_values(name, field, usage=usage)
-                enum_name = enum.find("name").text
-                enum_usage = enum.find("usage").text
-
-            for ev in ftag.iter("enumeratedValues"):
-                if len(ev) > 0:
-                    ev_usage_tag = ev.find("usage")
-                    ev_usage = (
-                        ev_usage_tag.text if ev_usage_tag is not None else "read-write"
-                    )
-                else:
-                    # This is a derived enumeratedValues => Try to find the
-                    # original definition to extract its <usage>
-                    derived_name = ev.attrib["derivedFrom"]
-                    derived_enums = self.rtag.findall(
-                        "./fields/field/enumeratedValues/[name='{}']".format(
-                            derived_name
-                        )
-                    )
-
-                    if derived_enums == []:
-                        raise SvdPatchError(
-                            "{}: field {} derives enumeratedValues {} which could not be found".format(
-                                pname, name, derived_name
-                            )
-                        )
-                    elif len(derived_enums) != 1:
-                        raise SvdPatchError(
-                            "{}: field {} derives enumeratedValues {} which was found multiple times".format(
-                                pname, name, derived_name
-                            )
-                        )
-
-                    ev_usage = derived_enums[0].find("usage").text
-
-                if ev_usage == enum_usage or ev_usage == "read-write":
-                    if replace_if_exists:
-                        ftag.remove(ev)
-                    else:
-                        print(pname, fspec, field)
-                        raise SvdPatchError(
-                            "{}: field {} already has enumeratedValues for {}".format(
-                                pname, name, ev_usage
-                            )
-                        )
+            if "_derivedFrom" in field:
+                derived = field["_derivedFrom"]
+            else:
+                name = ftag.find("name").text
 
             if derived is None:
+                if enum is None:
+                    enum = make_enumerated_values(name, field, usage=usage)
+                    enum_name = enum.find("name").text
+                    enum_usage = enum.find("usage").text
+
+                for ev in ftag.iter("enumeratedValues"):
+                    if len(ev) > 0:
+                        ev_usage_tag = ev.find("usage")
+                        ev_usage = (
+                            ev_usage_tag.text
+                            if ev_usage_tag is not None
+                            else "read-write"
+                        )
+                    else:
+                        # This is a derived enumeratedValues => Try to find the
+                        # original definition to extract its <usage>
+                        derived_name = ev.attrib["derivedFrom"]
+                        derived_enums = self.rtag.findall(
+                            "./fields/field/enumeratedValues/[name='{}']".format(
+                                derived_name
+                            )
+                        )
+
+                        if derived_enums == []:
+                            raise SvdPatchError(
+                                "{}: field {} derives enumeratedValues {} which could not be found".format(
+                                    pname, name, derived_name
+                                )
+                            )
+                        elif len(derived_enums) != 1:
+                            raise SvdPatchError(
+                                "{}: field {} derives enumeratedValues {} which was found multiple times".format(
+                                    pname, name, derived_name
+                                )
+                            )
+
+                        ev_usage = derived_enums[0].find("usage").text
+
+                    if ev_usage == enum_usage or ev_usage == "read-write":
+                        if replace_if_exists:
+                            ftag.remove(ev)
+                        else:
+                            print(pname, fspec, field)
+                            raise SvdPatchError(
+                                "{}: field {} already has enumeratedValues for {}".format(
+                                    pname, name, ev_usage
+                                )
+                            )
                 ftag.append(enum)
                 derived = enum_name
             else:

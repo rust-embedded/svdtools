@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 * Add `_clear` for deleting all `enumeratedValues` from field
+* Support for collecting fields in field arrays
+* Deriving fields
 
 ## [v0.1.13] 2021-04-16
 

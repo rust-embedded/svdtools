@@ -13,7 +13,7 @@ home-page = "https://github.com/stm32-rs/svdtools"
 requires-python = ">=3.6"
 description-file = "README.md"
 requires = [
-  "click ~= 7.0",
+  "click ~= 8.0",
   "PyYAML ~= 5.3",
   "lxml ~= 4.6",
 ]
