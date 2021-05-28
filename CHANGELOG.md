@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+* Support for collecting fields in field arrays
+* Deriving fields
+
 ## [v0.1.13] 2021-04-16
 
 * Fix use of `vendorExtensions` tag in SVD files (#53)
