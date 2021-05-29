@@ -337,6 +337,11 @@ Peripheral, register, and field names can be specified:
 
 You must quote the name if using any special characters in YAML.
 
+The enumerated values `On` and `Off` are treated as a boolean in YAML and Python will throw the error:
+`AttributeError: 'bool' object has no attribute 'startswith'`, which does not give
+you much information about where the error is. To avoid it, surround the values with
+quotes like any other special character.
+
 ### Style Guide
 
 - Enumerated values should be named in the past tense (*enabled*, *masked*,
