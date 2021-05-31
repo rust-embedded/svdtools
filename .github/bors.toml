@@ -3,7 +3,8 @@ block_labels = ["wip"]
 delete_merged_branches = true
 status = [
     "Test",
-    "Check (esp8622)",
+    "Check (esp32)",
+    "Check (esp8266)",
     "Check (stm32)",
     "Check (lpc55)",
 ]
