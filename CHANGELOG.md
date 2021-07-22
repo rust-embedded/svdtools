@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.15] 2021-07-22
+
+* Add support for field arrays to `svd mmap` command
+
 ## [v0.1.14] 2021-05-28
 
 * Add `_clear` for deleting all `enumeratedValues` from field
@@ -97,7 +101,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.14...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...HEAD
+[v0.1.15]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.14...v0.1.15
 [v0.1.14]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.13...v0.1.14
 [v0.1.13]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.12...v0.1.13
 [v0.1.12]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.11...v0.1.12
