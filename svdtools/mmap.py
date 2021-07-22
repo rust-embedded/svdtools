@@ -94,9 +94,9 @@ def get_int(node, tag, default=None):
         return int(text, 10)
 
 
-def expand_dim(node):
+def expand_dim(node, field=False):
     """
-    Given a node (a cluster or a register) which may have a `dim` child,
+    Given a node (a cluster, a register or a field) which may have a `dim` child,
     returns an expanded list of all such nodes with '%s' in the name replaced
     by the appropriate index. If there is no `dim` child, a list containing
     just the original node is returned.
@@ -119,10 +119,16 @@ def expand_dim(node):
     nodes = []
     for cnt, idx in enumerate(idxs):
         name = get_string(node, "name").replace("%s", str(idx))
+        description = get_string(node, "description").replace("%s", str(idx))
         dim_node = copy.deepcopy(node)
         dim_node.find("name").text = name
-        addr = get_int(dim_node, "addressOffset") + cnt * inc
-        dim_node.find("addressOffset").text = f"0x{addr:08x}"
+        dim_node.find("description").text = description
+        if field:
+            offset = get_int(dim_node, "bitOffset") + cnt * inc
+            dim_node.find("bitOffset").text = f"{offset}"
+        else:
+            addr = get_int(dim_node, "addressOffset") + cnt * inc
+            dim_node.find("addressOffset").text = f"0x{addr:08x}"
         dim_node.attrib["dim_index"] = str(idx)
         nodes.append(dim_node)
     return nodes
@@ -160,17 +166,18 @@ def parse_register(rtag):
     raccess = get_access(rtag)
     roffset = get_int(rtag, "addressOffset")
     for ftag in iter_fields(rtag):
-        fname = get_string(ftag, "name")
-        foffset, fwidth = get_field_offset_width(ftag)
-        fdesc = get_string(ftag, "description")
-        faccess = get_access(ftag)
-        fields[fname] = {
-            "name": fname,
-            "offset": foffset,
-            "width": fwidth,
-            "description": fdesc,
-            "access": faccess,
-        }
+        for ftag in expand_dim(ftag, field=True):
+            fname = get_string(ftag, "name")
+            foffset, fwidth = get_field_offset_width(ftag)
+            fdesc = get_string(ftag, "description")
+            faccess = get_access(ftag)
+            fields[fname] = {
+                "name": fname,
+                "offset": foffset,
+                "width": fwidth,
+                "description": fdesc,
+                "access": faccess,
+            }
     return {
         "name": rname,
         "offset": roffset,
