@@ -1038,6 +1038,14 @@ class Peripheral:
             raise MissingRegisterError("Could not find {}:{}".format(pname, rspec))
 
 
+def natural_keys(text):
+    return [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", text)]
+
+
+def sorted_fields(fields):
+    return sorted(fields, key=lambda ftag: natural_keys(ftag.find("name").text))
+
+
 class Register:
     """Class collecting methods for processing register contents"""
 
@@ -1249,7 +1257,7 @@ class Register:
             replace_if_exists = True
 
         derived, enum, enum_name, enum_usage = None, None, None, None
-        for ftag in self.iter_fields(fspec):
+        for ftag in sorted_fields(list(self.iter_fields(fspec))):
             if "_derivedFrom" in field:
                 derived = field["_derivedFrom"]
             else:
