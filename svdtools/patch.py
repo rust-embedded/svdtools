@@ -1018,7 +1018,8 @@ class Peripheral:
                 r.merge_fields(fspec)
             # Handle splits
             for fspec in register.get("_split", []):
-                r.split_fields(fspec)
+                fsplit = register["_split"][fspec] if isinstance(register["_split"], dict) else {}
+                r.split_fields(fspec, fsplit)
             # Handle strips
             for prefix in register.get("_strip", []):
                 r.strip(prefix)
@@ -1213,7 +1214,7 @@ class Register:
         ET.SubElement(ftag, "dimIndex").text = dimIndex
         ET.SubElement(ftag, "dimIncrement").text = hex(dimIncrement)
 
-    def split_fields(self, fspec):
+    def split_fields(self, fspec, fsplit):
         """split all fspec in rtag."""
         fields = list(self.iter_fields(fspec))
         if len(fields) == 0:
@@ -1222,15 +1223,21 @@ class Register:
                 "Could not find any fields to split {}.{}".format(rname, fspec)
             )
         parent = self.rtag.find("fields")
-        name = os.path.commonprefix([f.find("name").text for f in fields])
-        desc = fields[0].find("description").text
+        if fsplit and 'name' in fsplit:
+            name = fsplit['name']
+        else:
+            name = os.path.commonprefix([f.find("name").text for f in fields]) + '%s'
+        if fsplit and 'description' in fsplit:
+            desc = fsplit['description']
+        else:
+            desc = fields[0].find("description").text
         bitoffset = get_field_offset_width(fields[0])[0]
         bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
         parent.remove(fields[0])
         for i in range(bitwidth):
             fnew = ET.SubElement(parent, "field")
-            ET.SubElement(fnew, "name").text = name + str(i)
-            ET.SubElement(fnew, "description").text = desc
+            ET.SubElement(fnew, "name").text = name.replace('%s', str(i))
+            ET.SubElement(fnew, "description").text = desc.replace('%s', str(i))
             ET.SubElement(fnew, "bitOffset").text = str(bitoffset + i)
             ET.SubElement(fnew, "bitWidth").text = str(1)
 
