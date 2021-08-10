@@ -1224,13 +1224,14 @@ class Register:
         parent = self.rtag.find("fields")
         name = os.path.commonprefix([f.find("name").text for f in fields])
         desc = fields[0].find("description").text
+        bitoffset = get_field_offset_width(fields[0])[0]
         bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
         parent.remove(fields[0])
         for i in range(bitwidth):
             fnew = ET.SubElement(parent, "field")
             ET.SubElement(fnew, "name").text = name + str(i)
             ET.SubElement(fnew, "description").text = desc
-            ET.SubElement(fnew, "bitOffset").text = str(i)
+            ET.SubElement(fnew, "bitOffset").text = str(bitoffset + i)
             ET.SubElement(fnew, "bitWidth").text = str(1)
 
     def process_field(self, pname, fspec, field):
