@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [v0.1.16] 2021-08-14
+
+* Sort fields using natural sort order when deriving enumeratedValues,
+  so the base field is now the first numerically (#66)
+* Fix bug in `_split` where bit offsets always started at 0, even if the
+  field did not start at bit 0 (#68)
+* Allow specifying a custom name and description for split fields (#69)
+* Support specifying arrays of fields to merge and providing the new merged
+  name (#70)
+
 ## [v0.1.15] 2021-07-22
 
 * Add support for field arrays to `svd mmap` command
@@ -101,7 +111,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...HEAD
+[v0.1.16]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...v0.1.16
 [v0.1.15]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.14...v0.1.15
 [v0.1.14]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.13...v0.1.14
 [v0.1.13]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.12...v0.1.13
