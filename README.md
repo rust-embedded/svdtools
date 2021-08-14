@@ -286,6 +286,18 @@ _rebase:
         _merge:
             - "FIELD*"
 
+        # You can also merge fields with different base name like this:
+        _merge:
+            FIELD: [FIELD1, FIELD_?]
+        # Or like this:
+        _merge:
+            FIELD:
+                - FIELD1
+                - FIELD_?
+        # Or even like this:
+        _merge:
+            NEW_FIELD: "FIELD*"
+
         # A field in this register, matches an SVD <field> tag
         FIELD:
             # By giving the field a dictionary we construct an enumerateValues

@@ -1015,7 +1015,12 @@ class Peripheral:
                 r.add_field(fname, fadd)
             # Handle merges
             for fspec in register.get("_merge", []):
-                r.merge_fields(fspec)
+                fmerge = (
+                    register["_merge"][fspec]
+                    if isinstance(register["_merge"], dict)
+                    else None
+                )
+                r.merge_fields(fspec, fmerge)
             # Handle splits
             for fspec in register.get("_split", []):
                 fsplit = (
@@ -1147,16 +1152,33 @@ class Register:
             for tag in ftag.findall("writeConstraint"):
                 ftag.remove(tag)
 
-    def merge_fields(self, fspec):
-        """Merge all fspec in rtag."""
-        fields = list(self.iter_fields(fspec))
+    def merge_fields(self, key, value):
+        """
+        Merge all fspec in rtag.
+        Support list of field to auto-merge, and dict with fspec or list of fspec
+        """
+        if isinstance(value, str):
+            fields = list(self.iter_fields(value))
+            name = key
+        elif isinstance(value, list):
+            fields = list()
+            for fspec in value:
+                fields += list(self.iter_fields(fspec))
+            name = key
+        elif value is not None:
+            rname = self.rtag.find("name").text
+            raise RegisterMergeError(
+                "Invalid usage of merge for {}.{}".format(rname, key)
+            )
+        else:
+            fields = list(self.iter_fields(key))
+            name = os.path.commonprefix([f.find("name").text for f in fields])
         if len(fields) == 0:
             rname = self.rtag.find("name").text
             raise RegisterMergeError(
                 "Could not find any fields to merge {}.{}".format(rname, fspec)
             )
         parent = self.rtag.find("fields")
-        name = os.path.commonprefix([f.find("name").text for f in fields])
         desc = fields[0].find("description").text
         bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
         bitoffset = min(get_field_offset_width(f)[0] for f in fields)
