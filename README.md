@@ -315,6 +315,12 @@ _rebase:
           IMR:
             # This would split MR into MRi where i = 0 ... bitlength
             _split: [MR]
+            # This would split CHxFM into CHiFM where i = 0 ... bitlength
+            # and use the current bit for the description in each field
+            _split:
+              CHxFM:
+                name: CH%sFM
+                description: Processor 2 transmit channel %s free interrupt mask
 
             # If fields have unnecessary common prefix/postfix,
             # you can clean it in all registers in peripheral by:
