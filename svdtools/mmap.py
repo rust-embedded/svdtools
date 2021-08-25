@@ -109,7 +109,9 @@ def expand_dim(node, field=False):
     if idxs is None:
         idxs = list(range(int(dim, 0)))
     else:
-        if "," in idxs:
+        if len(idxs) == 1:
+            pass
+        elif "," in idxs:
             idxs = idxs.split(",")
         elif "-" in idxs:
             li, ri = idxs.split("-")
