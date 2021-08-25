@@ -870,10 +870,7 @@ class Peripheral:
         if rmod.get("_start_from_zero", ""):
             dimIndex = ",".join([str(i) for i in range(dim)])
         else:
-            if dim == 1:
-                dimIndex = "{0}-{0}".format(registers[0][1])
-            else:
-                dimIndex = ",".join(r[1] for r in registers)
+            dimIndex = ",".join(r[1] for r in registers)
         offsets = [r[2] for r in registers]
         bitmasks = [Register(r[0]).get_bitmask() for r in registers]
         dimIncrement = 0
@@ -1209,10 +1206,7 @@ class Register:
         if fmod.get("_start_from_zero", ""):
             dimIndex = ",".join([str(i) for i in range(dim)])
         else:
-            if dim == 1:
-                dimIndex = "{0}-{0}".format(fields[0][1])
-            else:
-                dimIndex = ",".join(f[1] for f in fields)
+            dimIndex = ",".join(f[1] for f in fields)
         offsets = [f[2] for f in fields]
         dimIncrement = 0
         if dim > 1:
