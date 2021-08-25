@@ -1045,12 +1045,8 @@ class Peripheral:
             raise MissingRegisterError("Could not find {}:{}".format(pname, rspec))
 
 
-def natural_keys(text):
-    return [int(c) if c.isdigit() else c for c in re.split(r"(\d+)", text)]
-
-
 def sorted_fields(fields):
-    return sorted(fields, key=lambda ftag: natural_keys(ftag.find("name").text))
+    return sorted(fields, key=lambda ftag: int(ftag.find("bitOffset").text, 0))
 
 
 class Register:
