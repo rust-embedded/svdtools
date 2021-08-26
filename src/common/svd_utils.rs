@@ -1,4 +1,4 @@
-use svd_parser::Access;
+use svd_parser::svd::Access;
 
 fn access_str(access: &Option<Access>) -> &str {
     match access {

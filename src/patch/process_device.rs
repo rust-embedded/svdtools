@@ -3,7 +3,7 @@ use crate::patch::patcher::Patcher;
 use anyhow::Result;
 use std::path::Path;
 use svd::Device;
-use svd_parser as svd;
+use svd_parser::svd;
 
 impl Patcher {
     pub fn process_device(&mut self) -> Result<()> {

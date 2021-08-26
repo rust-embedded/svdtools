@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::{fs::File, io::Read, path::Path};
-use svd_parser::{Device, Peripheral};
+use svd_parser::svd::{Device, Peripheral};
 
 pub fn peripherals<R: Read>(svd: &mut R) -> Result<Vec<Peripheral>> {
     let xml = &mut String::new();

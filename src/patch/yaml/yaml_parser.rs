@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_yaml::Mapping;
 use std::{
@@ -7,7 +6,7 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
 };
-use svd_parser as svd;
+use svd_parser::svd;
 
 #[derive(Debug, Deserialize)]
 //#[serde(deny_unknown_fields)]
@@ -102,7 +101,7 @@ pub struct PeripheralBody {
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub group_name: Option<String>,
-    pub base_address: Option<u32>,
+    pub base_address: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -110,7 +109,7 @@ pub struct PeripheralBody {
 pub struct OptAddressBlock {
     pub offset: Option<u32>,
     pub size: Option<u32>,
-    pub usage: Option<String>,
+    pub usage: Option<svd::AddressBlockUsage>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -212,8 +211,8 @@ pub struct Device {
 #[serde(deny_unknown_fields)]
 pub struct RegisterProperties {
     pub size: Option<u32>,
-    pub reset_value: Option<u32>,
-    pub reset_mask: Option<u32>,
+    pub reset_value: Option<u64>,
+    pub reset_mask: Option<u64>,
     pub access: Option<Access>,
 }
 
@@ -309,7 +308,7 @@ where
 }
 
 impl AddedPeripheral {
-    pub fn to_svd(&self, peripheral_name: &str) -> Result<svd::Peripheral> {
+    pub fn to_svd(&self, peripheral_name: &str) -> Result<svd::Peripheral, svd::SvdError> {
         let mut pb: svd::peripheral::PeripheralBuilder = Default::default();
         pb = pb.name(peripheral_name.to_string());
         if let Some(base_address) = &self.body.base_address {
@@ -319,11 +318,11 @@ impl AddedPeripheral {
         pb = pb.display_name(self.body.display_name.clone());
         pb = pb.group_name(self.body.group_name.clone());
         pb = pb.description(self.body.description.clone());
-        pb = pb.address_block(self.address_block.clone());
+        pb = pb.address_block(self.address_block.clone().map(|ab| vec![ab]));
 
         pb = pb.interrupt(self.interrupts());
 
-        let registers: Result<Vec<svd::RegisterInfo>> = self
+        let registers: Result<Vec<svd::RegisterInfo>, _> = self
             .registers
             .iter()
             .map(|r| {
@@ -348,12 +347,12 @@ impl AddedPeripheral {
         // for each field create a Field { name, key} and do to_svd()
         // TODO if field already exists throw error
 
-        pb.build()
+        pb.build(svd::ValidateLevel::Disabled)
     }
 }
 
 impl AddedRegister {
-    pub fn to_svd(&self, register_name: &str) -> Result<svd::RegisterInfo> {
+    pub fn to_svd(&self, register_name: &str) -> Result<svd::RegisterInfo, svd::SvdError> {
         let mut rb: svd::registerinfo::RegisterInfoBuilder = Default::default();
         rb = rb.name(register_name.to_string());
         rb = rb.description(self.body.description.clone());
@@ -363,7 +362,7 @@ impl AddedRegister {
         if let Some(access) = &self.body.access {
             rb = rb.access(Some(access.to_svd()));
         }
-        let fields: Result<Vec<svd::FieldInfo>> = self
+        let fields: Result<Vec<svd::FieldInfo>, _> = self
             .fields
             .iter()
             .map(|f| Field {
@@ -380,12 +379,12 @@ impl AddedRegister {
         if !fields.is_empty() {
             rb = rb.fields(Some(fields));
         }
-        rb.build()
+        rb.build(svd::ValidateLevel::Disabled)
     }
 }
 
 impl Field {
-    pub fn to_svd(&self) -> Result<svd::FieldInfo> {
+    pub fn to_svd(&self) -> Result<svd::FieldInfo, svd::SvdError> {
         let mut fb: svd::fieldinfo::FieldInfoBuilder = Default::default();
         if let Some(name) = &self.name {
             fb = fb.name(name.clone());
@@ -397,6 +396,6 @@ impl Field {
             width: self.body.bit_width.unwrap(),
             range_type: svd::bitrange::BitRangeType::BitRange, // TODO is this correct?
         });
-        fb.build()
+        fb.build(svd::ValidateLevel::Disabled)
     }
 }

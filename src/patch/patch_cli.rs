@@ -5,7 +5,7 @@ use crate::patch::yaml::yaml_parser;
 use anyhow::Result;
 use std::io::Write;
 use std::{fs::File, path::Path};
-use svd_parser;
+use svd_encoder;
 use yaml_parser::YamlRoot;
 
 pub fn patch(yaml_file: &Path) -> Result<()> {
@@ -26,7 +26,7 @@ pub fn patch(yaml_file: &Path) -> Result<()> {
     };
     patcher.process_device()?;
 
-    let xml_out = svd_parser::encode(&patcher.svd).unwrap();
+    let xml_out = svd_encoder::encode(&patcher.svd).unwrap();
 
     let svdpath_out = svdpath.with_extension("svd.patched");
     let mut out_file = File::create(svdpath_out).unwrap();

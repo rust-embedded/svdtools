@@ -1,6 +1,5 @@
 use crate::patch::yaml::yaml_parser as yml;
-use svd::Device;
-use svd_parser as svd;
+use svd_parser::svd::Device;
 use yml::YamlBody;
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use crate::patch::yaml::yaml_parser as yml;
-use svd_parser as svd;
+use svd_parser::svd;
 
 pub fn modify_cpu(dest: &mut Option<svd::Cpu>, src: &yml::Cpu) {
     match dest {
@@ -95,16 +95,16 @@ impl yml::Peripheral {
         modify_option(&mut dest.description, &self.body.description);
         modify_option(&mut dest.group_name, &self.body.group_name);
         modify_if_some(&mut dest.base_address, &self.body.base_address);
-        if let Some(addr_block) = &self.address_block {
+        /*if let Some(addr_block) = &self.address_block {
             addr_block.modify(&mut dest.address_block);
-        }
+        }*/
 
         // TODO should I use derived_from attribute?
     }
 }
 
 impl yml::OptAddressBlock {
-    fn modify(&self, dest: &mut Option<svd::AddressBlock>) {
+    fn _modify(&self, dest: &mut Option<svd::AddressBlock>) {
         match dest {
             Some(dest) => {
                 modify_if_some(&mut dest.offset, &self.offset);
