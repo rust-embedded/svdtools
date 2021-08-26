@@ -1,11 +1,10 @@
-use crate::patch::include;
-use crate::patch::yaml::yaml_parser::{self, YamlBody};
 use anyhow::Result;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::{
     fs::File,
     path::{Path, PathBuf},
 };
+use yaml_rust::{Yaml, YamlLoader};
 
 fn write_to_file(file: &mut File, string_to_write: &str) -> Result<()> {
     let dep = string_to_write.as_bytes();
@@ -36,14 +35,25 @@ fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
 }
 
 pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
-    let mut yaml: YamlBody = yaml_parser::from_path(yaml_file);
+    let f = File::open(yaml_file).unwrap();
+    let mut contents = String::new();
+    (&f).read_to_string(&mut contents).unwrap();
+    let mut docs = YamlLoader::load_from_str(&contents).unwrap();
+    match &mut docs[0] {
+        Yaml::Hash(root) => {
+            root.insert(
+                Yaml::String("_path".into()),
+                Yaml::String(yaml_file.to_str().unwrap().into()),
+            );
 
-    let yaml_dir = yaml_file.parent().expect("wrong yaml file path");
-    let deps = include::yaml_includes(&mut yaml, yaml_dir);
+            let deps = svdpatch::yaml_includes(root);
 
-    if let Err(e) = write_file(deps_file, deps) {
-        eprintln!("couldn't create {}: {}", deps_file.display(), e.to_string())
-    };
+            if let Err(e) = write_file(deps_file, deps) {
+                eprintln!("couldn't create {}: {}", deps_file.display(), e.to_string())
+            };
+        }
+        _ => panic!("Incorrect yaml"),
+    }
 }
 
 #[cfg(test)]
