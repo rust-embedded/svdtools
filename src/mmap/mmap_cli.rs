@@ -2,7 +2,7 @@ use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
 use anyhow::Result;
 use std::{fs::File, io::Read, path::Path};
-use svd_parser::svd::{Cluster, Peripheral, Register, RegisterCluster, RegisterInfo};
+use svd_parser::svd::{Cluster, Field, Peripheral, Register, RegisterCluster, RegisterInfo};
 
 /// Output sorted text of every peripheral, register, field, and interrupt
 /// in the device, such that automated diffing is possible.
@@ -150,11 +150,27 @@ fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
         for f in fields {
             let description = str_utils::get_description(&f.description);
             let access = svd_utils::access_with_brace(f.access);
-            let text = format!(
-                "{} C   FIELD {:02}w{:02} {}{}: {}",
-                addr, f.bit_range.offset, f.bit_range.width, f.name, access, description
-            );
-            mmap.push(text);
+            match f {
+                Field::Single(f) => {
+                    let bit_offset = f.bit_range.offset;
+                    let text = format!(
+                        "{} C   FIELD {:02}w{:02} {}{}: {}",
+                        addr, bit_offset, f.bit_range.width, f.name, access, description
+                    );
+                    mmap.push(text);
+                }
+                Field::Array(f, d) => {
+                    for (i, idx) in d.indexes().enumerate() {
+                        let bit_offset = f.bit_range.offset + (i as u32) * d.dim_increment;
+                        let fname = f.name.replace("%s", &idx);
+                        let text = format!(
+                            "{} C   FIELD {:02}w{:02} {}{}: {}",
+                            addr, bit_offset, f.bit_range.width, fname, access, description
+                        );
+                        mmap.push(text);
+                    }
+                }
+            }
         }
     }
 }
