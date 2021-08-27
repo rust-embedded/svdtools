@@ -2,7 +2,7 @@ use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
 use anyhow::Result;
 use std::{fs::File, io::Read, path::Path};
-use svd_parser::svd::{Peripheral, Register, RegisterCluster};
+use svd_parser::svd::{Cluster, Peripheral, Register, RegisterCluster, RegisterInfo};
 
 /// Output sorted text of every peripheral, register, field, and interrupt
 /// in the device, such that automated diffing is possible.
@@ -29,7 +29,7 @@ fn to_text(peripherals: &[Peripheral]) -> String {
         get_peripheral(&p, &mut mmap);
         get_interrupts(&p, &mut mmap);
         let registers = get_periph_registers(p, peripherals);
-        get_registers(p.base_address, registers, &mut mmap);
+        get_registers(p.base_address, registers.as_ref(), "", &mut mmap);
     }
 
     mmap.sort();
@@ -77,7 +77,8 @@ fn get_interrupts(peripheral: &Peripheral, mmap: &mut Vec<String>) {
 
 fn get_registers(
     base_address: u64,
-    registers: &Option<Vec<RegisterCluster>>,
+    registers: Option<&Vec<RegisterCluster>>,
+    suffix: &str,
     mmap: &mut Vec<String>,
 ) {
     if let Some(registers) = registers {
@@ -86,24 +87,65 @@ fn get_registers(
                 RegisterCluster::Register(r) => {
                     let description = str_utils::get_description(&r.description);
                     let access = svd_utils::access_with_brace(r.properties.access);
-                    let addr = base_address + r.address_offset as u64;
-                    let addr = str_utils::format_address(addr);
-                    let text =
-                        format!("{} B  REGISTER {}{}: {}", addr, r.name, access, description);
-                    mmap.push(text);
-                    get_fields(r, &addr, mmap)
+                    let first_addr = base_address + r.address_offset as u64;
+                    match r {
+                        Register::Single(r) => {
+                            let addr = str_utils::format_address(first_addr);
+                            let rname = r.name.to_string() + suffix;
+                            let text = format!(
+                                "{} B  REGISTER {}{}: {}",
+                                addr, rname, access, description
+                            );
+                            mmap.push(text);
+                            get_fields(r, &addr, mmap);
+                        }
+                        Register::Array(r, d) => {
+                            for (i, idx) in d.indexes().enumerate() {
+                                let addr = str_utils::format_address(
+                                    first_addr + (i as u64) * (d.dim_increment as u64),
+                                );
+                                let rname = r.name.replace("%s", &idx);
+                                let description = description.replace("%s", &idx);
+                                let text = format!(
+                                    "{} B  REGISTER {}{}: {}",
+                                    addr, rname, access, description
+                                );
+                                mmap.push(text);
+                                get_fields(r, &addr, mmap);
+                            }
+                        }
+                    }
                 }
                 RegisterCluster::Cluster(c) => {
                     let description = str_utils::get_description(&c.description);
-                    let addr = base_address + c.address_offset as u64;
-                    format!("{} B  CLUSTER {}: {}", addr, c.name, description);
+                    let first_addr = base_address + c.address_offset as u64;
+                    match c {
+                        Cluster::Single(c) => {
+                            let addr = str_utils::format_address(first_addr);
+                            let text = format!("{} B  CLUSTER {}: {}", addr, c.name, description);
+                            mmap.push(text);
+                            get_registers(first_addr, Some(&c.children), "", mmap);
+                        }
+                        Cluster::Array(c, d) => {
+                            for (i, idx) in d.indexes().enumerate() {
+                                let caddr = first_addr + (i as u64) * (d.dim_increment as u64);
+                                let addr = str_utils::format_address(caddr);
+                                let cname = c.name.replace("%s", &idx);
+                                let description = description.replace("%s", &idx);
+                                let text =
+                                    format!("{} B  CLUSTER {}: {}", addr, cname, description);
+                                mmap.push(text);
+                                get_registers(caddr, Some(&c.children), &idx, mmap);
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-fn get_fields(register: &Register, addr: &str, mmap: &mut Vec<String>) {
+fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
     if let Some(fields) = &register.fields {
         for f in fields {
             let description = str_utils::get_description(&f.description);
