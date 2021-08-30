@@ -16,6 +16,7 @@ requires = [
   "click ~= 8.0",
   "PyYAML ~= 5.3",
   "lxml ~= 4.6",
+  "braceexpand ~= 0.1.7",
 ]
 classifiers=[
     "License :: OSI Approved :: MIT License",
