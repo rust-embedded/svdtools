@@ -1,3 +1,4 @@
+use crate::patch::yaml_includes;
 use anyhow::Result;
 use std::io::{Read, Write};
 use std::{
@@ -46,7 +47,7 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
                 Yaml::String(yaml_file.to_str().unwrap().into()),
             );
 
-            let deps = svdpatch::yaml_includes(root);
+            let deps = yaml_includes(root).unwrap();
 
             if let Err(e) = write_file(deps_file, deps) {
                 eprintln!("couldn't create {}: {}", deps_file.display(), e.to_string())

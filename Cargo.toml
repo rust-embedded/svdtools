@@ -13,10 +13,11 @@ quick-xml = { version = "0.18", features = ["serialize"] }
 svd-rs = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch", features = ["serde"]  }
 svd-parser = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch" }
 svd-encoder = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch" }
-svdpatch = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch" }
 yaml-rust = "0.4"
-serde_yaml = "0.8"
-anyhow = "1.0"
+anyhow = "1.0.43"
+linked-hash-map = "0.5"
+globset = "0.4.8"
+commands = "0.0.5"
 
 [dev-dependencies]
 tempfile = "3.1"
