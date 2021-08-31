@@ -175,27 +175,25 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> anyhow::Result<()> {
 
 /// Check if name matches against a specification
 fn matchname(name: &str, spec: &str) -> bool {
-    if spec.starts_with("_") {
-        return false;
-    }
-    for subspec in spec.split(",") {
-        let glob = Glob::new(subspec).unwrap().compile_matcher();
-        if glob.is_match(name) {
-            return true;
-        }
-    }
-    false
+    matchsubspec(name, spec).is_some()
 }
 
 /// If a name matches a specification, return the first sub-specification that it matches
 fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
-    if !matchname(name, spec) {
+    if spec.starts_with("_") {
         return None;
     }
-    for subspec in spec.split(",") {
-        let glob = Glob::new(subspec).unwrap().compile_matcher();
+    if spec.contains('{') {
+        let glob = Glob::new(spec).unwrap().compile_matcher();
         if glob.is_match(name) {
-            return Some(subspec);
+            return Some(spec);
+        }
+    } else {
+        for subspec in spec.split(",") {
+            let glob = Glob::new(subspec).unwrap().compile_matcher();
+            if glob.is_match(name) {
+                return Some(subspec);
+            }
         }
     }
     return None;

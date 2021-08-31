@@ -10,9 +10,9 @@ edition = "2018"
 structopt="0.3"
 serde = { version = "1.0", features = ["derive"] }
 quick-xml = { version = "0.18", features = ["serialize"] }
-svd-rs = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch", features = ["serde"]  }
-svd-parser = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch" }
-svd-encoder = { git = "https://github.com/rust-embedded/svd", branch = "svdpatch" }
+svd-rs = { git = "https://github.com/rust-embedded/svd", branch = "roxmltree", features = ["serde"]  }
+svd-parser = { git = "https://github.com/rust-embedded/svd", branch = "roxmltree" }
+svd-encoder = { git = "https://github.com/rust-embedded/svd", branch = "roxmltree" }
 yaml-rust = "0.4"
 anyhow = "1.0.43"
 linked-hash-map = "0.5"
