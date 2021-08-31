@@ -9,12 +9,12 @@ import copy
 import fnmatch
 import os.path
 import re
-from braceexpand import braceexpand
 from collections import OrderedDict
 from fnmatch import fnmatchcase
 
 import lxml.etree as ET
 import yaml
+from braceexpand import braceexpand
 
 DEVICE_CHILDREN = [
     "vendor",
