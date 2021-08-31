@@ -14,6 +14,7 @@ from fnmatch import fnmatchcase
 
 import lxml.etree as ET
 import yaml
+from braceexpand import braceexpand
 
 DEVICE_CHILDREN = [
     "vendor",
@@ -47,9 +48,12 @@ yaml.add_constructor(_mapping_tag, dict_constructor, yaml.SafeLoader)
 
 def matchname(name, spec):
     """Check if name matches against a specification."""
-    return (not spec.startswith("_")) and any(
-        fnmatchcase(name, subspec) for subspec in spec.split(",")
-    )
+    if spec.startswith("_"):
+        return False
+    if "{" in spec:
+        return any(fnmatchcase(name, subspec) for subspec in braceexpand(spec))
+    else:
+        return any(fnmatchcase(name, subspec) for subspec in spec.split(","))
 
 
 def matchsubspec(name, spec):
@@ -58,9 +62,14 @@ def matchsubspec(name, spec):
     """
     if not matchname(name, spec):
         return None
-    for subspec in spec.split(","):
-        if fnmatchcase(name, subspec):
-            return subspec
+    if "{" in spec:
+        for subspec in braceexpand(spec):
+            if fnmatchcase(name, subspec):
+                return subspec
+    else:
+        for subspec in spec.split(","):
+            if fnmatchcase(name, subspec):
+                return subspec
     return None
 
 
@@ -1333,7 +1342,6 @@ class Register:
                         if replace_if_exists:
                             ftag.remove(ev)
                         else:
-                            print(pname, fspec, field)
                             raise SvdPatchError(
                                 "{}: field {} already has enumeratedValues for {}".format(
                                     pname, name, ev_usage
