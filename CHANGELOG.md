@@ -2,9 +2,16 @@
 
 ## [Unreleased]
 
+## [v0.1.18] 2021-10-02
+
+* Fix bugs in non-32-bit register bitmask computation and
+  single-element array generation (#78)
+
 ## [v0.1.17] 2021-10-02
 
 * Support non-32-bit registers when computing bitmasks (#76)
+* Support braceexpand-style expansions in name specifiers (#75)
+* Improve support of single-item arrays (#74)
 
 ## [v0.1.16] 2021-08-14
 
@@ -115,7 +122,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.18...HEAD
+[v0.1.18]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...v0.1.18
 [v0.1.17]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...v0.1.17
 [v0.1.16]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...v0.1.16
 [v0.1.15]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.14...v0.1.15
