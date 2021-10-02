@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.17] 2021-10-02
+
+* Support non-32-bit registers when computing bitmasks (#76)
+
 ## [v0.1.16] 2021-08-14
 
 * Sort fields using natural sort order when deriving enumeratedValues,
@@ -111,7 +115,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...HEAD
+[v0.1.17]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...v0.1.17
 [v0.1.16]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...v0.1.16
 [v0.1.15]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.14...v0.1.15
 [v0.1.14]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.13...v0.1.14
