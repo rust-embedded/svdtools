@@ -1064,6 +1064,21 @@ class Register:
     def __init__(self, rtag):
         self.rtag = rtag
 
+    def size(self):
+        """
+        Look up register size in bits.
+        """
+        size = None
+        tag = self.rtag
+        while size is None:
+            size = self.rtag.findtext("size")
+            tag = tag.getparent()
+            if tag is None:
+                break
+        if size is None:
+            size = 32
+        return int(size, 0)
+
     def iter_fields(self, fspec):
         """
         Iterates over all fields that match fspec and live inside rtag.
@@ -1372,9 +1387,11 @@ class Register:
     def get_bitmask(self):
         """Calculate filling of register"""
         mask = 0x0
+        size = self.size()
+        full_mask = (1 << size) - 1
         for ftag in self.iter_fields("*"):
             foffset, fwidth = get_field_offset_width(ftag)
-            mask |= (0xFFFFFFFF >> (32 - fwidth)) << foffset
+            mask |= (full_mask >> (size - fwidth)) << foffset
         return mask
 
 
