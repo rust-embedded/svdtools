@@ -878,6 +878,8 @@ class Peripheral:
 
         if rmod.get("_start_from_zero", ""):
             dimIndex = ",".join([str(i) for i in range(dim)])
+        elif dim == 1:
+            dimIndex = "{0}-{0}".format(registers[0][1])
         else:
             dimIndex = ",".join(r[1] for r in registers)
         offsets = [r[2] for r in registers]
@@ -1071,13 +1073,14 @@ class Register:
         size = None
         tag = self.rtag
         while size is None:
-            size = self.rtag.findtext("size")
+            size = tag.findtext("size")
             tag = tag.getparent()
             if tag is None:
                 break
         if size is None:
-            size = 32
-        return int(size, 0)
+            return 32
+        else:
+            return int(size, 0)
 
     def iter_fields(self, fspec):
         """
@@ -1225,6 +1228,8 @@ class Register:
 
         if fmod.get("_start_from_zero", ""):
             dimIndex = ",".join([str(i) for i in range(dim)])
+        elif dim == 1:
+            dimIndex = "{0}-{0}".format(fields[0][1])
         else:
             dimIndex = ",".join(f[1] for f in fields)
         offsets = [f[2] for f in fields]
