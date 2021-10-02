@@ -1073,13 +1073,14 @@ class Register:
         size = None
         tag = self.rtag
         while size is None:
-            size = self.rtag.findtext("size")
+            size = tag.findtext("size")
             tag = tag.getparent()
             if tag is None:
                 break
         if size is None:
-            size = 32
-        return int(size, 0)
+            return 32
+        else:
+            return int(size, 0)
 
     def iter_fields(self, fspec):
         """
