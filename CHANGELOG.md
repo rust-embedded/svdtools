@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.1.19] 2021-10-03
+
+* Fix bug in sorting fields without `bitOffset` attribute (#80)
+* Add RP2040 PAC to CI testing (#81)
+
 ## [v0.1.18] 2021-10-02
 
 * Fix bugs in non-32-bit register bitmask computation and
@@ -122,7 +127,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.18...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.19...HEAD
+[v0.1.19]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.18...v0.1.19
 [v0.1.18]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...v0.1.18
 [v0.1.17]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...v0.1.17
 [v0.1.16]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.15...v0.1.16
