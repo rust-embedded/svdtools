@@ -1057,7 +1057,7 @@ class Peripheral:
 
 
 def sorted_fields(fields):
-    return sorted(fields, key=lambda ftag: int(ftag.find("bitOffset").text, 0))
+    return sorted(fields, key=lambda ftag: get_field_offset_width(ftag)[0])
 
 
 class Register:
@@ -1217,7 +1217,7 @@ class Register:
         for ftag in list(self.iter_fields(fspec)):
             fname = ftag.findtext("name")
             fields.append(
-                [ftag, fname[li : len(fname) - ri], int(ftag.findtext("bitOffset"), 0)]
+                [ftag, fname[li : len(fname) - ri], get_field_offset_width(ftag)[0]]
             )
         dim = len(fields)
         if dim == 0:
