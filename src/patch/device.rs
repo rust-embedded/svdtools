@@ -294,7 +294,11 @@ impl DeviceExt for Device {
             Peripheral::builder()
                 .name(pold.into())
                 .base_address(old.base_address)
-                .interrupt(old.interrupt.clone())
+                .interrupt(if old.interrupt.is_empty() {
+                    None
+                } else {
+                    Some(old.interrupt.clone())
+                })
                 .derived_from(Some(pnew.into()))
                 .build(VAL_LVL)
                 .unwrap(),

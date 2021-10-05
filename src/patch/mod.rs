@@ -45,12 +45,9 @@ pub fn process_file(yaml_file: &Path) -> anyhow::Result<()> {
     let f = File::open(svdpath)?;
     let mut contents = String::new();
     (&f).read_to_string(&mut contents)?;
-    let mut svd = svd_parser::parse_with_config(
-        &contents,
-        &svd_parser::Config {
-            validate_level: ValidateLevel::Disabled,
-        },
-    )?;
+    let mut config = svd_parser::Config::default();
+    config.validate_level = ValidateLevel::Disabled;
+    let mut svd = svd_parser::parse_with_config(&contents, &config)?;
 
     // Load all included YAML files
     yaml_includes(root)?;
@@ -374,18 +371,12 @@ fn make_peripheral(padd: &Hash) -> PeripheralBuilder {
         .version(padd.get_str("version").map(String::from))
         .description(padd.get_str("description").map(String::from))
         .group_name(padd.get_str("groupName").map(String::from))
-        .interrupt(
-            padd.get_hash("interrupts")
-                .map(|value| {
-                    value
-                        .iter()
-                        .map(|(iname, val)| {
-                            make_interrupt(iname.as_str().unwrap(), val.as_hash().unwrap())
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(|| Vec::new()),
-        );
+        .interrupt(padd.get_hash("interrupts").map(|value| {
+            value
+                .iter()
+                .map(|(iname, val)| make_interrupt(iname.as_str().unwrap(), val.as_hash().unwrap()))
+                .collect()
+        }));
     if let Some(name) = padd.get_str("name") {
         pnew = pnew.name(name.into());
     }
