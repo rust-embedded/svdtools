@@ -37,8 +37,14 @@ DEVICE_CHILDREN = [
 
 
 # Set up pyyaml to use ordered dicts so we generate the same
-# XML output each time
-def dict_constructor(loader, node):
+# XML output each time, and detect and refuse duplicate keys.
+def dict_constructor(loader, node, deep=False):
+    mapping = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        start = node.start_mark
+        assert key not in mapping, f"duplicate key '{key}' found {start}"
+        mapping.add(key)
     return OrderedDict(loader.construct_pairs(node))
 
 
