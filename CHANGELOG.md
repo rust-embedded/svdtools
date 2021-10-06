@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.1.20] 2021-10-06
+
+* Remove displayName from newly derived registers, fixing #83 (#85)
+* Detect and reject duplicate YAML keys (#72)
+
 ## [v0.1.19] 2021-10-03
 
 * Fix bug in sorting fields without `bitOffset` attribute (#80)
@@ -127,7 +132,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.19...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.20...HEAD
+[v0.1.20]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.19...v0.1.20
 [v0.1.19]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.18...v0.1.19
 [v0.1.18]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...v0.1.18
 [v0.1.17]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.16...v0.1.17
