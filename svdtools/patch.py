@@ -813,7 +813,7 @@ class Peripheral:
                 )
             if rtag.find("name").text == srcname:
                 source = rtag
-        if source == None:
+        if source is None:
             raise SvdPatchError(
                 "peripheral {} does not have register {}".format(
                     self.ptag.find("name").text, srcname
@@ -821,7 +821,8 @@ class Peripheral:
             )
         rcopy = copy.deepcopy(source)
         rcopy.find("name").text = rname
-        rcopy.find("displayName").text = rname
+        if rcopy.find("displayName") is not None:
+            rcopy.remove(rcopy.find("displayName"))
         for (key, value) in rderive.items():
             if key == "_from":
                 continue
