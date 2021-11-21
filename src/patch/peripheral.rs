@@ -254,12 +254,13 @@ impl PeripheralExt for Peripheral {
         }
         self.registers
             .get_or_insert_with(Default::default)
-            .push(RegisterCluster::Register(Register::Single(
+            .push(RegisterCluster::Register(
                 make_register(radd)
                     .name(rname.into())
                     .build(VAL_LVL)
-                    .unwrap(),
-            )));
+                    .unwrap()
+                    .single(),
+            ));
     }
 
     fn copy_register(&mut self, rname: &str, rderive: &Hash) {
@@ -280,9 +281,7 @@ impl PeripheralExt for Peripheral {
                 )
             })
             .clone();
-        let fixes = make_register(rderive)
-            .name(rname.into())
-            .display_name(Some(rname.into()));
+        let fixes = make_register(rderive).name(rname.into()).display_name(None);
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL).unwrap();
         if let Some(ptag) = self.reg_iter_mut().find(|r| &r.name == rname) {
@@ -368,7 +367,7 @@ impl PeripheralExt for Peripheral {
             if registers.is_empty() {
                 panic!("{}: registers {} not found", pname, rspec);
             }
-            registers.sort_by(|r1, r2| r1.address_offset.cmp(&r2.address_offset));
+            registers.sort_by_key(|r| r.address_offset);
             let dim = registers.len();
             let dim_index = if rmod.contains_key(&"_start_from_zero".to_yaml()) {
                 (0..dim).map(|v| v.to_string()).collect::<Vec<_>>()
@@ -406,8 +405,7 @@ impl PeripheralExt for Peripheral {
                     *desc = desc.replace('0', "%s");
                 }
             }
-            let mut reg = Register::Array(
-                rinfo,
+            let mut reg = rinfo.array(
                 DimElement::builder()
                     .dim(dim as u32)
                     .dim_increment(dim_increment)
@@ -432,6 +430,7 @@ impl PeripheralExt for Peripheral {
             let mut offsets = Vec::new();
             let mut place = usize::MAX;
             let mut rspecs = Vec::new();
+            let single = !cname.contains("%s");
 
             for rspec in cmod.keys() {
                 let rspec = rspec.as_str().unwrap();
@@ -457,44 +456,50 @@ impl PeripheralExt for Peripheral {
                 if registers.is_empty() {
                     panic!("{}: registers {} not found", pname, rspec);
                 }
-                registers.sort_by(|r1, r2| r1.address_offset.cmp(&r2.address_offset));
-                let bitmasks = registers
-                    .iter()
-                    .map(RegisterInfo::get_bitmask)
-                    .collect::<Vec<_>>();
-                let new_dim_index = registers
-                    .iter()
-                    .map(|r| {
-                        let match_rspec = matchsubspec(&r.name, rspec).unwrap();
-                        let (li, ri) = spec_ind(match_rspec);
-                        r.name[li..r.name.len() - ri].to_string()
-                    })
-                    .collect::<Vec<_>>();
-                if first {
-                    dim = registers.len();
-                    dim_index = new_dim_index;
-                    dim_increment = 0;
-                    offsets = registers
-                        .iter()
-                        .map(|r| r.address_offset)
-                        .collect::<Vec<_>>();
-                    if dim > 1 {
-                        dim_increment = offsets[1] - offsets[0];
-                    }
-                    if !(check_offsets(&offsets, dim_increment)
-                        && bitmasks.iter().all(|&m| m == bitmasks[0]))
-                    {
-                        check = false;
-                        break;
+                if single {
+                    if registers.len() > 1 {
+                        panic!("{}: more than one registers {} found", pname, rspec);
                     }
                 } else {
-                    if (dim != registers.len())
-                        || (dim_index != new_dim_index)
-                        || (!check_offsets(&offsets, dim_increment))
-                        || (!bitmasks.iter().all(|&m| m == bitmasks[0]))
-                    {
-                        check = false;
-                        break;
+                    registers.sort_by_key(|r| r.address_offset);
+                    let bitmasks = registers
+                        .iter()
+                        .map(RegisterInfo::get_bitmask)
+                        .collect::<Vec<_>>();
+                    let new_dim_index = registers
+                        .iter()
+                        .map(|r| {
+                            let match_rspec = matchsubspec(&r.name, rspec).unwrap();
+                            let (li, ri) = spec_ind(match_rspec);
+                            r.name[li..r.name.len() - ri].to_string()
+                        })
+                        .collect::<Vec<_>>();
+                    if first {
+                        dim = registers.len();
+                        dim_index = new_dim_index;
+                        dim_increment = 0;
+                        offsets = registers
+                            .iter()
+                            .map(|r| r.address_offset)
+                            .collect::<Vec<_>>();
+                        if dim > 1 {
+                            dim_increment = offsets[1] - offsets[0];
+                        }
+                        if !(check_offsets(&offsets, dim_increment)
+                            && bitmasks.iter().all(|&m| m == bitmasks[0]))
+                        {
+                            check = false;
+                            break;
+                        }
+                    } else {
+                        if (dim != registers.len())
+                            || (dim_index != new_dim_index)
+                            || (!check_offsets(&offsets, dim_increment))
+                            || (!bitmasks.iter().all(|&m| m == bitmasks[0]))
+                        {
+                            check = false;
+                            break;
+                        }
                     }
                 }
                 rdict.insert(rspec.to_string(), registers);
@@ -508,23 +513,10 @@ impl PeripheralExt for Peripheral {
             }
             let address_offset = rdict
                 .values()
-                .min_by(|rs1, rs2| rs1[0].address_offset.cmp(&rs2[0].address_offset))
+                .min_by_key(|rs| rs[0].address_offset)
                 .unwrap()[0]
                 .address_offset;
             let mut children = Vec::new();
-            for (rspec, mut registers) in rdict.into_iter() {
-                let mut reg = Register::Single(registers.swap_remove(0));
-                let rmod = cmod.get_hash(rspec.as_str()).unwrap();
-                reg.process(rmod, &pname, true);
-                if let Some(name) = rmod.get_str("name") {
-                    reg.name = name.into();
-                } else {
-                    let (li, ri) = spec_ind(&rspec);
-                    reg.name = format!("{}{}", &rspec[..li], &rspec[rspec.len() - ri..]);
-                }
-                reg.address_offset = reg.address_offset - address_offset;
-                children.push(RegisterCluster::Register(reg));
-            }
             let cinfo = ClusterInfo::builder()
                 .name(cname.into())
                 .description(Some(if let Some(desc) = cmod.get_str("description") {
@@ -532,19 +524,44 @@ impl PeripheralExt for Peripheral {
                 } else {
                     format!("Cluster {}, containing {}", cname, rspecs.join(", "))
                 }))
-                .address_offset(address_offset)
-                .children(children)
-                .build(VAL_LVL)
-                .unwrap();
-            let cluster = Cluster::Array(
-                cinfo,
-                DimElement::builder()
-                    .dim(dim as u32)
-                    .dim_increment(dim_increment)
-                    .dim_index(Some(dim_index))
-                    .build(VAL_LVL)
-                    .unwrap(),
-            );
+                .address_offset(address_offset);
+            let cluster = if single {
+                for (rspec, mut registers) in rdict.into_iter() {
+                    let mut reg = registers.swap_remove(0).single();
+                    let rmod = cmod.get_hash(rspec.as_str()).unwrap();
+                    reg.process(rmod, &pname, true);
+                    if let Some(name) = rmod.get_str("name") {
+                        reg.name = name.into();
+                    }
+                    reg.address_offset = reg.address_offset - address_offset;
+                    children.push(RegisterCluster::Register(reg));
+                }
+
+                cinfo.children(children).build(VAL_LVL).unwrap().single()
+            } else {
+                for (rspec, mut registers) in rdict.into_iter() {
+                    let mut reg = registers.swap_remove(0).single();
+                    let rmod = cmod.get_hash(rspec.as_str()).unwrap();
+                    reg.process(rmod, &pname, true);
+                    if let Some(name) = rmod.get_str("name") {
+                        reg.name = name.into();
+                    } else {
+                        let (li, ri) = spec_ind(&rspec);
+                        reg.name = format!("{}{}", &rspec[..li], &rspec[rspec.len() - ri..]);
+                    }
+                    reg.address_offset = reg.address_offset - address_offset;
+                    children.push(RegisterCluster::Register(reg));
+                }
+
+                cinfo.children(children).build(VAL_LVL).unwrap().array(
+                    DimElement::builder()
+                        .dim(dim as u32)
+                        .dim_increment(dim_increment)
+                        .dim_index(Some(dim_index))
+                        .build(VAL_LVL)
+                        .unwrap(),
+                )
+            };
             regs.insert(place, RegisterCluster::Cluster(cluster));
         }
     }

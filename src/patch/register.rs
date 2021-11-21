@@ -223,7 +223,11 @@ impl RegisterExt for Register {
             panic!("register {} already has a field {}", self.name, fname);
         }
         // TODO: add field arrays
-        let fnew = Field::Single(make_field(fadd).name(fname.into()).build(VAL_LVL).unwrap());
+        let fnew = make_field(fadd)
+            .name(fname.into())
+            .build(VAL_LVL)
+            .unwrap()
+            .single();
         self.fields.get_or_insert_with(Default::default).push(fnew);
     }
 
@@ -289,14 +293,15 @@ impl RegisterExt for Register {
                 }
             }
             fields.retain(|f| !names.contains(&f.name));
-            fields.push(Field::Single(
+            fields.push(
                 FieldInfo::builder()
                     .name(name)
                     .description(desc)
                     .bit_range(BitRange::from_offset_width(bitoffset, bitwidth))
                     .build(VAL_LVL)
-                    .unwrap(),
-            ));
+                    .unwrap()
+                    .single(),
+            );
         }
     }
 
@@ -320,7 +325,7 @@ impl RegisterExt for Register {
             if fields.is_empty() {
                 panic!("{}: fields {} not found", self.name, fspec);
             }
-            fields.sort_by(|f1, f2| f1.bit_range.offset.cmp(&f2.bit_range.offset));
+            fields.sort_by_key(|f| f.bit_range.offset);
             let dim = fields.len();
             let dim_index = if fmod.contains_key(&"_start_from_zero".to_yaml()) {
                 (0..dim).map(|v| v.to_string()).collect::<Vec<_>>()
@@ -352,8 +357,7 @@ impl RegisterExt for Register {
                     *desc = desc.replace('0', "%s");
                 }
             }
-            let field = Field::Array(
-                finfo,
+            let field = finfo.array(
                 DimElement::builder()
                     .dim(dim as u32)
                     .dim_increment(dim_increment)
@@ -389,14 +393,13 @@ impl RegisterExt for Register {
                     (0..first.bit_range.width)
                         .map(|i| {
                             let is = i.to_string();
-                            Field::Single(
-                                FieldInfo::builder()
-                                    .name(name.replace("%s", &is))
-                                    .description(desc.clone().map(|d| d.replace("%s", &is)))
-                                    .bit_range(BitRange::from_offset_width(bitoffset + i, 1))
-                                    .build(VAL_LVL)
-                                    .unwrap(),
-                            )
+                            FieldInfo::builder()
+                                .name(name.replace("%s", &is))
+                                .description(desc.clone().map(|d| d.replace("%s", &is)))
+                                .bit_range(BitRange::from_offset_width(bitoffset + i, 1))
+                                .build(VAL_LVL)
+                                .unwrap()
+                                .single()
                         })
                         .collect::<Vec<_>>(),
                     first.name.to_string(),
@@ -521,7 +524,7 @@ impl RegisterExt for Register {
             if offsets.is_empty() {
                 panic!("Could not find {}:{}.{}", pname, &self.name, fspec);
             }
-            let (min_offset, name) = offsets.iter().min_by(|on1, on2| on1.0.cmp(&on2.0)).unwrap();
+            let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
             let name = make_ev_name(name, usage);
             for ftag in self.iter_fields(fspec) {
                 if ftag.bit_range.offset == *min_offset {

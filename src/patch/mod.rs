@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use svd_parser::svd::{
     addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
     AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, Cpu, CpuBuilder, Endian, EnumeratedValue,
-    EnumeratedValues, EnumeratedValuesBuilder, Field, FieldInfo, FieldInfoBuilder, Interrupt,
-    PeripheralInfo, PeripheralInfoBuilder, Register, RegisterCluster, RegisterInfo,
-    RegisterInfoBuilder, RegisterProperties, Usage, ValidateLevel,
+    EnumeratedValues, EnumeratedValuesBuilder, FieldInfo, FieldInfoBuilder, Interrupt,
+    PeripheralInfo, PeripheralInfoBuilder, RegisterCluster, RegisterInfo, RegisterInfoBuilder,
+    RegisterProperties, Usage, ValidateLevel,
 };
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
@@ -292,7 +292,7 @@ fn make_address_block(h: &Hash) -> AddressBlockBuilder {
         ab = ab.offset(offset)
     }
     if let Some(size) = h.get_u32("size") {
-        ab = ab.offset(size)
+        ab = ab.size(size)
     }
     if let Some(usage) = h.get_str("usage").and_then(AddressBlockUsage::parse_str) {
         ab = ab.usage(usage)
@@ -328,12 +328,11 @@ fn make_register(radd: &Hash) -> RegisterInfoBuilder {
         .fields(radd.get_hash("fields").map(|h| {
             h.iter()
                 .map(|(fname, val)| {
-                    Field::Single(
-                        make_field(val.as_hash().unwrap())
-                            .name(fname.as_str().unwrap().into())
-                            .build(VAL_LVL)
-                            .unwrap(),
-                    )
+                    make_field(val.as_hash().unwrap())
+                        .name(fname.as_str().unwrap().into())
+                        .build(VAL_LVL)
+                        .unwrap()
+                        .single()
                 })
                 .collect()
         }));
@@ -372,23 +371,27 @@ fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
     int
 }
 
-fn make_peripheral(padd: &Hash) -> PeripheralInfoBuilder {
+fn make_peripheral(padd: &Hash, modify: bool) -> PeripheralInfoBuilder {
     let mut pnew = PeripheralInfo::builder()
         .display_name(padd.get_string("displayName"))
         .version(padd.get_string("version"))
         .description(padd.get_string("description"))
         .group_name(padd.get_string("groupName"))
-        .interrupt(padd.get_hash("interrupts").map(|value| {
-            value
-                .iter()
-                .map(|(iname, val)| {
-                    make_interrupt(val.as_hash().unwrap())
-                        .name(iname.as_str().map(String::from).unwrap())
-                        .build(VAL_LVL)
-                        .unwrap()
-                })
-                .collect()
-        }));
+        .interrupt(if !modify {
+            padd.get_hash("interrupts").map(|value| {
+                value
+                    .iter()
+                    .map(|(iname, val)| {
+                        make_interrupt(val.as_hash().unwrap())
+                            .name(iname.as_str().map(String::from).unwrap())
+                            .build(VAL_LVL)
+                            .unwrap()
+                    })
+                    .collect()
+            })
+        } else {
+            None
+        });
     if let Some(name) = padd.get_str("name") {
         pnew = pnew.name(name.into());
     }
@@ -400,23 +403,26 @@ fn make_peripheral(padd: &Hash) -> PeripheralInfoBuilder {
         pnew.derived_from(Some(derived.into()))
     } else {
         pnew.default_register_properties(get_register_properties(padd))
-            .address_block(
+            .address_block(if !modify {
                 padd.get_hash("addressBlock")
                     .map(|value| vec![make_address_block(value).build(VAL_LVL).unwrap()])
                     .or_else(|| {
                         padd.get_vec("addressBlocks")
                             .map(|value| make_address_blocks(value))
-                    }),
-            )
+                    })
+            } else {
+                None
+            })
             .registers(padd.get_hash("registers").map(|h| {
                 h.iter()
                     .map(|(rname, val)| {
-                        RegisterCluster::Register(Register::Single(
+                        RegisterCluster::Register(
                             make_register(val.as_hash().unwrap())
                                 .name(rname.as_str().unwrap().into())
                                 .build(VAL_LVL)
-                                .unwrap(),
-                        ))
+                                .unwrap()
+                                .single(),
+                        )
                     })
                     .collect()
             }))
@@ -434,11 +440,11 @@ fn make_cpu(cmod: &Hash) -> CpuBuilder {
         .vtor_present(cmod.get_bool("vtorPresent"))
         .device_num_interrupts(cmod.get_u32("deviceNumInterrupts"))
         .sau_num_regions(cmod.get_u32("sauNumRegions"));
-    if let Some(name) = cmod.get_str("name") {
-        cpu = cpu.name(name.into());
+    if let Some(name) = cmod.get_string("name") {
+        cpu = cpu.name(name);
     }
-    if let Some(revision) = cmod.get_str("revision") {
-        cpu = cpu.revision(revision.into());
+    if let Some(revision) = cmod.get_string("revision") {
+        cpu = cpu.revision(revision);
     }
     if let Some(endian) = cmod.get_str("endian").and_then(Endian::parse_str) {
         cpu = cpu.endian(endian);

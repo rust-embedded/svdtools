@@ -7,7 +7,7 @@ use super::modify_register_properties;
 use super::peripheral::PeripheralExt;
 use super::yaml_ext::{parse_i64, GetVal};
 use super::{abspath, matchname, VAL_LVL};
-use super::{make_cpu, make_peripheral};
+use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 
 pub struct PerIter<'a, 'b> {
     it: std::slice::IterMut<'a, Peripheral>,
@@ -216,7 +216,30 @@ impl DeviceExt for Device {
 
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) {
         for ptag in self.iter_peripherals(pspec, true) {
-            ptag.modify_from(make_peripheral(pmod), VAL_LVL).unwrap();
+            ptag.modify_from(make_peripheral(pmod, true), VAL_LVL)
+                .unwrap();
+            if let Some(ints) = pmod.get_hash("interrupts") {
+                for (iname, val) in ints {
+                    let iname = iname.as_str().unwrap();
+                    let int = make_interrupt(val.as_hash().unwrap());
+                    for i in &mut ptag.interrupt {
+                        if i.name == iname {
+                            i.modify_from(int, VAL_LVL).unwrap();
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(abmod) = pmod.get_hash("addressBlock") {
+                let v = &mut ptag.address_block;
+                let ab = make_address_block(abmod);
+                match v.as_deref_mut() {
+                    Some([adb]) => adb.modify_from(ab, VAL_LVL).unwrap(),
+                    _ => *v = Some(vec![ab.build(VAL_LVL).unwrap()]),
+                }
+            } else if let Some(abmod) = pmod.get_vec("addressBlocks") {
+                ptag.address_block = Some(make_address_blocks(abmod));
+            }
         }
     }
 
@@ -226,7 +249,7 @@ impl DeviceExt for Device {
         }
 
         self.peripherals.push(
-            make_peripheral(padd)
+            make_peripheral(padd, false)
                 .name(pname.to_string())
                 .build(VAL_LVL)
                 .unwrap()
