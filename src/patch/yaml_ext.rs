@@ -113,7 +113,16 @@ type HashIter<'a> = OptIter<(&'a Yaml, &'a Yaml), linked_hash_map::Iter<'a, Yaml
 pub trait GetVal {
     fn get_bool<K: ToYaml>(&self, k: K) -> Option<bool>;
     fn get_i64<K: ToYaml>(&self, k: K) -> Option<i64>;
+    fn get_u64<K: ToYaml>(&self, k: K) -> Option<u64> {
+        self.get_i64(k).map(|v| v as u64)
+    }
+    fn get_u32<K: ToYaml>(&self, k: K) -> Option<u32> {
+        self.get_i64(k).map(|v| v as u32)
+    }
     fn get_str<K: ToYaml>(&self, k: K) -> Option<&str>;
+    fn get_string<K: ToYaml>(&self, k: K) -> Option<String> {
+        self.get_str(k).map(String::from)
+    }
     fn get_hash<K: ToYaml>(&self, k: K) -> Option<&Hash>;
     fn hash_iter<'a, K: ToYaml>(&'a self, k: K) -> HashIter<'a>;
     fn get_vec<K: ToYaml>(&self, k: K) -> Option<&Vec<Yaml>>;

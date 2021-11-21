@@ -1,13 +1,13 @@
-use svd_parser::svd::{Cpu, Device, Endian, Peripheral, PeripheralInfo};
+use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::yaml::Hash;
 
 use std::{fs::File, io::Read, path::Path};
 
-use super::make_peripheral;
 use super::modify_register_properties;
 use super::peripheral::PeripheralExt;
 use super::yaml_ext::{parse_i64, GetVal};
 use super::{abspath, matchname, VAL_LVL};
+use super::{make_cpu, make_peripheral};
 
 pub struct PerIter<'a, 'b> {
     it: std::slice::IterMut<'a, Peripheral>,
@@ -206,28 +206,7 @@ impl DeviceExt for Device {
     }
 
     fn modify_cpu(&mut self, cmod: &Hash) {
-        let mut cpu = Cpu::builder();
-        if let Some(name) = cmod.get_str("name") {
-            cpu = cpu.name(name.into());
-        }
-        if let Some(revision) = cmod.get_str("revision") {
-            cpu = cpu.revision(revision.into());
-        }
-        if let Some(endian) = cmod.get_str("endian").and_then(Endian::parse_str) {
-            cpu = cpu.endian(endian);
-        }
-        if let Some(mpu_present) = cmod.get_bool("mpuPresent") {
-            cpu = cpu.mpu_present(mpu_present);
-        }
-        if let Some(fpu_present) = cmod.get_bool("fpuPresent") {
-            cpu = cpu.fpu_present(fpu_present);
-        }
-        if let Some(nvic_priority_bits) = cmod.get_i64("nvicPrioBits") {
-            cpu = cpu.nvic_priority_bits(nvic_priority_bits as u32);
-        }
-        if let Some(has_vendor_systick) = cmod.get_bool("vendorSystickConfig") {
-            cpu = cpu.has_vendor_systick(has_vendor_systick);
-        }
+        let cpu = make_cpu(cmod);
         if let Some(c) = self.cpu.as_mut() {
             c.modify_from(cpu, VAL_LVL).unwrap();
         } else {

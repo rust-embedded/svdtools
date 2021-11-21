@@ -6,10 +6,10 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use svd_parser::svd::{
     addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
-    AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, EnumeratedValue, EnumeratedValues,
-    EnumeratedValuesBuilder, Field, FieldInfo, FieldInfoBuilder, Interrupt, PeripheralInfo,
-    PeripheralInfoBuilder, Register, RegisterCluster, RegisterInfo, RegisterInfoBuilder,
-    RegisterProperties, Usage, ValidateLevel,
+    AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, Cpu, CpuBuilder, Endian, EnumeratedValue,
+    EnumeratedValues, EnumeratedValuesBuilder, Field, FieldInfo, FieldInfoBuilder, Interrupt,
+    PeripheralInfo, PeripheralInfoBuilder, Register, RegisterCluster, RegisterInfo,
+    RegisterInfoBuilder, RegisterProperties, Usage, ValidateLevel,
 };
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
@@ -209,10 +209,10 @@ fn modify_register_properties(p: &mut RegisterProperties, f: &str, val: &Yaml) {
 
 fn get_register_properties(h: &Hash) -> RegisterProperties {
     RegisterProperties::new()
-        .size(h.get_i64("size").map(|v| v as u32))
+        .size(h.get_u32("size"))
         .access(h.get_str("access").and_then(Access::parse_str))
-        .reset_value(h.get_i64("resetValue").map(|v| v as u64))
-        .reset_mask(h.get_i64("resetMask").map(|v| v as u64))
+        .reset_value(h.get_u64("resetValue"))
+        .reset_mask(h.get_u64("resetMask"))
 }
 
 fn make_ev_name(name: &str, usage: Usage) -> String {
@@ -287,19 +287,22 @@ fn make_address_blocks(value: &Vec<Yaml>) -> Vec<AddressBlock> {
         .collect::<Vec<_>>()
 }
 fn make_address_block(h: &Hash) -> AddressBlockBuilder {
-    AddressBlock::builder()
-        .offset(h.get_i64("offset").unwrap() as u32)
-        .size(h.get_i64("size").unwrap() as u32)
-        .usage(
-            h.get_str("usage")
-                .and_then(AddressBlockUsage::parse_str)
-                .unwrap(),
-        )
+    let mut ab = AddressBlock::builder();
+    if let Some(offset) = h.get_u32("offset") {
+        ab = ab.offset(offset)
+    }
+    if let Some(size) = h.get_u32("size") {
+        ab = ab.offset(size)
+    }
+    if let Some(usage) = h.get_str("usage").and_then(AddressBlockUsage::parse_str) {
+        ab = ab.usage(usage)
+    }
+    ab
 }
 
 fn make_field(fadd: &Hash) -> FieldInfoBuilder {
     let mut fnew = FieldInfo::builder()
-        .description(fadd.get_str("description").map(String::from))
+        .description(fadd.get_string("description"))
         .access(fadd.get_str("access").and_then(Access::parse_str));
 
     if let Some(name) = fadd.get_str("name") {
@@ -317,10 +320,10 @@ fn make_field(fadd: &Hash) -> FieldInfoBuilder {
 
 fn make_register(radd: &Hash) -> RegisterInfoBuilder {
     let mut rnew = RegisterInfo::builder()
-        .display_name(radd.get_str("displayName").map(String::from))
-        .description(radd.get_str("description").map(String::from))
-        .alternate_group(radd.get_str("alternateGroup").map(String::from))
-        .alternate_register(radd.get_str("alternateRegister").map(String::from))
+        .display_name(radd.get_string("displayName"))
+        .description(radd.get_string("description"))
+        .alternate_group(radd.get_string("alternateGroup"))
+        .alternate_register(radd.get_string("alternateRegister"))
         .properties(get_register_properties(radd))
         .fields(radd.get_hash("fields").map(|h| {
             h.iter()
@@ -346,7 +349,7 @@ fn make_register(radd: &Hash) -> RegisterInfoBuilder {
 
 fn make_cluster(cadd: &Hash) -> ClusterInfoBuilder {
     let mut cnew = ClusterInfo::builder()
-        .description(cadd.get_str("description").map(String::from))
+        .description(cadd.get_string("description"))
         .default_register_properties(get_register_properties(cadd));
 
     if let Some(name) = cadd.get_str("name") {
@@ -359,8 +362,8 @@ fn make_cluster(cadd: &Hash) -> ClusterInfoBuilder {
 }
 
 fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
-    let mut int = Interrupt::builder().description(iadd.get_str("description").map(String::from));
-    if let Some(name) = iadd.get_str("name").map(String::from) {
+    let mut int = Interrupt::builder().description(iadd.get_string("description"));
+    if let Some(name) = iadd.get_string("name") {
         int = int.name(name)
     }
     if let Some(value) = iadd.get_i64("value") {
@@ -371,10 +374,10 @@ fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
 
 fn make_peripheral(padd: &Hash) -> PeripheralInfoBuilder {
     let mut pnew = PeripheralInfo::builder()
-        .display_name(padd.get_str("displayName").map(String::from))
-        .version(padd.get_str("version").map(String::from))
-        .description(padd.get_str("description").map(String::from))
-        .group_name(padd.get_str("groupName").map(String::from))
+        .display_name(padd.get_string("displayName"))
+        .version(padd.get_string("version"))
+        .description(padd.get_string("description"))
+        .group_name(padd.get_string("groupName"))
         .interrupt(padd.get_hash("interrupts").map(|value| {
             value
                 .iter()
@@ -418,6 +421,41 @@ fn make_peripheral(padd: &Hash) -> PeripheralInfoBuilder {
                     .collect()
             }))
     }
+}
+
+fn make_cpu(cmod: &Hash) -> CpuBuilder {
+    let mut cpu = Cpu::builder()
+        .fpu_double_precision(cmod.get_bool("fpuDP"))
+        .dsp_present(cmod.get_bool("dspPresent"))
+        .icache_present(cmod.get_bool("icachePresent"))
+        .dcache_present(cmod.get_bool("dcachePresent"))
+        .itcm_present(cmod.get_bool("itcmPresent"))
+        .dtcm_present(cmod.get_bool("dtcmPresent"))
+        .vtor_present(cmod.get_bool("vtorPresent"))
+        .device_num_interrupts(cmod.get_u32("deviceNumInterrupts"))
+        .sau_num_regions(cmod.get_u32("sauNumRegions"));
+    if let Some(name) = cmod.get_str("name") {
+        cpu = cpu.name(name.into());
+    }
+    if let Some(revision) = cmod.get_str("revision") {
+        cpu = cpu.revision(revision.into());
+    }
+    if let Some(endian) = cmod.get_str("endian").and_then(Endian::parse_str) {
+        cpu = cpu.endian(endian);
+    }
+    if let Some(mpu_present) = cmod.get_bool("mpuPresent") {
+        cpu = cpu.mpu_present(mpu_present);
+    }
+    if let Some(fpu_present) = cmod.get_bool("fpuPresent") {
+        cpu = cpu.fpu_present(fpu_present);
+    }
+    if let Some(nvic_priority_bits) = cmod.get_i64("nvicPrioBits") {
+        cpu = cpu.nvic_priority_bits(nvic_priority_bits as u32);
+    }
+    if let Some(has_vendor_systick) = cmod.get_bool("vendorSystickConfig") {
+        cpu = cpu.has_vendor_systick(has_vendor_systick);
+    }
+    cpu
 }
 
 /// Find left and right indices of enumeration token in specification string
