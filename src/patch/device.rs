@@ -1,4 +1,4 @@
-use svd_parser::svd::{Cpu, Device, Endian, Peripheral};
+use svd_parser::svd::{Cpu, Device, Endian, Peripheral, PeripheralInfo};
 use yaml_rust::yaml::Hash;
 
 use std::{fs::File, io::Read, path::Path};
@@ -128,9 +128,7 @@ impl DeviceExt for Device {
                 "headerDefinitionsPrefix" => {
                     todo!()
                 }
-                "addressUnitBits" => {
-                    todo!()
-                }
+                "addressUnitBits" => self.address_unit_bits = parse_i64(val).map(|v| v as u32),
                 "width" => self.width = parse_i64(val).map(|v| v as u32),
                 "size" | "access" | "protection" | "resetValue" | "resetMask" => {
                     modify_register_properties(&mut self.default_register_properties, key, val)
@@ -252,7 +250,8 @@ impl DeviceExt for Device {
             make_peripheral(padd)
                 .name(pname.to_string())
                 .build(VAL_LVL)
-                .unwrap(),
+                .unwrap()
+                .single(),
         );
     }
 
@@ -270,7 +269,7 @@ impl DeviceExt for Device {
             .find(|p| &p.name == pname)
             .unwrap_or_else(|| panic!("peripheral {} not found", pname))
             .modify_from(
-                Peripheral::builder().derived_from(Some(pderive.into())),
+                PeripheralInfo::builder().derived_from(Some(pderive.into())),
                 VAL_LVL,
             )
             .unwrap();
@@ -291,7 +290,7 @@ impl DeviceExt for Device {
             .unwrap_or_else(|| panic!("peripheral {} not found", pold));
         let mut d = std::mem::replace(
             old,
-            Peripheral::builder()
+            PeripheralInfo::builder()
                 .name(pold.into())
                 .base_address(old.base_address)
                 .interrupt(if old.interrupt.is_empty() {
@@ -301,7 +300,8 @@ impl DeviceExt for Device {
                 })
                 .derived_from(Some(pnew.into()))
                 .build(VAL_LVL)
-                .unwrap(),
+                .unwrap()
+                .single(),
         );
         let new = self
             .peripherals

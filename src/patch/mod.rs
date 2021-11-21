@@ -5,11 +5,11 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use svd_parser::svd::{
-    clusterinfo::ClusterInfoBuilder, enumeratedvalues::EnumeratedValuesBuilder,
-    fieldinfo::FieldInfoBuilder, peripheral::PeripheralBuilder, registerinfo::RegisterInfoBuilder,
-    Access, AddressBlock, AddressBlockUsage, ClusterInfo, EnumeratedValue, EnumeratedValues, Field,
-    FieldInfo, Interrupt, Peripheral, Register, RegisterCluster, RegisterInfo, RegisterProperties,
-    Usage, ValidateLevel,
+    addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
+    AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, EnumeratedValue, EnumeratedValues,
+    EnumeratedValuesBuilder, Field, FieldInfo, FieldInfoBuilder, Interrupt, PeripheralInfo,
+    PeripheralInfoBuilder, Register, RegisterCluster, RegisterInfo, RegisterInfoBuilder,
+    RegisterProperties, Usage, ValidateLevel,
 };
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
@@ -279,18 +279,22 @@ fn make_derived_enumerated_values(name: &str) -> EnumeratedValues {
 fn make_address_blocks(value: &Vec<Yaml>) -> Vec<AddressBlock> {
     value
         .iter()
-        .map(|h| make_address_block(h.as_hash().unwrap()))
+        .map(|h| {
+            make_address_block(h.as_hash().unwrap())
+                .build(VAL_LVL)
+                .unwrap()
+        })
         .collect::<Vec<_>>()
 }
-fn make_address_block(h: &Hash) -> AddressBlock {
-    AddressBlock {
-        offset: h.get_i64("offset").unwrap() as u32,
-        size: h.get_i64("size").unwrap() as u32,
-        usage: h
-            .get_str("usage")
-            .and_then(AddressBlockUsage::parse_str)
-            .unwrap(),
-    }
+fn make_address_block(h: &Hash) -> AddressBlockBuilder {
+    AddressBlock::builder()
+        .offset(h.get_i64("offset").unwrap() as u32)
+        .size(h.get_i64("size").unwrap() as u32)
+        .usage(
+            h.get_str("usage")
+                .and_then(AddressBlockUsage::parse_str)
+                .unwrap(),
+        )
 }
 
 fn make_field(fadd: &Hash) -> FieldInfoBuilder {
@@ -354,19 +358,19 @@ fn make_cluster(cadd: &Hash) -> ClusterInfoBuilder {
     cnew
 }
 
-fn make_interrupt(iname: &str, iadd: &Hash) -> Interrupt {
-    Interrupt {
-        name: iname.into(),
-        description: iadd.get_str("description").map(String::from),
-        value: iadd
-            .get_i64("value")
-            .unwrap_or_else(|| panic!("value is absent for interrupt {}", iname))
-            as u32,
+fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
+    let mut int = Interrupt::builder().description(iadd.get_str("description").map(String::from));
+    if let Some(name) = iadd.get_str("name").map(String::from) {
+        int = int.name(name)
     }
+    if let Some(value) = iadd.get_i64("value") {
+        int = int.value(value as u32)
+    }
+    int
 }
 
-fn make_peripheral(padd: &Hash) -> PeripheralBuilder {
-    let mut pnew = Peripheral::builder()
+fn make_peripheral(padd: &Hash) -> PeripheralInfoBuilder {
+    let mut pnew = PeripheralInfo::builder()
         .display_name(padd.get_str("displayName").map(String::from))
         .version(padd.get_str("version").map(String::from))
         .description(padd.get_str("description").map(String::from))
@@ -374,7 +378,12 @@ fn make_peripheral(padd: &Hash) -> PeripheralBuilder {
         .interrupt(padd.get_hash("interrupts").map(|value| {
             value
                 .iter()
-                .map(|(iname, val)| make_interrupt(iname.as_str().unwrap(), val.as_hash().unwrap()))
+                .map(|(iname, val)| {
+                    make_interrupt(val.as_hash().unwrap())
+                        .name(iname.as_str().map(String::from).unwrap())
+                        .build(VAL_LVL)
+                        .unwrap()
+                })
                 .collect()
         }));
     if let Some(name) = padd.get_str("name") {
@@ -390,7 +399,7 @@ fn make_peripheral(padd: &Hash) -> PeripheralBuilder {
         pnew.default_register_properties(get_register_properties(padd))
             .address_block(
                 padd.get_hash("addressBlock")
-                    .map(|value| vec![make_address_block(value)])
+                    .map(|value| vec![make_address_block(value).build(VAL_LVL).unwrap()])
                     .or_else(|| {
                         padd.get_vec("addressBlocks")
                             .map(|value| make_address_blocks(value))

@@ -224,24 +224,17 @@ impl PeripheralExt for Peripheral {
             self.name,
             iname
         );
-        self.interrupt.push(make_interrupt(iname, iadd));
+        self.interrupt.push(
+            make_interrupt(iadd)
+                .name(iname.into())
+                .build(VAL_LVL)
+                .unwrap(),
+        );
     }
 
     fn modify_interrupt(&mut self, ispec: &str, imod: &Hash) {
         for itag in self.iter_interrupts(ispec) {
-            if let Some(name) = imod.get_str("name") {
-                itag.name = name.into();
-            }
-            if let Some(description) = imod.get_str("description") {
-                itag.description = if description.is_empty() {
-                    None
-                } else {
-                    Some(description.into())
-                };
-            }
-            if let Some(value) = imod.get_i64("value") {
-                itag.value = value as u32;
-            }
+            itag.modify_from(make_interrupt(imod), VAL_LVL).unwrap();
         }
     }
 
@@ -355,6 +348,7 @@ impl PeripheralExt for Peripheral {
     }
 
     fn collect_in_array(&mut self, rspec: &str, rmod: &Hash) {
+        let pname = self.name.clone();
         if let Some(regs) = self.registers.as_mut() {
             let mut registers = Vec::new();
             let mut place = usize::MAX;
@@ -372,7 +366,7 @@ impl PeripheralExt for Peripheral {
                 }
             }
             if registers.is_empty() {
-                panic!("{}: registers {} not found", self.name, rspec);
+                panic!("{}: registers {} not found", pname, rspec);
             }
             registers.sort_by(|r1, r2| r1.address_offset.cmp(&r2.address_offset));
             let dim = registers.len();
@@ -421,12 +415,13 @@ impl PeripheralExt for Peripheral {
                     .build(VAL_LVL)
                     .unwrap(),
             );
-            reg.process(rmod, &self.name, true);
+            reg.process(rmod, &pname, true);
             regs.insert(place, RegisterCluster::Register(reg));
         }
     }
 
     fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash) {
+        let pname = self.name.clone();
         if let Some(regs) = self.registers.as_mut() {
             let mut rdict = linked_hash_map::LinkedHashMap::new();
             let mut first = true;
@@ -460,7 +455,7 @@ impl PeripheralExt for Peripheral {
                     }
                 }
                 if registers.is_empty() {
-                    panic!("{}: registers {} not found", self.name, rspec);
+                    panic!("{}: registers {} not found", pname, rspec);
                 }
                 registers.sort_by(|r1, r2| r1.address_offset.cmp(&r2.address_offset));
                 let bitmasks = registers
@@ -520,7 +515,7 @@ impl PeripheralExt for Peripheral {
             for (rspec, mut registers) in rdict.into_iter() {
                 let mut reg = Register::Single(registers.swap_remove(0));
                 let rmod = cmod.get_hash(rspec.as_str()).unwrap();
-                reg.process(rmod, &self.name, true);
+                reg.process(rmod, &pname, true);
                 if let Some(name) = rmod.get_str("name") {
                     reg.name = name.into();
                 } else {
