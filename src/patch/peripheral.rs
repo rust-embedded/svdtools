@@ -281,7 +281,9 @@ impl PeripheralExt for Peripheral {
                 )
             })
             .clone();
-        let fixes = make_register(rderive).name(rname.into()).display_name(None);
+        let fixes = make_register(rderive)
+            .name(rname.into())
+            .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL).unwrap();
         if let Some(ptag) = self.reg_iter_mut().find(|r| &r.name == rname) {
