@@ -99,6 +99,16 @@ impl RegisterExt for Register {
                 .with_context(|| format!("Deleting fields matched to `{}`", fspec))?;
         }
 
+        // Handle strips
+        for prefix in rmod.str_vec_iter("_strip") {
+            self.strip_start(prefix)
+                .with_context(|| format!("Stripping prefix `{}` from field names", prefix))?;
+        }
+        for suffix in rmod.str_vec_iter("_strip_end") {
+            self.strip_end(suffix)
+                .with_context(|| format!("Stripping suffix `{}` from field names", suffix))?;
+        }
+
         // Handle field clearing
         for fspec in rmod.str_vec_iter("_clear") {
             self.clear_field(fspec)
@@ -154,16 +164,6 @@ impl RegisterExt for Register {
                 }
             }
             _ => {}
-        }
-
-        // Handle strips
-        for prefix in rmod.str_vec_iter("_strip") {
-            self.strip_start(prefix)
-                .with_context(|| format!("Stripping prefix `{}` from field names", prefix))?;
-        }
-        for suffix in rmod.str_vec_iter("_strip_end") {
-            self.strip_end(suffix)
-                .with_context(|| format!("Stripping suffix `{}` from field names", suffix))?;
         }
 
         // Handle fields

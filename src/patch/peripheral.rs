@@ -170,6 +170,16 @@ impl PeripheralExt for Peripheral {
                 .with_context(|| format!("Copying register `{}`", rname))?
         }
 
+        // Handle strips
+        for prefix in pmod.str_vec_iter("_strip") {
+            self.strip_start(prefix)
+                .with_context(|| format!("Stripping prefix `{}` from register names", prefix))?;
+        }
+        for suffix in pmod.str_vec_iter("_strip_end") {
+            self.strip_end(suffix)
+                .with_context(|| format!("Stripping suffix `{}` from register names", suffix))?;
+        }
+
         // Handle modifications
         for (rspec, rmod) in pmod.hash_iter("_modify") {
             let rmod = rmod.hash()?;
@@ -202,16 +212,6 @@ impl PeripheralExt for Peripheral {
                     .modify_register(rspec, rmod)
                     .with_context(|| format!("Modifying registers matched to `{}`", rspec))?,
             }
-        }
-
-        // Handle strips
-        for prefix in pmod.str_vec_iter("_strip") {
-            self.strip_start(prefix)
-                .with_context(|| format!("Stripping prefix `{}` from register names", prefix))?;
-        }
-        for suffix in pmod.str_vec_iter("_strip_end") {
-            self.strip_end(suffix)
-                .with_context(|| format!("Stripping suffix `{}` from register names", suffix))?;
         }
 
         // Handle field clearing

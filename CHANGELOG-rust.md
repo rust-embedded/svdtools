@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Move `_strip`, `_strip_end` before `_modify`
+
 ## [v0.2.5] 2022-07-23
 
 * update `svd-rs` crates to 0.14
