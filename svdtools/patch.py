@@ -912,7 +912,7 @@ class Peripheral:
             name = rmod["name"]
         else:
             name = rspec[:li] + "%s" + rspec[len(rspec) - ri :]
-        if dimIndex[0] == "0":
+        if not rmod.get("_keep_zero_character", "") and dimIndex[0] == "0":
             desc = rtag.find("description")
             desc.text = desc.text.replace(
                 nametag.text[li : len(nametag.text) - ri], "%s"

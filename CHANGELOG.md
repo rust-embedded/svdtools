@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+* Provide option to opt out of regex replace of 0's in description when creating arrays
+
 ## [v0.1.20] 2021-10-06
 
 * Remove displayName from newly derived registers, fixing #83 (#85)
