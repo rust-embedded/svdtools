@@ -240,7 +240,7 @@ impl RegisterExt for Register {
                 ftag.write_constraint = wc;
             }
             // For all other tags, just set the value
-            ftag.modify_from(make_field(fmod), VAL_LVL)?;
+            ftag.modify_from(make_field(fmod)?, VAL_LVL)?;
         }
         Ok(())
     }
@@ -254,7 +254,10 @@ impl RegisterExt for Register {
             ));
         }
         // TODO: add field arrays
-        let fnew = make_field(fadd).name(fname.into()).build(VAL_LVL)?.single();
+        let fnew = make_field(fadd)?
+            .name(fname.into())
+            .build(VAL_LVL)?
+            .single();
         self.fields.get_or_insert_with(Default::default).push(fnew);
         Ok(())
     }
@@ -379,7 +382,7 @@ impl RegisterExt for Register {
                 ));
             }
             let mut finfo = fields.swap_remove(0);
-            if let Some(name) = fmod.get_str("name") {
+            if let Some(name) = fmod.get_str("name")? {
                 finfo.name = name.into();
             } else {
                 finfo.name = format!("{}%s{}", &fspec[..li], &fspec[fspec.len() - ri..]);
@@ -419,12 +422,12 @@ impl RegisterExt for Register {
                 ))
             }
             (Some(first), None) => {
-                let name = if let Some(n) = fsplit.get_str("name") {
+                let name = if let Some(n) = fsplit.get_str("name")? {
                     n.to_string()
                 } else {
                     first.name.clone() + "%s"
                 };
-                let desc = if let Some(d) = fsplit.get_str("description") {
+                let desc = if let Some(d) = fsplit.get_str("description")? {
                     Some(d.to_string())
                 } else {
                     first.description.clone()
@@ -455,8 +458,8 @@ impl RegisterExt for Register {
     fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult {
         match fmod {
             Yaml::Hash(fmod) => {
-                let is_read = fmod.get_hash("_read");
-                let is_write = fmod.get_hash("_write");
+                let is_read = fmod.get_hash("_read")?;
+                let is_write = fmod.get_hash("_write")?;
                 if is_read.is_none() && is_write.is_none() {
                     self.process_field_enum(pname, fspec, fmod, Usage::ReadWrite)
                         .with_context(|| "Adding read-write enumeratedValues")?;
@@ -544,12 +547,12 @@ impl RegisterExt for Register {
         }
 
         let mut replace_if_exists = false;
-        if let Some(h) = fmod.get_hash("_replace_enum") {
+        if let Some(h) = fmod.get_hash("_replace_enum")? {
             fmod = h;
             replace_if_exists = true;
         }
 
-        if let Some(d) = fmod.get_str("_derivedFrom") {
+        if let Some(d) = fmod.get_str("_derivedFrom")? {
             // This is a derived enumeratedValues => Try to find the
             // original definition to extract its <usage>
             let mut derived_enums = self

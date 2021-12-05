@@ -4,14 +4,16 @@ use yaml_rust::{yaml::Hash, Yaml};
 /// Errors that can occur during building.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum YamlError {
-    #[error("Value is not a hash map (dictionary)")]
-    NotHash,
-    #[error("Value is not a vector (array)")]
-    NotVec,
-    #[error("Value is not a string")]
-    NotStr,
-    #[error("Value is not integer")]
-    NotInt,
+    #[error("Value is not a hash map (dictionary): {0:?}")]
+    NotHash(Yaml),
+    #[error("Value is not a vector (array): {0:?}")]
+    NotVec(Yaml),
+    #[error("Value is not a string: {0:?}")]
+    NotStr(Yaml),
+    #[error("Value is not integer: {0:?}")]
+    NotInt(Yaml),
+    #[error("Value is not boolean: {0:?}")]
+    NotBool(Yaml),
 }
 
 pub trait AsType {
@@ -20,26 +22,31 @@ pub trait AsType {
     fn vec(&self) -> Result<&Vec<Yaml>, YamlError>;
     fn str(&self) -> Result<&str, YamlError>;
     fn i64(&self) -> Result<i64, YamlError>;
+    fn bool(&self) -> Result<bool, YamlError>;
 }
 
 impl AsType for Yaml {
     fn hash_mut(&mut self) -> Result<&mut Hash, YamlError> {
         match self {
             Yaml::Hash(h) => Ok(h),
-            _ => Err(YamlError::NotHash),
+            _ => Err(YamlError::NotHash(self.clone())),
         }
     }
     fn hash(&self) -> Result<&Hash, YamlError> {
-        self.as_hash().ok_or_else(|| YamlError::NotHash)
+        self.as_hash()
+            .ok_or_else(|| YamlError::NotHash(self.clone()))
     }
     fn vec(&self) -> Result<&Vec<Yaml>, YamlError> {
-        self.as_vec().ok_or_else(|| YamlError::NotVec)
+        self.as_vec().ok_or_else(|| YamlError::NotVec(self.clone()))
     }
     fn str(&self) -> Result<&str, YamlError> {
-        self.as_str().ok_or_else(|| YamlError::NotStr)
+        self.as_str().ok_or_else(|| YamlError::NotStr(self.clone()))
     }
     fn i64(&self) -> Result<i64, YamlError> {
-        parse_i64(self).ok_or_else(|| YamlError::NotInt)
+        parse_i64(self).ok_or_else(|| YamlError::NotInt(self.clone()))
+    }
+    fn bool(&self) -> Result<bool, YamlError> {
+        parse_bool(self).ok_or_else(|| YamlError::NotBool(self.clone()))
     }
 }
 
@@ -140,42 +147,61 @@ impl<'a> Iterator for OverStringIter<'a> {
 type HashIter<'a> = OptIter<(&'a Yaml, &'a Yaml), linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
 pub trait GetVal {
-    fn get_bool<K: ToYaml>(&self, k: K) -> Option<bool>;
-    fn get_i64<K: ToYaml>(&self, k: K) -> Option<i64>;
-    fn get_u64<K: ToYaml>(&self, k: K) -> Option<u64> {
-        self.get_i64(k).map(|v| v as u64)
+    fn get_bool<K: ToYaml>(&self, k: K) -> Result<Option<bool>, YamlError>;
+    fn get_i64<K: ToYaml>(&self, k: K) -> Result<Option<i64>, YamlError>;
+    fn get_u64<K: ToYaml>(&self, k: K) -> Result<Option<u64>, YamlError> {
+        self.get_i64(k).map(|v| v.map(|v| v as u64))
     }
-    fn get_u32<K: ToYaml>(&self, k: K) -> Option<u32> {
-        self.get_i64(k).map(|v| v as u32)
+    fn get_u32<K: ToYaml>(&self, k: K) -> Result<Option<u32>, YamlError> {
+        self.get_i64(k).map(|v| v.map(|v| v as u32))
     }
-    fn get_str<K: ToYaml>(&self, k: K) -> Option<&str>;
-    fn get_string<K: ToYaml>(&self, k: K) -> Option<String> {
-        self.get_str(k).map(String::from)
+    fn get_str<K: ToYaml>(&self, k: K) -> Result<Option<&str>, YamlError>;
+    fn get_string<K: ToYaml>(&self, k: K) -> Result<Option<String>, YamlError> {
+        self.get_str(k).map(|v| v.map(From::from))
     }
-    fn get_hash<K: ToYaml>(&self, k: K) -> Option<&Hash>;
+    fn get_hash<K: ToYaml>(&self, k: K) -> Result<Option<&Hash>, YamlError>;
     fn hash_iter<'a, K: ToYaml>(&'a self, k: K) -> HashIter<'a>;
-    fn get_vec<K: ToYaml>(&self, k: K) -> Option<&Vec<Yaml>>;
+    fn get_vec<K: ToYaml>(&self, k: K) -> Result<Option<&Vec<Yaml>>, YamlError>;
     fn str_vec_iter<'a, K: ToYaml>(&'a self, k: K) -> OptIter<&'a str, OverStringIter<'a>>;
 }
 
 impl GetVal for Hash {
-    fn get_bool<K: ToYaml>(&self, k: K) -> Option<bool> {
-        self.get(&k.to_yaml()).and_then(parse_bool)
+    fn get_bool<K: ToYaml>(&self, k: K) -> Result<Option<bool>, YamlError> {
+        match self.get(&k.to_yaml()) {
+            None => Ok(None),
+            Some(v) => v.bool().map(|v| Some(v)),
+        }
     }
-    fn get_i64<K: ToYaml>(&self, k: K) -> Option<i64> {
-        self.get(&k.to_yaml()).and_then(parse_i64)
+    fn get_i64<K: ToYaml>(&self, k: K) -> Result<Option<i64>, YamlError> {
+        match self.get(&k.to_yaml()) {
+            None => Ok(None),
+            Some(v) => v.i64().map(|v| Some(v)),
+        }
     }
-    fn get_str<K: ToYaml>(&self, k: K) -> Option<&str> {
-        self.get(&k.to_yaml()).and_then(Yaml::as_str)
+    fn get_str<K: ToYaml>(&self, k: K) -> Result<Option<&str>, YamlError> {
+        match self.get(&k.to_yaml()) {
+            None => Ok(None),
+            Some(v) => v.str().map(|v| Some(v)),
+        }
     }
-    fn get_hash<K: ToYaml>(&self, k: K) -> Option<&Hash> {
-        self.get(&k.to_yaml()).and_then(Yaml::as_hash)
+    fn get_hash<K: ToYaml>(&self, k: K) -> Result<Option<&Hash>, YamlError> {
+        match self.get(&k.to_yaml()) {
+            None => Ok(None),
+            Some(v) => v.hash().map(|v| Some(v)),
+        }
     }
     fn hash_iter<'a, K: ToYaml>(&'a self, k: K) -> HashIter<'a> {
-        HashIter::new(self.get_hash(k).map(|h| h.iter()))
+        HashIter::new(
+            self.get(&k.to_yaml())
+                .and_then(Yaml::as_hash)
+                .map(|h| h.iter()),
+        )
     }
-    fn get_vec<K: ToYaml>(&self, k: K) -> Option<&Vec<Yaml>> {
-        self.get(&k.to_yaml()).and_then(Yaml::as_vec)
+    fn get_vec<K: ToYaml>(&self, k: K) -> Result<Option<&Vec<Yaml>>, YamlError> {
+        match self.get(&k.to_yaml()) {
+            None => Ok(None),
+            Some(v) => v.vec().map(|v| Some(v)),
+        }
     }
     fn str_vec_iter<'a, K: ToYaml>(&'a self, k: K) -> OptIter<&'a str, OverStringIter<'a>> {
         OptIter::new(self.get(&k.to_yaml()).map(|y| OverStringIter(y, None)))

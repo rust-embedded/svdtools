@@ -101,7 +101,7 @@ impl DeviceExt for Device {
             self.copy_peripheral(
                 pname,
                 val.hash()?,
-                Path::new(device.get_str("_path").unwrap()),
+                Path::new(device.get_str("_path")?.unwrap()),
             )
             .with_context(|| format!("Copying peripheral `{}`", pname))?;
         }
@@ -197,7 +197,11 @@ impl DeviceExt for Device {
     }
 
     fn copy_peripheral(&mut self, pname: &str, pmod: &Hash, path: &Path) -> PatchResult {
-        let pcopysrc = pmod.get_str("from").unwrap().split(":").collect::<Vec<_>>();
+        let pcopysrc = pmod
+            .get_str("from")?
+            .unwrap()
+            .split(":")
+            .collect::<Vec<_>>();
         let mut new = match pcopysrc.as_slice() {
             [ppath, pcopyname] => {
                 let f = File::open(abspath(path, &Path::new(ppath))).unwrap();
@@ -236,7 +240,7 @@ impl DeviceExt for Device {
     }
 
     fn modify_cpu(&mut self, cmod: &Hash) -> PatchResult {
-        let cpu = make_cpu(cmod);
+        let cpu = make_cpu(cmod)?;
         if let Some(c) = self.cpu.as_mut() {
             c.modify_from(cpu, VAL_LVL)?;
         } else {
@@ -248,10 +252,10 @@ impl DeviceExt for Device {
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult {
         for ptag in self.iter_peripherals(pspec, true) {
             ptag.modify_from(make_peripheral(pmod, true)?, VAL_LVL)?;
-            if let Some(ints) = pmod.get_hash("interrupts") {
+            if let Some(ints) = pmod.get_hash("interrupts")? {
                 for (iname, val) in ints {
                     let iname = iname.str()?;
-                    let int = make_interrupt(val.hash()?);
+                    let int = make_interrupt(val.hash()?)?;
                     for i in &mut ptag.interrupt {
                         if i.name == iname {
                             i.modify_from(int, VAL_LVL)?;
@@ -260,14 +264,14 @@ impl DeviceExt for Device {
                     }
                 }
             }
-            if let Some(abmod) = pmod.get_hash("addressBlock") {
+            if let Some(abmod) = pmod.get_hash("addressBlock").ok().flatten() {
                 let v = &mut ptag.address_block;
-                let ab = make_address_block(abmod);
+                let ab = make_address_block(abmod)?;
                 match v.as_deref_mut() {
                     Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
                     _ => *v = Some(vec![ab.build(VAL_LVL)?]),
                 }
-            } else if let Some(abmod) = pmod.get_vec("addressBlocks") {
+            } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
                 ptag.address_block = Some(make_address_blocks(abmod)?);
             }
         }

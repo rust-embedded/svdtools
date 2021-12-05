@@ -39,7 +39,7 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
     let svdpath = abspath(
         &yaml_file,
         &Path::new(
-            root.get_str("_svd")
+            root.get_str("_svd")?
                 .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
     );
@@ -78,7 +78,7 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
     let y_path = "_path".to_yaml();
     let mut included = vec![];
     let self_path = PathBuf::from(parent.get(&y_path).unwrap().str()?);
-    let inc = parent.get_vec("_include").unwrap_or(&Vec::new()).clone();
+    let inc = parent.get_vec("_include")?.unwrap_or(&Vec::new()).clone();
     for relpath in inc {
         let path = abspath(&self_path, Path::new(relpath.as_str().unwrap()));
         if included.contains(&path) {
@@ -212,12 +212,12 @@ fn modify_register_properties(p: &mut RegisterProperties, f: &str, val: &Yaml) -
     Ok(())
 }
 
-fn get_register_properties(h: &Hash) -> RegisterProperties {
-    RegisterProperties::new()
-        .size(h.get_u32("size"))
-        .access(h.get_str("access").and_then(Access::parse_str))
-        .reset_value(h.get_u64("resetValue"))
-        .reset_mask(h.get_u64("resetMask"))
+fn get_register_properties(h: &Hash) -> Result<RegisterProperties> {
+    Ok(RegisterProperties::new()
+        .size(h.get_u32("size")?)
+        .access(h.get_str("access")?.and_then(Access::parse_str))
+        .reset_value(h.get_u64("resetValue")?)
+        .reset_mask(h.get_u64("resetMask")?))
 }
 
 fn make_ev_name(name: &str, usage: Usage) -> Result<String> {
@@ -290,55 +290,55 @@ fn make_derived_enumerated_values(name: &str) -> Result<EnumeratedValues> {
 fn make_address_blocks(value: &Vec<Yaml>) -> Result<Vec<AddressBlock>> {
     let mut blocks = Vec::new();
     for h in value {
-        blocks.push(make_address_block(h.hash()?).build(VAL_LVL)?);
+        blocks.push(make_address_block(h.hash()?)?.build(VAL_LVL)?);
     }
     Ok(blocks)
 }
-fn make_address_block(h: &Hash) -> AddressBlockBuilder {
+fn make_address_block(h: &Hash) -> Result<AddressBlockBuilder> {
     let mut ab = AddressBlock::builder();
-    if let Some(offset) = h.get_u32("offset") {
+    if let Some(offset) = h.get_u32("offset")? {
         ab = ab.offset(offset)
     }
-    if let Some(size) = h.get_u32("size") {
+    if let Some(size) = h.get_u32("size")? {
         ab = ab.size(size)
     }
-    if let Some(usage) = h.get_str("usage").and_then(AddressBlockUsage::parse_str) {
+    if let Some(usage) = h.get_str("usage")?.and_then(AddressBlockUsage::parse_str) {
         ab = ab.usage(usage)
     }
-    ab
+    Ok(ab)
 }
 
-fn make_field(fadd: &Hash) -> FieldInfoBuilder {
+fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
-        .description(fadd.get_string("description"))
-        .access(fadd.get_str("access").and_then(Access::parse_str));
+        .description(fadd.get_string("description")?)
+        .access(fadd.get_str("access")?.and_then(Access::parse_str));
 
-    if let Some(name) = fadd.get_str("name") {
+    if let Some(name) = fadd.get_str("name")? {
         fnew = fnew.name(name.into());
     }
-    if let Some(offset) = fadd.get_i64("bitOffset") {
+    if let Some(offset) = fadd.get_i64("bitOffset")? {
         fnew = fnew.bit_offset(offset as u32)
     }
-    if let Some(width) = fadd.get_i64("bitWidth") {
+    if let Some(width) = fadd.get_i64("bitWidth")? {
         fnew = fnew.bit_width(width as u32)
     }
 
-    fnew
+    Ok(fnew)
 }
 
 fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
-        .display_name(radd.get_string("displayName"))
-        .description(radd.get_string("description"))
-        .alternate_group(radd.get_string("alternateGroup"))
-        .alternate_register(radd.get_string("alternateRegister"))
-        .properties(get_register_properties(radd))
-        .fields(match radd.get_hash("fields") {
+        .display_name(radd.get_string("displayName")?)
+        .description(radd.get_string("description")?)
+        .alternate_group(radd.get_string("alternateGroup")?)
+        .alternate_register(radd.get_string("alternateRegister")?)
+        .properties(get_register_properties(radd)?)
+        .fields(match radd.get_hash("fields")? {
             Some(h) => {
                 let mut fields = Vec::new();
                 for (fname, val) in h {
                     fields.push(
-                        make_field(val.hash()?)
+                        make_field(val.hash()?)?
                             .name(fname.str()?.into())
                             .build(VAL_LVL)?
                             .single(),
@@ -349,53 +349,53 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
             _ => None,
         });
 
-    if let Some(name) = radd.get_str("name") {
+    if let Some(name) = radd.get_str("name")? {
         rnew = rnew.name(name.into());
     }
-    if let Some(address_offset) = radd.get_i64("addressOffset") {
+    if let Some(address_offset) = radd.get_i64("addressOffset")? {
         rnew = rnew.address_offset(address_offset as u32);
     }
     Ok(rnew)
 }
 
-fn make_cluster(cadd: &Hash) -> ClusterInfoBuilder {
+fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
-        .description(cadd.get_string("description"))
-        .default_register_properties(get_register_properties(cadd));
+        .description(cadd.get_string("description")?)
+        .default_register_properties(get_register_properties(cadd)?);
 
-    if let Some(name) = cadd.get_str("name") {
+    if let Some(name) = cadd.get_str("name")? {
         cnew = cnew.name(name.into());
     }
-    if let Some(address_offset) = cadd.get_i64("addressOffset") {
+    if let Some(address_offset) = cadd.get_i64("addressOffset")? {
         cnew = cnew.address_offset(address_offset as u32);
     }
-    cnew
+    Ok(cnew)
 }
 
-fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
-    let mut int = Interrupt::builder().description(iadd.get_string("description"));
-    if let Some(name) = iadd.get_string("name") {
+fn make_interrupt(iadd: &Hash) -> Result<InterruptBuilder> {
+    let mut int = Interrupt::builder().description(iadd.get_string("description")?);
+    if let Some(name) = iadd.get_string("name")? {
         int = int.name(name)
     }
-    if let Some(value) = iadd.get_i64("value") {
+    if let Some(value) = iadd.get_i64("value")? {
         int = int.value(value as u32)
     }
-    int
+    Ok(int)
 }
 
 fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
     let mut pnew = PeripheralInfo::builder()
-        .display_name(padd.get_string("displayName"))
-        .version(padd.get_string("version"))
-        .description(padd.get_string("description"))
-        .group_name(padd.get_string("groupName"))
+        .display_name(padd.get_string("displayName")?)
+        .version(padd.get_string("version")?)
+        .description(padd.get_string("description")?)
+        .group_name(padd.get_string("groupName")?)
         .interrupt(if !modify {
-            match padd.get_hash("interrupts") {
+            match padd.get_hash("interrupts")? {
                 Some(h) => {
                     let mut interupts = Vec::new();
                     for (iname, val) in h {
                         interupts.push(
-                            make_interrupt(val.hash()?)
+                            make_interrupt(val.hash()?)?
                                 .name(iname.str()?.into())
                                 .build(VAL_LVL)?,
                         );
@@ -407,22 +407,22 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
         } else {
             None
         });
-    if let Some(name) = padd.get_str("name") {
+    if let Some(name) = padd.get_str("name")? {
         pnew = pnew.name(name.into());
     }
-    if let Some(base_address) = padd.get_i64("baseAddress") {
+    if let Some(base_address) = padd.get_i64("baseAddress")? {
         pnew = pnew.base_address(base_address as u64);
     }
 
-    if let Some(derived) = padd.get_str("derivedFrom") {
+    if let Some(derived) = padd.get_str("derivedFrom")? {
         Ok(pnew.derived_from(Some(derived.into())))
     } else {
         Ok(pnew
-            .default_register_properties(get_register_properties(padd))
+            .default_register_properties(get_register_properties(padd)?)
             .address_block(if !modify {
-                if let Some(h) = padd.get_hash("addressBlock") {
-                    Some(vec![make_address_block(h).build(VAL_LVL)?])
-                } else if let Some(h) = padd.get_vec("addressBlocks") {
+                if let Some(h) = padd.get_hash("addressBlock").ok().flatten() {
+                    Some(vec![make_address_block(h)?.build(VAL_LVL)?])
+                } else if let Some(h) = padd.get_vec("addressBlocks").ok().flatten() {
                     Some(make_address_blocks(h)?)
                 } else {
                     None
@@ -430,7 +430,7 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
             } else {
                 None
             })
-            .registers(match padd.get_hash("registers") {
+            .registers(match padd.get_hash("registers")? {
                 Some(h) => {
                     let mut regs = Vec::new();
                     for (rname, val) in h.iter() {
@@ -448,39 +448,39 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
     }
 }
 
-fn make_cpu(cmod: &Hash) -> CpuBuilder {
+fn make_cpu(cmod: &Hash) -> Result<CpuBuilder> {
     let mut cpu = Cpu::builder()
-        .fpu_double_precision(cmod.get_bool("fpuDP"))
-        .dsp_present(cmod.get_bool("dspPresent"))
-        .icache_present(cmod.get_bool("icachePresent"))
-        .dcache_present(cmod.get_bool("dcachePresent"))
-        .itcm_present(cmod.get_bool("itcmPresent"))
-        .dtcm_present(cmod.get_bool("dtcmPresent"))
-        .vtor_present(cmod.get_bool("vtorPresent"))
-        .device_num_interrupts(cmod.get_u32("deviceNumInterrupts"))
-        .sau_num_regions(cmod.get_u32("sauNumRegions"));
-    if let Some(name) = cmod.get_string("name") {
+        .fpu_double_precision(cmod.get_bool("fpuDP")?)
+        .dsp_present(cmod.get_bool("dspPresent")?)
+        .icache_present(cmod.get_bool("icachePresent")?)
+        .dcache_present(cmod.get_bool("dcachePresent")?)
+        .itcm_present(cmod.get_bool("itcmPresent")?)
+        .dtcm_present(cmod.get_bool("dtcmPresent")?)
+        .vtor_present(cmod.get_bool("vtorPresent")?)
+        .device_num_interrupts(cmod.get_u32("deviceNumInterrupts")?)
+        .sau_num_regions(cmod.get_u32("sauNumRegions")?);
+    if let Some(name) = cmod.get_string("name")? {
         cpu = cpu.name(name);
     }
-    if let Some(revision) = cmod.get_string("revision") {
+    if let Some(revision) = cmod.get_string("revision")? {
         cpu = cpu.revision(revision);
     }
-    if let Some(endian) = cmod.get_str("endian").and_then(Endian::parse_str) {
+    if let Some(endian) = cmod.get_str("endian")?.and_then(Endian::parse_str) {
         cpu = cpu.endian(endian);
     }
-    if let Some(mpu_present) = cmod.get_bool("mpuPresent") {
+    if let Some(mpu_present) = cmod.get_bool("mpuPresent")? {
         cpu = cpu.mpu_present(mpu_present);
     }
-    if let Some(fpu_present) = cmod.get_bool("fpuPresent") {
+    if let Some(fpu_present) = cmod.get_bool("fpuPresent")? {
         cpu = cpu.fpu_present(fpu_present);
     }
-    if let Some(nvic_priority_bits) = cmod.get_i64("nvicPrioBits") {
+    if let Some(nvic_priority_bits) = cmod.get_i64("nvicPrioBits")? {
         cpu = cpu.nvic_priority_bits(nvic_priority_bits as u32);
     }
-    if let Some(has_vendor_systick) = cmod.get_bool("vendorSystickConfig") {
+    if let Some(has_vendor_systick) = cmod.get_bool("vendorSystickConfig")? {
         cpu = cpu.has_vendor_systick(has_vendor_systick);
     }
-    cpu
+    Ok(cpu)
 }
 
 /// Find left and right indices of enumeration token in specification string
