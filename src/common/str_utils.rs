@@ -28,7 +28,7 @@ mod tests {
     #[test]
     fn correctly_format_address() {
         let addr: u32 = 0xde4dBeeF;
-        let formatted_addr = format_address(addr);
+        let formatted_addr = format_address(addr as u64);
         assert_eq!(formatted_addr, "0xDE4DBEEF");
     }
 }

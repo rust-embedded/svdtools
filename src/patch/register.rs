@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context};
 use svd_parser::svd::{
     BitRange, DimElement, EnumeratedValues, Field, FieldInfo, Register, RegisterInfo, Usage,
     WriteConstraint, WriteConstraintRange,
@@ -5,8 +6,8 @@ use svd_parser::svd::{
 use yaml_rust::{yaml::Hash, Yaml};
 
 use super::iterators::{MatchIterMut, Matched, OptIter};
-use super::yaml_ext::{parse_i64, GetVal, ToYaml};
-use super::{check_offsets, matchname, spec_ind, VAL_LVL};
+use super::yaml_ext::{AsType, GetVal, ToYaml};
+use super::{check_offsets, matchname, spec_ind, PatchResult, VAL_LVL};
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
 pub type FieldIterMut<'a> = OptIter<&'a mut Field, std::slice::IterMut<'a, Field>>;
@@ -32,16 +33,16 @@ impl RegisterInfoExt for RegisterInfo {
 /// Collecting methods for processing register contents
 pub trait RegisterExt {
     /// Work through a register, handling all fields
-    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool);
+    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) -> PatchResult;
 
     /// Add fname given by fadd to rtag
-    fn add_field(&mut self, fname: &str, fadd: &Hash);
+    fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult;
 
     /// Delete fields matched by fspec inside rtag
-    fn delete_field(&mut self, fspec: &str);
+    fn delete_field(&mut self, fspec: &str) -> PatchResult;
 
     /// Clear contents of fields matched by fspec inside rtag
-    fn clear_field(&mut self, fspec: &str);
+    fn clear_field(&mut self, fspec: &str) -> PatchResult;
 
     /// Iterates over all fields
     fn iter_all_fields<'a>(&'a mut self) -> FieldIterMut<'a>;
@@ -50,66 +51,82 @@ pub trait RegisterExt {
     fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
 
     /// Work through a field, handling either an enum or a range
-    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml);
+    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult;
 
     /// Add an enumeratedValues given by field to all fspec in rtag
-    fn process_field_enum(&mut self, pname: &str, fspec: &str, fmod: &Hash, usage: Usage);
+    fn process_field_enum(
+        &mut self,
+        pname: &str,
+        fspec: &str,
+        fmod: &Hash,
+        usage: Usage,
+    ) -> PatchResult;
 
     /// Add a writeConstraint range given by field to all fspec in rtag
-    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>);
+    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>) -> PatchResult;
 
     /// Delete substring from the beginning bitfield names inside rtag
-    fn strip_start(&mut self, substr: &str);
+    fn strip_start(&mut self, substr: &str) -> PatchResult;
 
     /// Delete substring from the ending bitfield names inside rtag
-    fn strip_end(&mut self, substr: &str);
+    fn strip_end(&mut self, substr: &str) -> PatchResult;
 
     /// Modify fspec inside rtag according to fmod
-    fn modify_field(&mut self, fspec: &str, fmod: &Hash);
+    fn modify_field(&mut self, fspec: &str, fmod: &Hash) -> PatchResult;
 
     /// Merge all fspec in rtag.
     /// Support list of field to auto-merge, and dict with fspec or list of fspec
-    fn merge_fields(&mut self, key: &str, value: Option<&Yaml>);
+    fn merge_fields(&mut self, key: &str, value: Option<&Yaml>) -> PatchResult;
 
     /// Split all fspec in rtag.
     /// Name and description can be customized with %s as a placeholder to the iterator value
-    fn split_fields(&mut self, fspec: &str, fsplit: &Hash);
+    fn split_fields(&mut self, fspec: &str, fsplit: &Hash) -> PatchResult;
 
     /// Collect same fields in peripheral into register array
-    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash);
+    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash) -> PatchResult;
 }
 
 impl RegisterExt for Register {
-    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) {
+    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) -> PatchResult {
         // Handle deletions
         for fspec in rmod.str_vec_iter("_delete") {
-            self.delete_field(fspec);
+            self.delete_field(fspec)
+                .with_context(|| format!("Deleting fields matched to `{}`", fspec))?;
         }
 
         // Handle field clearing
         for fspec in rmod.str_vec_iter("_clear") {
-            self.clear_field(fspec);
+            self.clear_field(fspec)
+                .with_context(|| format!("Clearing contents of fields matched to `{}` ", fspec))?;
         }
 
         // Handle modifications
         for (fspec, fmod) in rmod.hash_iter("_modify") {
-            self.modify_field(fspec.as_str().unwrap(), fmod.as_hash().unwrap())
+            let fspec = fspec.str()?;
+            self.modify_field(fspec, fmod.hash()?)
+                .with_context(|| format!("Modifying fields matched to `{}`", fspec))?;
         }
         // Handle additions
         for (fname, fadd) in rmod.hash_iter("_add") {
-            self.add_field(fname.as_str().unwrap(), fadd.as_hash().unwrap());
+            let fname = fname.str()?;
+            self.add_field(fname, fadd.hash()?)
+                .with_context(|| format!("Adding field `{}`", fname))?;
         }
 
         // Handle merges
         match rmod.get(&"_merge".to_yaml()) {
             Some(Yaml::Hash(h)) => {
                 for (fspec, fmerge) in h {
-                    self.merge_fields(fspec.as_str().unwrap(), Some(fmerge));
+                    let fspec = fspec.str()?;
+                    self.merge_fields(fspec, Some(fmerge))
+                        .with_context(|| format!("Merging fields matched to `{}`", fspec))?;
                 }
             }
             Some(Yaml::Array(a)) => {
                 for fspec in a {
-                    self.merge_fields(fspec.as_str().unwrap(), None);
+                    let fspec = fspec.str()?;
+                    self.merge_fields(fspec, None)
+                        .with_context(|| format!("Merging fields matched to `{}`", fspec))?;
                 }
             }
             _ => {}
@@ -119,12 +136,16 @@ impl RegisterExt for Register {
         match rmod.get(&"_split".to_yaml()) {
             Some(Yaml::Hash(h)) => {
                 for (fspec, fsplit) in h {
-                    self.split_fields(fspec.as_str().unwrap(), fsplit.as_hash().unwrap());
+                    let fspec = fspec.str()?;
+                    self.split_fields(fspec, fsplit.hash()?)
+                        .with_context(|| format!("Splitting fields matched to `{}`", fspec))?;
                 }
             }
             Some(Yaml::Array(a)) => {
                 for fspec in a {
-                    self.split_fields(fspec.as_str().unwrap(), &Hash::new());
+                    let fspec = fspec.str()?;
+                    self.split_fields(fspec, &Hash::new())
+                        .with_context(|| format!("Splitting fields matched to `{}`", fspec))?;
                 }
             }
             _ => {}
@@ -132,26 +153,33 @@ impl RegisterExt for Register {
 
         // Handle strips
         for prefix in rmod.str_vec_iter("_strip") {
-            self.strip_start(prefix);
+            self.strip_start(prefix)
+                .with_context(|| format!("Stripping prefix `{}` from field names", prefix))?;
         }
         for suffix in rmod.str_vec_iter("_strip_end") {
-            self.strip_end(suffix);
+            self.strip_end(suffix)
+                .with_context(|| format!("Stripping suffix `{}` from field names", suffix))?;
         }
 
         // Handle fields
         if update_fields {
             for (fspec, field) in rmod {
-                let fspec = fspec.as_str().unwrap();
+                let fspec = fspec.str()?;
                 if !fspec.starts_with("_") {
                     self.process_field(pname, fspec, field)
+                        .with_context(|| format!("Processing field matched to `{}`", fspec))?;
                 }
             }
         }
 
         // Handle field arrays
         for (fspec, fmod) in rmod.hash_iter("_array") {
-            self.collect_fields_in_array(fspec.as_str().unwrap(), fmod.as_hash().unwrap())
+            let fspec = fspec.str()?;
+            self.collect_fields_in_array(fspec, fmod.hash()?)
+                .with_context(|| format!("Collecting fields matched to `{}` in array", fspec))?;
         }
+
+        Ok(())
     }
 
     fn iter_all_fields<'a>(&'a mut self) -> FieldIterMut<'a> {
@@ -162,37 +190,36 @@ impl RegisterExt for Register {
         self.iter_all_fields().matched(spec)
     }
 
-    fn strip_start(&mut self, substr: &str) {
+    fn strip_start(&mut self, substr: &str) -> PatchResult {
         let len = substr.len();
-        let glob = globset::Glob::new(&(substr.to_string() + "*"))
-            .unwrap()
-            .compile_matcher();
+        let glob = globset::Glob::new(&(substr.to_string() + "*"))?.compile_matcher();
         for ftag in self.iter_all_fields() {
             if glob.is_match(&ftag.name) {
                 ftag.name.drain(..len);
             }
         }
+        Ok(())
     }
 
-    fn strip_end(&mut self, substr: &str) {
+    fn strip_end(&mut self, substr: &str) -> PatchResult {
         let len = substr.len();
-        let glob = globset::Glob::new(&("*".to_string() + substr))
-            .unwrap()
-            .compile_matcher();
+        let glob = globset::Glob::new(&("*".to_string() + substr))?.compile_matcher();
         for ftag in self.iter_all_fields() {
             if glob.is_match(&ftag.name) {
                 let nlen = ftag.name.len();
                 ftag.name.truncate(nlen - len);
             }
         }
+        Ok(())
     }
 
-    fn modify_field(&mut self, fspec: &str, fmod: &Hash) {
+    fn modify_field(&mut self, fspec: &str, fmod: &Hash) -> PatchResult {
         for ftag in self.iter_fields(fspec) {
-            if let Some(wc) = fmod
+            if let Some(value) = fmod
                 .get(&"_write_constraint".to_yaml())
                 .or_else(|| fmod.get(&"writeConstraint".to_yaml()))
-                .map(|value| match value {
+            {
+                let wc = match value {
                     Yaml::String(s) if s == "none" => {
                         // Completely remove the existing writeConstraint
                         None
@@ -204,47 +231,50 @@ impl RegisterExt for Register {
                     Yaml::Array(a) => {
                         // Allow a certain range
                         Some(WriteConstraint::Range(WriteConstraintRange {
-                            min: parse_i64(&a[0]).unwrap() as u64,
-                            max: parse_i64(&a[1]).unwrap() as u64,
+                            min: a[0].i64()? as u64,
+                            max: a[1].i64()? as u64,
                         }))
                     }
-                    _ => panic!("Unknown writeConstraint type {:?}", value),
-                })
-            {
+                    _ => return Err(anyhow!("Unknown writeConstraint type {:?}", value)),
+                };
                 ftag.write_constraint = wc;
             }
             // For all other tags, just set the value
-            ftag.modify_from(make_field(fmod), VAL_LVL).unwrap();
+            ftag.modify_from(make_field(fmod), VAL_LVL)?;
         }
+        Ok(())
     }
 
-    fn add_field(&mut self, fname: &str, fadd: &Hash) {
+    fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult {
         if self.iter_all_fields().find(|f| f.name == fname).is_some() {
-            panic!("register {} already has a field {}", self.name, fname);
+            return Err(anyhow!(
+                "register {} already has a field {}",
+                self.name,
+                fname
+            ));
         }
         // TODO: add field arrays
-        let fnew = make_field(fadd)
-            .name(fname.into())
-            .build(VAL_LVL)
-            .unwrap()
-            .single();
+        let fnew = make_field(fadd).name(fname.into()).build(VAL_LVL)?.single();
         self.fields.get_or_insert_with(Default::default).push(fnew);
+        Ok(())
     }
 
-    fn delete_field(&mut self, fspec: &str) {
+    fn delete_field(&mut self, fspec: &str) -> PatchResult {
         if let Some(fields) = self.fields.as_mut() {
             fields.retain(|f| !(matchname(&f.name, fspec)));
         }
+        Ok(())
     }
 
-    fn clear_field(&mut self, fspec: &str) {
+    fn clear_field(&mut self, fspec: &str) -> PatchResult {
         for ftag in self.iter_fields(fspec) {
             ftag.enumerated_values = Vec::new();
             ftag.write_constraint = None;
         }
+        Ok(())
     }
 
-    fn merge_fields(&mut self, key: &str, value: Option<&Yaml>) {
+    fn merge_fields(&mut self, key: &str, value: Option<&Yaml>) -> PatchResult {
         let (name, names) = match value {
             Some(Yaml::String(value)) => (
                 key.to_string(),
@@ -255,14 +285,11 @@ impl RegisterExt for Register {
             Some(Yaml::Array(value)) => {
                 let mut names = Vec::new();
                 for fspec in value {
-                    names.extend(
-                        self.iter_fields(fspec.as_str().unwrap())
-                            .map(|f| f.name.to_string()),
-                    );
+                    names.extend(self.iter_fields(fspec.str()?).map(|f| f.name.to_string()));
                 }
                 (key.to_string(), names)
             }
-            Some(_) => panic!("Invalid usage of merge for {}.{}", self.name, key),
+            Some(_) => return Err(anyhow!("Invalid usage of merge for {}.{}", self.name, key)),
             None => {
                 let names: Vec<String> =
                     self.iter_fields(key).map(|f| f.name.to_string()).collect();
@@ -275,7 +302,11 @@ impl RegisterExt for Register {
         };
 
         if names.is_empty() {
-            panic!("Could not find any fields to merge {}.{}", self.name, key);
+            return Err(anyhow!(
+                "Could not find any fields to merge {}.{}",
+                self.name,
+                key
+            ));
         }
         let mut bitwidth = 0;
         let mut bitoffset = u32::MAX;
@@ -298,14 +329,14 @@ impl RegisterExt for Register {
                     .name(name)
                     .description(desc)
                     .bit_range(BitRange::from_offset_width(bitoffset, bitwidth))
-                    .build(VAL_LVL)
-                    .unwrap()
+                    .build(VAL_LVL)?
                     .single(),
             );
         }
+        Ok(())
     }
 
-    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash) {
+    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash) -> PatchResult {
         if let Some(fs) = self.fields.as_mut() {
             let mut fields = Vec::new();
             let mut place = usize::MAX;
@@ -323,7 +354,7 @@ impl RegisterExt for Register {
                 }
             }
             if fields.is_empty() {
-                panic!("{}: fields {} not found", self.name, fspec);
+                return Err(anyhow!("{}: fields {} not found", self.name, fspec));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
             let dim = fields.len();
@@ -341,10 +372,11 @@ impl RegisterExt for Register {
                 .collect::<Vec<_>>();
             let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
             if !check_offsets(&offsets, dim_increment) {
-                panic!(
+                return Err(anyhow!(
                     "{}: registers cannot be collected into {} array",
-                    self.name, fspec
-                );
+                    self.name,
+                    fspec
+                ));
             }
             let mut finfo = fields.swap_remove(0);
             if let Some(name) = fmod.get_str("name") {
@@ -362,21 +394,30 @@ impl RegisterExt for Register {
                     .dim(dim as u32)
                     .dim_increment(dim_increment)
                     .dim_index(Some(dim_index))
-                    .build(VAL_LVL)
-                    .unwrap(),
+                    .build(VAL_LVL)?,
             );
             //field.process(fmod, &self.name, true);
             fs.insert(place, field);
         }
+        Ok(())
     }
-    fn split_fields(&mut self, fspec: &str, fsplit: &Hash) {
+    fn split_fields(&mut self, fspec: &str, fsplit: &Hash) -> PatchResult {
         let mut it = self.iter_fields(fspec);
         let (new_fields, name) = match (it.next(), it.next()) {
-            (None, _) => panic!("Could not find any fields to split {}.{}", self.name, fspec),
-            (Some(_), Some(_)) => panic!(
-                "Only one field can be spitted at time {}.{}",
-                self.name, fspec
-            ),
+            (None, _) => {
+                return Err(anyhow!(
+                    "Could not find any fields to split {}.{}",
+                    self.name,
+                    fspec
+                ))
+            }
+            (Some(_), Some(_)) => {
+                return Err(anyhow!(
+                    "Only one field can be spitted at time {}.{}",
+                    self.name,
+                    fspec
+                ))
+            }
             (Some(first), None) => {
                 let name = if let Some(n) = fsplit.get_str("name") {
                     n.to_string()
@@ -389,69 +430,78 @@ impl RegisterExt for Register {
                     first.description.clone()
                 };
                 let bitoffset = first.bit_range.offset;
-                (
-                    (0..first.bit_range.width)
-                        .map(|i| {
-                            let is = i.to_string();
-                            FieldInfo::builder()
-                                .name(name.replace("%s", &is))
-                                .description(desc.clone().map(|d| d.replace("%s", &is)))
-                                .bit_range(BitRange::from_offset_width(bitoffset + i, 1))
-                                .build(VAL_LVL)
-                                .unwrap()
-                                .single()
-                        })
-                        .collect::<Vec<_>>(),
-                    first.name.to_string(),
-                )
+                let mut fields = Vec::with_capacity(first.bit_range.width as _);
+                for i in 0..first.bit_range.width {
+                    fields.push({
+                        let is = i.to_string();
+                        FieldInfo::builder()
+                            .name(name.replace("%s", &is))
+                            .description(desc.clone().map(|d| d.replace("%s", &is)))
+                            .bit_range(BitRange::from_offset_width(bitoffset + i, 1))
+                            .build(VAL_LVL)?
+                            .single()
+                    });
+                }
+                (fields, first.name.to_string())
             }
         };
         if let Some(fields) = self.fields.as_mut() {
             fields.retain(|f| f.name != name);
             fields.extend(new_fields);
         }
+        Ok(())
     }
 
-    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) {
+    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult {
         match fmod {
             Yaml::Hash(fmod) => {
-                let is_read = fmod.contains_key(&"_read".to_yaml());
-                let is_write = fmod.contains_key(&"_write".to_yaml());
-                if !(is_read || is_write) {
-                    self.process_field_enum(pname, fspec, fmod, Usage::ReadWrite);
+                let is_read = fmod.get_hash("_read");
+                let is_write = fmod.get_hash("_write");
+                if is_read.is_none() && is_write.is_none() {
+                    self.process_field_enum(pname, fspec, fmod, Usage::ReadWrite)
+                        .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
-                    if is_read {
-                        self.process_field_enum(
-                            pname,
-                            fspec,
-                            fmod.get_hash("_read").unwrap(),
-                            Usage::Read,
-                        );
+                    if let Some(fmod) = is_read {
+                        self.process_field_enum(pname, fspec, fmod, Usage::Read)
+                            .with_context(|| "Adding read-only enumeratedValues")?;
                     }
-                    if is_write {
-                        self.process_field_enum(
-                            pname,
-                            fspec,
-                            fmod.get_hash("_write").unwrap(),
-                            Usage::Write,
-                        );
+                    if let Some(fmod) = is_write {
+                        self.process_field_enum(pname, fspec, fmod, Usage::Write)
+                            .with_context(|| "Adding write-only enumeratedValues")?;
                     }
                 }
             }
             Yaml::Array(fmod) if fmod.len() == 2 => {
-                self.process_field_range(pname, fspec, fmod);
+                self.process_field_range(pname, fspec, fmod)
+                    .with_context(|| "Adding writeConstraint range")?;
             }
             _ => {}
         }
+        Ok(())
     }
 
-    fn process_field_enum(&mut self, pname: &str, fspec: &str, mut fmod: &Hash, usage: Usage) {
-        fn set_enum(f: &mut FieldInfo, val: EnumeratedValues, usage: Usage, replace: bool) {
+    fn process_field_enum(
+        &mut self,
+        pname: &str,
+        fspec: &str,
+        mut fmod: &Hash,
+        usage: Usage,
+    ) -> PatchResult {
+        fn set_enum(
+            f: &mut FieldInfo,
+            val: EnumeratedValues,
+            usage: Usage,
+            replace: bool,
+        ) -> PatchResult {
             if usage == Usage::ReadWrite {
                 if f.enumerated_values.is_empty() || replace {
                     f.enumerated_values = vec![val];
                 } else {
-                    panic!("field {} already has {:?} enumeratedValues", f.name, usage);
+                    return Err(anyhow!(
+                        "field {} already has {:?} enumeratedValues",
+                        f.name,
+                        usage
+                    ));
                 }
             } else {
                 match f.enumerated_values.as_mut_slice() {
@@ -461,7 +511,11 @@ impl RegisterExt for Register {
                             if replace {
                                 *v = val.clone();
                             } else {
-                                panic!("field {} already has {:?} enumeratedValues", f.name, usage);
+                                return Err(anyhow!(
+                                    "field {} already has {:?} enumeratedValues",
+                                    f.name,
+                                    usage
+                                ));
                             }
                         } else {
                             f.enumerated_values.push(val.clone());
@@ -476,12 +530,17 @@ impl RegisterExt for Register {
                                 *v2 = val.clone();
                             }
                         } else {
-                            panic!("field {} already has {:?} enumeratedValues", f.name, usage);
+                            return Err(anyhow!(
+                                "field {} already has {:?} enumeratedValues",
+                                f.name,
+                                usage
+                            ));
                         }
                     }
-                    _ => panic!("Incorrect enumeratedValues"),
+                    _ => return Err(anyhow!("Incorrect enumeratedValues")),
                 }
             }
+            Ok(())
         }
 
         let mut replace_if_exists = false;
@@ -502,19 +561,25 @@ impl RegisterExt for Register {
                 .filter(|e| e.name.as_deref() == Some(d));
             let orig_usage = match (derived_enums.next(), derived_enums.next()) {
                 (Some(e), None) => e.usage(),
-                (None, _) => panic!("{}: enumeratedValues {} can't be found", pname, d),
+                (None, _) => {
+                    return Err(anyhow!("{}: enumeratedValues {} can't be found", pname, d))
+                }
                 (Some(_), Some(_)) => {
-                    panic!("{}: enumeratedValues {} was found multiple times", pname, d)
+                    return Err(anyhow!(
+                        "{}: enumeratedValues {} was found multiple times",
+                        pname,
+                        d
+                    ));
                 }
             };
             assert_eq!(usage, orig_usage);
-            let evs = make_derived_enumerated_values(d);
+            let evs = make_derived_enumerated_values(d)?;
             for ftag in self.iter_fields(fspec) {
                 assert!(
                     ftag.name != d,
                     "EnumeratedValues can't be derived from itself"
                 );
-                set_enum(ftag, evs.clone(), usage, true);
+                set_enum(ftag, evs.clone(), usage, true)?;
             }
         } else {
             let offsets = self
@@ -522,36 +587,37 @@ impl RegisterExt for Register {
                 .map(|f| (f.bit_range.offset, f.name.to_string()))
                 .collect::<Vec<_>>();
             if offsets.is_empty() {
-                panic!("Could not find {}:{}.{}", pname, &self.name, fspec);
+                return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
             }
             let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
-            let name = make_ev_name(name, usage);
+            let name = make_ev_name(name, usage)?;
             for ftag in self.iter_fields(fspec) {
                 if ftag.bit_range.offset == *min_offset {
-                    let evs = make_ev_array(fmod)
+                    let evs = make_ev_array(fmod)?
                         .name(Some(name.clone()))
                         .usage(Some(usage))
-                        .build(VAL_LVL)
-                        .unwrap();
-                    set_enum(ftag, evs, usage, replace_if_exists);
+                        .build(VAL_LVL)?;
+                    set_enum(ftag, evs, usage, replace_if_exists)?;
                 } else {
-                    set_enum(ftag, make_derived_enumerated_values(&name), usage, true);
+                    set_enum(ftag, make_derived_enumerated_values(&name)?, usage, true)?;
                 }
             }
         }
+        Ok(())
     }
 
-    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>) {
+    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>) -> PatchResult {
         let mut set_any = false;
         for ftag in self.iter_fields(fspec) {
             ftag.write_constraint = Some(WriteConstraint::Range(WriteConstraintRange {
-                min: parse_i64(&fmod[0]).unwrap() as u64,
-                max: parse_i64(&fmod[1]).unwrap() as u64,
+                min: fmod[0].i64()? as u64,
+                max: fmod[1].i64()? as u64,
             }));
             set_any = true;
         }
         if !set_any {
-            panic!("Could not find {}:{}.{}", pname, &self.name, fspec);
+            return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
         }
+        Ok(())
     }
 }

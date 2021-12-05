@@ -13,23 +13,26 @@ use svd_parser::svd::{
 };
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
+use anyhow::{anyhow, Context, Result};
+pub type PatchResult = anyhow::Result<()>;
+
 mod device;
 use device::DeviceExt;
 mod iterators;
 mod peripheral;
 mod register;
 mod yaml_ext;
-use yaml_ext::{parse_i64, AsTypeMut, GetVal, ToYaml};
+use yaml_ext::{AsType, GetVal, ToYaml};
 
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
 
-pub fn process_file(yaml_file: &Path) -> anyhow::Result<()> {
+pub fn process_file(yaml_file: &Path) -> Result<()> {
     // Load the specified YAML root file
     let f = File::open(yaml_file)?;
     let mut contents = String::new();
     (&f).read_to_string(&mut contents)?;
-    let mut docs = YamlLoader::load_from_str(&contents).unwrap();
-    let root = docs[0].as_hash_mut().unwrap(); // select the first document
+    let mut docs = YamlLoader::load_from_str(&contents)?;
+    let root = docs[0].hash_mut()?; // select the first document
     root.insert("_path".to_yaml(), yaml_file.to_str().unwrap().to_yaml());
 
     // Load the specified SVD file
@@ -37,7 +40,7 @@ pub fn process_file(yaml_file: &Path) -> anyhow::Result<()> {
         &yaml_file,
         &Path::new(
             root.get_str("_svd")
-                .unwrap_or_else(|| panic!("You must have an svd key in the root YAML file")),
+                .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
     );
     let mut svdpath_out = svdpath.clone();
@@ -53,7 +56,8 @@ pub fn process_file(yaml_file: &Path) -> anyhow::Result<()> {
     yaml_includes(root)?;
 
     // Process device
-    svd.process(root, true);
+    svd.process(root, true)
+        .with_context(|| format!("Processing device `{}`", svd.name))?;
 
     // SVD should now be updated, write it out
     let svd_out = svd_encoder::encode(&svd)?;
@@ -70,10 +74,10 @@ fn abspath(frompath: &Path, relpath: &Path) -> PathBuf {
 }
 
 /// Recursively loads any included YAML files.
-pub fn yaml_includes(parent: &mut Hash) -> anyhow::Result<Vec<PathBuf>> {
+pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
     let y_path = "_path".to_yaml();
     let mut included = vec![];
-    let self_path = PathBuf::from(parent.get(&y_path).unwrap().as_str().unwrap());
+    let self_path = PathBuf::from(parent.get(&y_path).unwrap().str()?);
     let inc = parent.get_vec("_include").unwrap_or(&Vec::new()).clone();
     for relpath in inc {
         let path = abspath(&self_path, Path::new(relpath.as_str().unwrap()));
@@ -87,14 +91,14 @@ pub fn yaml_includes(parent: &mut Hash) -> anyhow::Result<Vec<PathBuf>> {
         if docs.is_empty() {
             continue;
         }
-        let child = docs[0].as_hash_mut().unwrap();
+        let child = docs[0].hash_mut()?;
         let ypath = path.to_str().unwrap().to_yaml();
         child.insert(y_path.clone(), ypath.clone());
         included.push(path.clone());
 
         // Process any peripheral-level includes in child
         for (pspec, val) in child.iter_mut() {
-            if !pspec.as_str().unwrap().starts_with("_") {
+            if !pspec.str()?.starts_with("_") {
                 match val {
                     Yaml::Hash(val) if val.contains_key(&"_include".to_yaml()) => {
                         val.insert(y_path.clone(), ypath.clone());
@@ -113,7 +117,7 @@ pub fn yaml_includes(parent: &mut Hash) -> anyhow::Result<Vec<PathBuf>> {
 }
 
 /// Recursively merge child.key into parent.key, with parent overriding
-fn update_dict(parent: &mut Hash, child: &Hash) -> anyhow::Result<()> {
+fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
     use linked_hash_map::Entry;
     for (key, val) in child.iter() {
         match key {
@@ -138,7 +142,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> anyhow::Result<()> {
                             _ => {}
                         },
                         Yaml::Hash(h) => {
-                            update_dict(h, val.as_hash().unwrap())?;
+                            update_dict(h, val.hash()?)?;
                         }
                         s if matches!(s, Yaml::String(_)) => match val {
                             Yaml::Array(a) => {
@@ -196,15 +200,16 @@ fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
     return None;
 }
 
-fn modify_register_properties(p: &mut RegisterProperties, f: &str, val: &Yaml) {
+fn modify_register_properties(p: &mut RegisterProperties, f: &str, val: &Yaml) -> PatchResult {
     match f {
-        "size" => p.size = parse_i64(val).map(|v| v as u32),
-        "access" => p.access = val.as_str().and_then(Access::parse_str),
-        "resetValue" => p.reset_value = parse_i64(val).map(|v| v as u64),
-        "resetMask" => p.reset_mask = parse_i64(val).map(|v| v as u64),
+        "size" => p.size = Some(val.i64()? as u32),
+        "access" => p.access = Access::parse_str(val.str()?),
+        "resetValue" => p.reset_value = Some(val.i64()? as u64),
+        "resetMask" => p.reset_mask = Some(val.i64()? as u64),
         "protection" => {}
         _ => {}
     }
+    Ok(())
 }
 
 fn get_register_properties(h: &Hash) -> RegisterProperties {
@@ -215,38 +220,44 @@ fn get_register_properties(h: &Hash) -> RegisterProperties {
         .reset_mask(h.get_u64("resetMask"))
 }
 
-fn make_ev_name(name: &str, usage: Usage) -> String {
+fn make_ev_name(name: &str, usage: Usage) -> Result<String> {
     if name.as_bytes()[0].is_ascii_digit() {
-        panic!("enumeratedValue {}: can't start with a number", name);
+        return Err(anyhow!(
+            "enumeratedValue {}: can't start with a number",
+            name
+        ));
     }
-    name.to_string()
+    Ok(name.to_string()
         + match usage {
             Usage::Read => "R",
             Usage::Write => "W",
             Usage::ReadWrite => "",
-        }
+        })
 }
 
-fn make_ev_array(values: &Hash) -> EnumeratedValuesBuilder {
+fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
     let mut h = std::collections::BTreeMap::new();
     for (n, vd) in values {
-        let vname = n.as_str().unwrap();
+        let vname = n.str()?;
         if !vname.starts_with("_") {
             if vname.as_bytes()[0].is_ascii_digit() {
-                panic!("enumeratedValue {} can't start with a number", vname);
+                return Err(anyhow!(
+                    "enumeratedValue {} can't start with a number",
+                    vname
+                ));
             }
-            let vd = vd.as_vec().unwrap();
-            let value = parse_i64(&vd[0]).unwrap() as u64;
-            let description = vd.get(1).and_then(Yaml::as_str).unwrap_or_else(|| {
-                panic!(
+            let vd = vd.vec()?;
+            let value = vd[0].i64()? as u64;
+            let description = vd.get(1).and_then(Yaml::as_str).ok_or_else(|| {
+                anyhow!(
                     "enumeratedValue can't have empty description for value {}",
                     value
                 )
-            });
+            })?;
             use std::collections::btree_map::Entry;
             match h.entry(value) {
                 Entry::Occupied(_) => {
-                    panic!("enumeratedValue can't have duplicate values")
+                    return Err(anyhow!("enumeratedValue can't have duplicate values"));
                 }
                 Entry::Vacant(e) => {
                     e.insert((vname.to_string(), description.to_string()));
@@ -254,37 +265,34 @@ fn make_ev_array(values: &Hash) -> EnumeratedValuesBuilder {
             }
         }
     }
-    EnumeratedValues::builder().values(
-        h.into_iter()
-            .map(|(value, vd)| {
+    Ok(EnumeratedValues::builder().values({
+        let mut evs = Vec::new();
+        for (value, vd) in h.into_iter() {
+            evs.push(
                 EnumeratedValue::builder()
                     .name(vd.0)
                     .value(Some(value))
                     .description(Some(vd.1))
-                    .build(VAL_LVL)
-                    .unwrap()
-            })
-            .collect(),
-    )
+                    .build(VAL_LVL)?,
+            );
+        }
+        evs
+    }))
 }
 
 /// Returns an enumeratedValues Element which is derivedFrom name
-fn make_derived_enumerated_values(name: &str) -> EnumeratedValues {
-    EnumeratedValues::builder()
+fn make_derived_enumerated_values(name: &str) -> Result<EnumeratedValues> {
+    Ok(EnumeratedValues::builder()
         .derived_from(Some(name.into()))
-        .build(VAL_LVL)
-        .unwrap()
+        .build(VAL_LVL)?)
 }
 
-fn make_address_blocks(value: &Vec<Yaml>) -> Vec<AddressBlock> {
-    value
-        .iter()
-        .map(|h| {
-            make_address_block(h.as_hash().unwrap())
-                .build(VAL_LVL)
-                .unwrap()
-        })
-        .collect::<Vec<_>>()
+fn make_address_blocks(value: &Vec<Yaml>) -> Result<Vec<AddressBlock>> {
+    let mut blocks = Vec::new();
+    for h in value {
+        blocks.push(make_address_block(h.hash()?).build(VAL_LVL)?);
+    }
+    Ok(blocks)
 }
 fn make_address_block(h: &Hash) -> AddressBlockBuilder {
     let mut ab = AddressBlock::builder();
@@ -318,24 +326,28 @@ fn make_field(fadd: &Hash) -> FieldInfoBuilder {
     fnew
 }
 
-fn make_register(radd: &Hash) -> RegisterInfoBuilder {
+fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName"))
         .description(radd.get_string("description"))
         .alternate_group(radd.get_string("alternateGroup"))
         .alternate_register(radd.get_string("alternateRegister"))
         .properties(get_register_properties(radd))
-        .fields(radd.get_hash("fields").map(|h| {
-            h.iter()
-                .map(|(fname, val)| {
-                    make_field(val.as_hash().unwrap())
-                        .name(fname.as_str().unwrap().into())
-                        .build(VAL_LVL)
-                        .unwrap()
-                        .single()
-                })
-                .collect()
-        }));
+        .fields(match radd.get_hash("fields") {
+            Some(h) => {
+                let mut fields = Vec::new();
+                for (fname, val) in h {
+                    fields.push(
+                        make_field(val.hash()?)
+                            .name(fname.str()?.into())
+                            .build(VAL_LVL)?
+                            .single(),
+                    );
+                }
+                Some(fields)
+            }
+            _ => None,
+        });
 
     if let Some(name) = radd.get_str("name") {
         rnew = rnew.name(name.into());
@@ -343,7 +355,7 @@ fn make_register(radd: &Hash) -> RegisterInfoBuilder {
     if let Some(address_offset) = radd.get_i64("addressOffset") {
         rnew = rnew.address_offset(address_offset as u32);
     }
-    rnew
+    Ok(rnew)
 }
 
 fn make_cluster(cadd: &Hash) -> ClusterInfoBuilder {
@@ -371,24 +383,27 @@ fn make_interrupt(iadd: &Hash) -> InterruptBuilder {
     int
 }
 
-fn make_peripheral(padd: &Hash, modify: bool) -> PeripheralInfoBuilder {
+fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
     let mut pnew = PeripheralInfo::builder()
         .display_name(padd.get_string("displayName"))
         .version(padd.get_string("version"))
         .description(padd.get_string("description"))
         .group_name(padd.get_string("groupName"))
         .interrupt(if !modify {
-            padd.get_hash("interrupts").map(|value| {
-                value
-                    .iter()
-                    .map(|(iname, val)| {
-                        make_interrupt(val.as_hash().unwrap())
-                            .name(iname.as_str().map(String::from).unwrap())
-                            .build(VAL_LVL)
-                            .unwrap()
-                    })
-                    .collect()
-            })
+            match padd.get_hash("interrupts") {
+                Some(h) => {
+                    let mut interupts = Vec::new();
+                    for (iname, val) in h {
+                        interupts.push(
+                            make_interrupt(val.hash()?)
+                                .name(iname.str()?.into())
+                                .build(VAL_LVL)?,
+                        );
+                    }
+                    Some(interupts)
+                }
+                _ => None,
+            }
         } else {
             None
         });
@@ -400,31 +415,35 @@ fn make_peripheral(padd: &Hash, modify: bool) -> PeripheralInfoBuilder {
     }
 
     if let Some(derived) = padd.get_str("derivedFrom") {
-        pnew.derived_from(Some(derived.into()))
+        Ok(pnew.derived_from(Some(derived.into())))
     } else {
-        pnew.default_register_properties(get_register_properties(padd))
+        Ok(pnew
+            .default_register_properties(get_register_properties(padd))
             .address_block(if !modify {
-                padd.get_hash("addressBlock")
-                    .map(|value| vec![make_address_block(value).build(VAL_LVL).unwrap()])
-                    .or_else(|| {
-                        padd.get_vec("addressBlocks")
-                            .map(|value| make_address_blocks(value))
-                    })
+                if let Some(h) = padd.get_hash("addressBlock") {
+                    Some(vec![make_address_block(h).build(VAL_LVL)?])
+                } else if let Some(h) = padd.get_vec("addressBlocks") {
+                    Some(make_address_blocks(h)?)
+                } else {
+                    None
+                }
             } else {
                 None
             })
-            .registers(padd.get_hash("registers").map(|h| {
-                h.iter()
-                    .map(|(rname, val)| {
-                        RegisterCluster::Register(
-                            make_register(val.as_hash().unwrap())
-                                .name(rname.as_str().unwrap().into())
-                                .build(VAL_LVL)
-                                .unwrap()
+            .registers(match padd.get_hash("registers") {
+                Some(h) => {
+                    let mut regs = Vec::new();
+                    for (rname, val) in h.iter() {
+                        regs.push(RegisterCluster::Register(
+                            make_register(val.hash()?)?
+                                .name(rname.str()?.into())
+                                .build(VAL_LVL)?
                                 .single(),
-                        )
-                    })
-                    .collect()
+                        ))
+                    }
+                    Some(regs)
+                }
+                _ => None,
             }))
     }
 }

@@ -1,16 +1,45 @@
 use super::iterators::OptIter;
 use yaml_rust::{yaml::Hash, Yaml};
 
-pub trait AsTypeMut {
-    fn as_hash_mut(&mut self) -> Option<&mut Hash>;
+/// Errors that can occur during building.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum YamlError {
+    #[error("Value is not a hash map (dictionary)")]
+    NotHash,
+    #[error("Value is not a vector (array)")]
+    NotVec,
+    #[error("Value is not a string")]
+    NotStr,
+    #[error("Value is not integer")]
+    NotInt,
 }
 
-impl AsTypeMut for Yaml {
-    fn as_hash_mut(&mut self) -> Option<&mut Hash> {
+pub trait AsType {
+    fn hash_mut(&mut self) -> Result<&mut Hash, YamlError>;
+    fn hash(&self) -> Result<&Hash, YamlError>;
+    fn vec(&self) -> Result<&Vec<Yaml>, YamlError>;
+    fn str(&self) -> Result<&str, YamlError>;
+    fn i64(&self) -> Result<i64, YamlError>;
+}
+
+impl AsType for Yaml {
+    fn hash_mut(&mut self) -> Result<&mut Hash, YamlError> {
         match self {
-            Yaml::Hash(h) => Some(h),
-            _ => None,
+            Yaml::Hash(h) => Ok(h),
+            _ => Err(YamlError::NotHash),
         }
+    }
+    fn hash(&self) -> Result<&Hash, YamlError> {
+        self.as_hash().ok_or_else(|| YamlError::NotHash)
+    }
+    fn vec(&self) -> Result<&Vec<Yaml>, YamlError> {
+        self.as_vec().ok_or_else(|| YamlError::NotVec)
+    }
+    fn str(&self) -> Result<&str, YamlError> {
+        self.as_str().ok_or_else(|| YamlError::NotStr)
+    }
+    fn i64(&self) -> Result<i64, YamlError> {
+        parse_i64(self).ok_or_else(|| YamlError::NotInt)
     }
 }
 

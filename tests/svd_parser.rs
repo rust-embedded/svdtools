@@ -10,7 +10,7 @@ fn read_and_write() {
     let svd = svd_reader::device(&svd_path).unwrap();
 
     // write the svd in xml
-    let xml = svd_parser::encode(&svd).unwrap();
+    let xml = svd_encoder::encode(&svd).unwrap();
 
     // read again the svd
     let same_svd = svd_parser::parse(&xml).unwrap();
