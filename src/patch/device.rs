@@ -207,7 +207,8 @@ impl DeviceExt for Device {
                 let f = File::open(abspath(path, &Path::new(ppath))).unwrap();
                 let mut contents = String::new();
                 (&f).read_to_string(&mut contents).unwrap();
-                let filedev = svd_parser::parse(&contents).expect("Failed to parse input SVD");
+                let filedev = svd_parser::parse(&contents)
+                    .with_context(|| format!("Parsing file {}", contents))?;
                 filedev
                     .peripherals
                     .iter()
@@ -229,6 +230,7 @@ impl DeviceExt for Device {
             _ => return Err(anyhow!("Incorrect `from` tag")),
         };
         new.name = pname.into();
+        new.derived_from = None;
         if let Some(ptag) = self.peripherals.iter_mut().find(|p| &p.name == pname) {
             new.base_address = ptag.base_address;
             new.interrupt = std::mem::take(&mut ptag.interrupt);

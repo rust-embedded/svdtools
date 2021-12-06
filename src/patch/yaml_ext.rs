@@ -1,4 +1,5 @@
 use super::iterators::OptIter;
+use anyhow::{Context, Result};
 use yaml_rust::{yaml::Hash, Yaml};
 
 /// Errors that can occur during building.
@@ -147,63 +148,78 @@ impl<'a> Iterator for OverStringIter<'a> {
 type HashIter<'a> = OptIter<(&'a Yaml, &'a Yaml), linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
 pub trait GetVal {
-    fn get_bool<K: ToYaml>(&self, k: K) -> Result<Option<bool>, YamlError>;
-    fn get_i64<K: ToYaml>(&self, k: K) -> Result<Option<i64>, YamlError>;
-    fn get_u64<K: ToYaml>(&self, k: K) -> Result<Option<u64>, YamlError> {
+    fn get_bool(&self, k: &str) -> Result<Option<bool>>;
+    fn get_i64(&self, k: &str) -> Result<Option<i64>>;
+    fn get_u64(&self, k: &str) -> Result<Option<u64>> {
         self.get_i64(k).map(|v| v.map(|v| v as u64))
     }
-    fn get_u32<K: ToYaml>(&self, k: K) -> Result<Option<u32>, YamlError> {
+    fn get_u32(&self, k: &str) -> Result<Option<u32>> {
         self.get_i64(k).map(|v| v.map(|v| v as u32))
     }
-    fn get_str<K: ToYaml>(&self, k: K) -> Result<Option<&str>, YamlError>;
-    fn get_string<K: ToYaml>(&self, k: K) -> Result<Option<String>, YamlError> {
+    fn get_str(&self, k: &str) -> Result<Option<&str>>;
+    fn get_string(&self, k: &str) -> Result<Option<String>> {
         self.get_str(k).map(|v| v.map(From::from))
     }
-    fn get_hash<K: ToYaml>(&self, k: K) -> Result<Option<&Hash>, YamlError>;
-    fn hash_iter<'a, K: ToYaml>(&'a self, k: K) -> HashIter<'a>;
-    fn get_vec<K: ToYaml>(&self, k: K) -> Result<Option<&Vec<Yaml>>, YamlError>;
-    fn str_vec_iter<'a, K: ToYaml>(&'a self, k: K) -> OptIter<&'a str, OverStringIter<'a>>;
+    fn get_hash(&self, k: &str) -> Result<Option<&Hash>>;
+    fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a>;
+    fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>>;
+    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<&'a str, OverStringIter<'a>>;
 }
 
 impl GetVal for Hash {
-    fn get_bool<K: ToYaml>(&self, k: K) -> Result<Option<bool>, YamlError> {
+    fn get_bool(&self, k: &str) -> Result<Option<bool>> {
         match self.get(&k.to_yaml()) {
             None => Ok(None),
-            Some(v) => v.bool().map(|v| Some(v)),
+            Some(v) => v
+                .bool()
+                .with_context(|| format!("Under key `{}`", k))
+                .map(|v| Some(v)),
         }
     }
-    fn get_i64<K: ToYaml>(&self, k: K) -> Result<Option<i64>, YamlError> {
+    fn get_i64(&self, k: &str) -> Result<Option<i64>> {
         match self.get(&k.to_yaml()) {
             None => Ok(None),
-            Some(v) => v.i64().map(|v| Some(v)),
+            Some(v) => v
+                .i64()
+                .with_context(|| format!("Under key `{}`", k))
+                .map(|v| Some(v)),
         }
     }
-    fn get_str<K: ToYaml>(&self, k: K) -> Result<Option<&str>, YamlError> {
+    fn get_str(&self, k: &str) -> Result<Option<&str>> {
         match self.get(&k.to_yaml()) {
             None => Ok(None),
-            Some(v) => v.str().map(|v| Some(v)),
+            Some(v) => v
+                .str()
+                .with_context(|| format!("Under key `{}`", k))
+                .map(|v| Some(v)),
         }
     }
-    fn get_hash<K: ToYaml>(&self, k: K) -> Result<Option<&Hash>, YamlError> {
+    fn get_hash(&self, k: &str) -> Result<Option<&Hash>> {
         match self.get(&k.to_yaml()) {
             None => Ok(None),
-            Some(v) => v.hash().map(|v| Some(v)),
+            Some(v) => v
+                .hash()
+                .with_context(|| format!("Under key `{}`", k))
+                .map(|v| Some(v)),
         }
     }
-    fn hash_iter<'a, K: ToYaml>(&'a self, k: K) -> HashIter<'a> {
+    fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a> {
         HashIter::new(
             self.get(&k.to_yaml())
                 .and_then(Yaml::as_hash)
                 .map(|h| h.iter()),
         )
     }
-    fn get_vec<K: ToYaml>(&self, k: K) -> Result<Option<&Vec<Yaml>>, YamlError> {
+    fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>> {
         match self.get(&k.to_yaml()) {
             None => Ok(None),
-            Some(v) => v.vec().map(|v| Some(v)),
+            Some(v) => v
+                .vec()
+                .with_context(|| format!("Under key `{}`", k))
+                .map(|v| Some(v)),
         }
     }
-    fn str_vec_iter<'a, K: ToYaml>(&'a self, k: K) -> OptIter<&'a str, OverStringIter<'a>> {
+    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<&'a str, OverStringIter<'a>> {
         OptIter::new(self.get(&k.to_yaml()).map(|y| OverStringIter(y, None)))
     }
 }

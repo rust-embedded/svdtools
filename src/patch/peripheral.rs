@@ -91,13 +91,18 @@ impl PeripheralExt for Peripheral {
     fn process(&mut self, pmod: &Hash, update_fields: bool) -> PatchResult {
         // For derived peripherals, only process interrupts
         if self.derived_from.is_some() {
-            if let Some(deletions) = pmod.get_hash("_delete")? {
+            if let Some(deletions) = pmod.get_hash("_delete").ok().flatten() {
                 for ispec in deletions.str_vec_iter("_interrupts") {
                     self.delete_interrupt(ispec)
                         .with_context(|| format!("Deleting interrupts matched to `{}`", ispec))?;
                 }
             }
-            for (rspec, rmod) in pmod.get_hash("_modify")?.unwrap_or(&Hash::new()) {
+            for (rspec, rmod) in pmod
+                .get_hash("_modify")
+                .ok()
+                .flatten()
+                .unwrap_or(&Hash::new())
+            {
                 if rspec.as_str() == Some("_interrupts") {
                     for (ispec, val) in rmod.hash()? {
                         let ispec = ispec.str()?;
@@ -107,7 +112,7 @@ impl PeripheralExt for Peripheral {
                     }
                 }
             }
-            for (rname, radd) in pmod.get_hash("_add")?.unwrap_or(&Hash::new()) {
+            for (rname, radd) in pmod.get_hash("_add").ok().flatten().unwrap_or(&Hash::new()) {
                 if rname.as_str() == Some("_interrupts") {
                     for (iname, val) in radd.hash()? {
                         let iname = iname.str()?;
