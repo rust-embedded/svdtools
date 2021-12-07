@@ -5,15 +5,14 @@ use svd_parser::svd::{
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
-use super::iterators::{MatchIterMut, Matched};
+use super::iterators::{MatchIter, Matched};
 use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{check_offsets, matchname, matchsubspec, spec_ind, PatchResult, VAL_LVL};
 use super::{make_cluster, make_interrupt, make_register};
 
-pub type ClusterMatchIterMut<'a, 'b> =
-    MatchIterMut<'a, 'b, Cluster, std::slice::IterMut<'a, Cluster>>;
-pub type RegMatchIterMut<'a, 'b> = MatchIterMut<'a, 'b, Register, svd::register::RegIterMut<'a>>;
+pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Cluster>>;
+pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, svd::register::RegIterMut<'a>>;
 
 /// Collecting methods for processing peripheral contents
 pub trait PeripheralExt {
@@ -27,7 +26,7 @@ pub trait PeripheralExt {
     fn iter_interrupts<'a, 'b>(
         &'a mut self,
         spec: &'b str,
-    ) -> MatchIterMut<'a, 'b, Interrupt, std::slice::IterMut<'a, Interrupt>>;
+    ) -> MatchIter<'b, std::slice::IterMut<'a, Interrupt>>;
 
     /// Work through a peripheral, handling all registers
     fn process(&mut self, peripheral: &Hash, update_fields: bool) -> PatchResult;
@@ -84,7 +83,7 @@ impl PeripheralExt for Peripheral {
     fn iter_interrupts<'a, 'b>(
         &'a mut self,
         spec: &'b str,
-    ) -> MatchIterMut<'a, 'b, Interrupt, std::slice::IterMut<'a, Interrupt>> {
+    ) -> MatchIter<'b, std::slice::IterMut<'a, Interrupt>> {
         self.interrupt.iter_mut().matched(spec)
     }
 

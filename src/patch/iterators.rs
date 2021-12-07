@@ -2,21 +2,21 @@ use svd_parser::svd;
 
 use super::matchname;
 
-pub struct MatchIterMut<'a, 'b, T: 'a, I>
+pub struct MatchIter<'b, I>
 where
-    T: 'a + GetName,
-    I: Iterator<Item = &'a mut T>,
+    I: Iterator,
+    I::Item: GetName,
 {
     it: I,
     spec: &'b str,
 }
 
-impl<'a, 'b, T, I> Iterator for MatchIterMut<'a, 'b, T, I>
+impl<'b, I> Iterator for MatchIter<'b, I>
 where
-    T: 'a + GetName,
-    I: Iterator<Item = &'a mut T>,
+    I: Iterator,
+    I::Item: GetName,
 {
-    type Item = &'a mut T;
+    type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
         for next in self.it.by_ref() {
             if matchname(next.get_name(), self.spec) {
@@ -27,47 +27,44 @@ where
     }
 }
 
-pub trait Matched<'a, T: 'a>
+pub trait Matched
 where
-    Self: Iterator<Item = &'a mut T> + Sized,
-    T: 'a,
+    Self: Iterator + Sized,
+    Self::Item: GetName,
 {
-    fn matched<'b>(self, spec: &'b str) -> MatchIterMut<'a, 'b, T, Self>
-    where
-        T: GetName;
+    fn matched(self, spec: &str) -> MatchIter<Self>;
 }
 
-impl<'a, T, I> Matched<'a, T> for I
+impl<I> Matched for I
 where
-    Self: Iterator<Item = &'a mut T> + Sized,
-    T: 'a,
+    Self: Iterator + Sized,
+    Self::Item: GetName,
 {
-    fn matched<'b>(self, spec: &'b str) -> MatchIterMut<'a, 'b, T, Self>
-    where
-        T: GetName,
-    {
-        MatchIterMut { it: self, spec }
+    fn matched(self, spec: &str) -> MatchIter<Self> {
+        MatchIter { it: self, spec }
     }
 }
 
-pub struct OptIter<T, I>(Option<I>)
+/// Iterates over optional iterator
+pub struct OptIter<I>(Option<I>)
 where
-    I: Iterator<Item = T>;
+    I: Iterator;
 
-impl<T, I> OptIter<T, I>
+impl<I> OptIter<I>
 where
-    I: Iterator<Item = T>,
+    I: Iterator,
 {
+    /// Create new optional iterator
     pub fn new(o: Option<I>) -> Self {
         Self(o)
     }
 }
 
-impl<'a, T, I> Iterator for OptIter<T, I>
+impl<'a, I> Iterator for OptIter<I>
 where
-    I: Iterator<Item = T>,
+    I: Iterator,
 {
-    type Item = T;
+    type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.as_mut().and_then(I::next)
     }
@@ -94,5 +91,23 @@ impl GetName for svd::Register {
 impl GetName for svd::Cluster {
     fn get_name(&self) -> &str {
         &self.name
+    }
+}
+
+impl<T> GetName for &T
+where
+    T: GetName,
+{
+    fn get_name(&self) -> &str {
+        T::get_name(*self)
+    }
+}
+
+impl<T> GetName for &mut T
+where
+    T: GetName,
+{
+    fn get_name(&self) -> &str {
+        T::get_name(*self)
     }
 }

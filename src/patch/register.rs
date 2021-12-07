@@ -5,13 +5,13 @@ use svd_parser::svd::{
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
-use super::iterators::{MatchIterMut, Matched, OptIter};
+use super::iterators::{MatchIter, Matched, OptIter};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{check_offsets, matchname, spec_ind, PatchResult, VAL_LVL};
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
-pub type FieldIterMut<'a> = OptIter<&'a mut Field, std::slice::IterMut<'a, Field>>;
-pub type FieldMatchIterMut<'a, 'b> = MatchIterMut<'a, 'b, Field, FieldIterMut<'a>>;
+pub type FieldIterMut<'a> = OptIter<std::slice::IterMut<'a, Field>>;
+pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, FieldIterMut<'a>>;
 
 pub trait RegisterInfoExt {
     /// Calculate filling of register

@@ -146,7 +146,7 @@ impl<'a> Iterator for OverStringIter<'a> {
     }
 }
 
-type HashIter<'a> = OptIter<(&'a Yaml, &'a Yaml), linked_hash_map::Iter<'a, Yaml, Yaml>>;
+type HashIter<'a> = OptIter<linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
 pub trait GetVal {
     fn get_bool(&self, k: &str) -> Result<Option<bool>>;
@@ -164,7 +164,7 @@ pub trait GetVal {
     fn get_hash(&self, k: &str) -> Result<Option<&Hash>>;
     fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a>;
     fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>>;
-    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<&'a str, OverStringIter<'a>>;
+    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<OverStringIter<'a>>;
 }
 
 impl GetVal for Hash {
@@ -220,7 +220,7 @@ impl GetVal for Hash {
                 .map(Some),
         }
     }
-    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<&'a str, OverStringIter<'a>> {
+    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<OverStringIter<'a>> {
         OptIter::new(self.get(&k.to_yaml()).map(|y| OverStringIter(y, None)))
     }
 }
