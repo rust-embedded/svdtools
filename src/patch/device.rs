@@ -19,7 +19,7 @@ pub struct PerIter<'a, 'b> {
 impl<'a, 'b> Iterator for PerIter<'a, 'b> {
     type Item = &'a mut Peripheral;
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.it.next() {
+        for next in self.it.by_ref() {
             if matchname(&next.name, self.spec)
                 && !(self.check_derived && next.derived_from.is_some())
             {
@@ -181,7 +181,7 @@ impl DeviceExt for Device {
         // Now process all peripherals
         for (periphspec, val) in device {
             let periphspec = periphspec.str()?;
-            if !periphspec.starts_with("_") {
+            if !periphspec.starts_with('_') {
                 //val["_path"] = device["_path"]; // TODO: check
                 self.process_peripheral(periphspec, val.hash()?, update_fields)
                     .with_context(|| format!("According to `{}`", periphspec))?;
@@ -200,11 +200,11 @@ impl DeviceExt for Device {
         let pcopysrc = pmod
             .get_str("from")?
             .unwrap()
-            .split(":")
+            .split(':')
             .collect::<Vec<_>>();
         let mut new = match pcopysrc.as_slice() {
             [ppath, pcopyname] => {
-                let f = File::open(abspath(path, &Path::new(ppath))).unwrap();
+                let f = File::open(abspath(path, Path::new(ppath))).unwrap();
                 let mut contents = String::new();
                 (&f).read_to_string(&mut contents).unwrap();
                 let filedev = svd_parser::parse(&contents)
@@ -231,7 +231,7 @@ impl DeviceExt for Device {
         };
         new.name = pname.into();
         new.derived_from = None;
-        if let Some(ptag) = self.peripherals.iter_mut().find(|p| &p.name == pname) {
+        if let Some(ptag) = self.peripherals.iter_mut().find(|p| p.name == pname) {
             new.base_address = ptag.base_address;
             new.interrupt = std::mem::take(&mut ptag.interrupt);
             *ptag = new;
@@ -281,7 +281,7 @@ impl DeviceExt for Device {
     }
 
     fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult {
-        if self.peripherals.iter().find(|p| p.name == pname).is_some() {
+        if self.peripherals.iter().any(|p| p.name == pname) {
             return Err(anyhow!("device already has a peripheral {}", pname));
         }
 
@@ -297,11 +297,11 @@ impl DeviceExt for Device {
     fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult {
         self.peripherals
             .iter()
-            .find(|p| &p.name == pderive)
+            .find(|p| p.name == pderive)
             .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
         self.peripherals
             .iter_mut()
-            .find(|p| &p.name == pname)
+            .find(|p| p.name == pname)
             .ok_or_else(|| anyhow!("peripheral {} not found", pname))?
             .modify_from(
                 PeripheralInfo::builder().derived_from(Some(pderive.into())),
@@ -321,7 +321,7 @@ impl DeviceExt for Device {
         let old = self
             .peripherals
             .iter_mut()
-            .find(|p| &p.name == pold)
+            .find(|p| p.name == pold)
             .ok_or_else(|| anyhow!("peripheral {} not found", pold))?;
         let mut d = std::mem::replace(
             old,
@@ -340,7 +340,7 @@ impl DeviceExt for Device {
         let new = self
             .peripherals
             .iter_mut()
-            .find(|p| &p.name == pnew)
+            .find(|p| p.name == pnew)
             .ok_or_else(|| anyhow!("peripheral {} not found", pnew))?;
         d.name = new.name.clone();
         d.base_address = new.base_address;

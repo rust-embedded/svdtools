@@ -45,7 +45,7 @@ pub trait RegisterExt {
     fn clear_field(&mut self, fspec: &str) -> PatchResult;
 
     /// Iterates over all fields
-    fn iter_all_fields<'a>(&'a mut self) -> FieldIterMut<'a>;
+    fn iter_all_fields(&mut self) -> FieldIterMut;
 
     /// Iterates over all fields that match fspec and live inside rtag
     fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
@@ -63,7 +63,7 @@ pub trait RegisterExt {
     ) -> PatchResult;
 
     /// Add a writeConstraint range given by field to all fspec in rtag
-    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>) -> PatchResult;
+    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &[Yaml]) -> PatchResult;
 
     /// Delete substring from the beginning bitfield names inside rtag
     fn strip_start(&mut self, substr: &str) -> PatchResult;
@@ -165,7 +165,7 @@ impl RegisterExt for Register {
         if update_fields {
             for (fspec, field) in rmod {
                 let fspec = fspec.str()?;
-                if !fspec.starts_with("_") {
+                if !fspec.starts_with('_') {
                     self.process_field(pname, fspec, field)
                         .with_context(|| format!("Processing field matched to `{}`", fspec))?;
                 }
@@ -182,7 +182,7 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn iter_all_fields<'a>(&'a mut self) -> FieldIterMut<'a> {
+    fn iter_all_fields(&mut self) -> FieldIterMut {
         FieldIterMut::new(self.fields.as_mut().map(|f| f.iter_mut()))
     }
 
@@ -246,7 +246,7 @@ impl RegisterExt for Register {
     }
 
     fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult {
-        if self.iter_all_fields().find(|f| f.name == fname).is_some() {
+        if self.iter_all_fields().any(|f| f.name == fname) {
             return Err(anyhow!(
                 "register {} already has a field {}",
                 self.name,
@@ -281,7 +281,7 @@ impl RegisterExt for Register {
         let (name, names) = match value {
             Some(Yaml::String(value)) => (
                 key.to_string(),
-                self.iter_fields(&value)
+                self.iter_fields(value)
                     .map(|f| f.name.to_string())
                     .collect(),
             ),
@@ -512,7 +512,7 @@ impl RegisterExt for Register {
                     [v] => {
                         if v.usage == Some(usage) || v.usage == Some(Usage::ReadWrite) {
                             if replace {
-                                *v = val.clone();
+                                *v = val;
                             } else {
                                 return Err(anyhow!(
                                     "field {} already has {:?} enumeratedValues",
@@ -521,7 +521,7 @@ impl RegisterExt for Register {
                                 ));
                             }
                         } else {
-                            f.enumerated_values.push(val.clone());
+                            f.enumerated_values.push(val);
                         }
                     }
                     [v1, v2] => {
@@ -530,7 +530,7 @@ impl RegisterExt for Register {
                                 *v1 = val.clone();
                             }
                             if v2.usage == Some(usage) {
-                                *v2 = val.clone();
+                                *v2 = val;
                             }
                         } else {
                             return Err(anyhow!(
@@ -578,10 +578,9 @@ impl RegisterExt for Register {
             assert_eq!(usage, orig_usage);
             let evs = make_derived_enumerated_values(d)?;
             for ftag in self.iter_fields(fspec) {
-                assert!(
-                    ftag.name != d,
-                    "EnumeratedValues can't be derived from itself"
-                );
+                if ftag.name == d {
+                    return Err(anyhow!("EnumeratedValues can't be derived from itself"));
+                }
                 set_enum(ftag, evs.clone(), usage, true)?;
             }
         } else {
@@ -609,7 +608,7 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &Vec<Yaml>) -> PatchResult {
+    fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &[Yaml]) -> PatchResult {
         let mut set_any = false;
         for ftag in self.iter_fields(fspec) {
             ftag.write_constraint = Some(WriteConstraint::Range(WriteConstraintRange {

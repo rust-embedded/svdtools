@@ -18,8 +18,8 @@ where
 {
     type Item = &'a mut T;
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.it.next() {
-            if matchname(&next.get_name(), self.spec) {
+        for next in self.it.by_ref() {
+            if matchname(next.get_name(), self.spec) {
                 return Some(next);
             }
         }

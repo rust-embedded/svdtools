@@ -4,6 +4,7 @@ use yaml_rust::{yaml::Hash, Yaml};
 
 /// Errors that can occur during building.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum YamlError {
     #[error("Value is not a hash map (dictionary): {0:?}")]
     NotHash(Yaml),
@@ -82,11 +83,11 @@ pub fn parse_i64(val: &Yaml) -> Option<i64> {
                     &str::replace(&text.to_lowercase()["#".len()..], "x", "0"),
                     2,
                 )
-            } else if text.starts_with("0b") {
+            } else if let Some(stripped) = text.strip_prefix("0b") {
                 // Handle strings in the binary form of:
                 // 0b01101x1
                 // along with don't care character x (replaced with 0)
-                i64::from_str_radix(&str::replace(&text["0b".len()..], "x", "0"), 2)
+                i64::from_str_radix(&str::replace(stripped, "x", "0"), 2)
             } else {
                 text.parse::<i64>()
             })
@@ -173,7 +174,7 @@ impl GetVal for Hash {
             Some(v) => v
                 .bool()
                 .with_context(|| format!("Under key `{}`", k))
-                .map(|v| Some(v)),
+                .map(Some),
         }
     }
     fn get_i64(&self, k: &str) -> Result<Option<i64>> {
@@ -182,7 +183,7 @@ impl GetVal for Hash {
             Some(v) => v
                 .i64()
                 .with_context(|| format!("Under key `{}`", k))
-                .map(|v| Some(v)),
+                .map(Some),
         }
     }
     fn get_str(&self, k: &str) -> Result<Option<&str>> {
@@ -191,7 +192,7 @@ impl GetVal for Hash {
             Some(v) => v
                 .str()
                 .with_context(|| format!("Under key `{}`", k))
-                .map(|v| Some(v)),
+                .map(Some),
         }
     }
     fn get_hash(&self, k: &str) -> Result<Option<&Hash>> {
@@ -200,7 +201,7 @@ impl GetVal for Hash {
             Some(v) => v
                 .hash()
                 .with_context(|| format!("Under key `{}`", k))
-                .map(|v| Some(v)),
+                .map(Some),
         }
     }
     fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a> {
@@ -216,7 +217,7 @@ impl GetVal for Hash {
             Some(v) => v
                 .vec()
                 .with_context(|| format!("Under key `{}`", k))
-                .map(|v| Some(v)),
+                .map(Some),
         }
     }
     fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<&'a str, OverStringIter<'a>> {

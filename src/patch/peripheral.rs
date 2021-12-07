@@ -250,7 +250,7 @@ impl PeripheralExt for Peripheral {
         // Handle registers
         for (rspec, register) in pmod {
             let rspec = rspec.str()?;
-            if !rspec.starts_with("_") {
+            if !rspec.starts_with('_') {
                 self.process_register(rspec, register.hash()?, update_fields)
                     .with_context(|| format!("According to `{}`", rspec))?;
             }
@@ -278,12 +278,13 @@ impl PeripheralExt for Peripheral {
     }
 
     fn add_interrupt(&mut self, iname: &str, iadd: &Hash) -> PatchResult {
-        assert!(
-            self.interrupt.iter().find(|i| &i.name == iname).is_none(),
-            "peripheral {} already has an interrupt {}",
-            self.name,
-            iname
-        );
+        if self.interrupt.iter().any(|i| i.name == iname) {
+            return Err(anyhow!(
+                "peripheral {} already has an interrupt {}",
+                self.name,
+                iname
+            ));
+        }
         self.interrupt
             .push(make_interrupt(iadd)?.name(iname.into()).build(VAL_LVL)?);
         Ok(())
@@ -309,7 +310,7 @@ impl PeripheralExt for Peripheral {
     }
 
     fn add_register(&mut self, rname: &str, radd: &Hash) -> PatchResult {
-        if self.reg_iter().find(|r| r.name == rname).is_some() {
+        if self.reg_iter().any(|r| r.name == rname) {
             return Err(anyhow!(
                 "peripheral {} already has a register {}",
                 self.name,
@@ -337,7 +338,7 @@ impl PeripheralExt for Peripheral {
 
         let mut source = self
             .reg_iter()
-            .find(|p| &p.name == srcname)
+            .find(|p| p.name == srcname)
             .ok_or_else(|| {
                 anyhow!(
                     "peripheral {} does not have register {}",
@@ -351,7 +352,7 @@ impl PeripheralExt for Peripheral {
             .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL)?;
-        if let Some(ptag) = self.reg_iter_mut().find(|r| &r.name == rname) {
+        if let Some(ptag) = self.reg_iter_mut().find(|r| r.name == rname) {
             source.address_offset = ptag.address_offset;
             *ptag = source;
         } else {
@@ -567,15 +568,13 @@ impl PeripheralExt for Peripheral {
                             check = false;
                             break;
                         }
-                    } else {
-                        if (dim != registers.len())
-                            || (dim_index != new_dim_index)
-                            || (!check_offsets(&offsets, dim_increment))
-                            || (!bitmasks.iter().all(|&m| m == bitmasks[0]))
-                        {
-                            check = false;
-                            break;
-                        }
+                    } else if (dim != registers.len())
+                        || (dim_index != new_dim_index)
+                        || (!check_offsets(&offsets, dim_increment))
+                        || (!bitmasks.iter().all(|&m| m == bitmasks[0]))
+                    {
+                        check = false;
+                        break;
                     }
                 }
                 rdict.insert(rspec.to_string(), registers);
@@ -611,7 +610,7 @@ impl PeripheralExt for Peripheral {
                     if let Some(name) = rmod.get_str("name")? {
                         reg.name = name.into();
                     }
-                    reg.address_offset = reg.address_offset - address_offset;
+                    reg.address_offset -= address_offset;
                     children.push(RegisterCluster::Register(reg));
                 }
 
@@ -628,7 +627,7 @@ impl PeripheralExt for Peripheral {
                         let (li, ri) = spec_ind(&rspec);
                         reg.name = format!("{}{}", &rspec[..li], &rspec[rspec.len() - ri..]);
                     }
-                    reg.address_offset = reg.address_offset - address_offset;
+                    reg.address_offset -= address_offset;
                     children.push(RegisterCluster::Register(reg));
                 }
 

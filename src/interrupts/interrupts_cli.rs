@@ -10,7 +10,7 @@ pub fn parse_device(svd_file: &Path, gaps: bool) {
     let peripherals = svd_reader::peripherals_with_interrupts(file);
     let interrupt_list = InterruptList::new(peripherals);
 
-    print_interrupts(&interrupt_list.ordered());
+    print_interrupts(interrupt_list.ordered());
 
     if gaps {
         let gaps = interrupt_list.gaps();

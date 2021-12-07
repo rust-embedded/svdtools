@@ -26,8 +26,8 @@ fn to_text(peripherals: &[Peripheral]) -> String {
     let mut mmap: Vec<String> = vec![];
 
     for p in peripherals {
-        get_peripheral(&p, &mut mmap);
-        get_interrupts(&p, &mut mmap);
+        get_peripheral(p, &mut mmap);
+        get_interrupts(p, &mut mmap);
         let registers = get_periph_registers(p, peripherals);
         get_registers(p.base_address, registers.as_ref(), "", &mut mmap);
     }

@@ -37,8 +37,8 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
 
     // Load the specified SVD file
     let svdpath = abspath(
-        &yaml_file,
-        &Path::new(
+        yaml_file,
+        Path::new(
             root.get_str("_svd")?
                 .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
@@ -63,7 +63,7 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
     let svd_out = svd_encoder::encode(&svd)?;
 
     let mut f = File::create(&svdpath_out)?;
-    f.write(svd_out.as_bytes())?;
+    f.write_all(svd_out.as_bytes())?;
 
     Ok(())
 }
@@ -98,7 +98,7 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
 
         // Process any peripheral-level includes in child
         for (pspec, val) in child.iter_mut() {
-            if !pspec.str()?.starts_with("_") {
+            if !pspec.str()?.starts_with('_') {
                 match val {
                     Yaml::Hash(val) if val.contains_key(&"_include".to_yaml()) => {
                         val.insert(y_path.clone(), ypath.clone());
@@ -181,7 +181,7 @@ fn matchname(name: &str, spec: &str) -> bool {
 
 /// If a name matches a specification, return the first sub-specification that it matches
 fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
-    if spec.starts_with("_") {
+    if spec.starts_with('_') {
         return None;
     }
     if spec.contains('{') {
@@ -190,14 +190,14 @@ fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
             return Some(spec);
         }
     } else {
-        for subspec in spec.split(",") {
+        for subspec in spec.split(',') {
             let glob = Glob::new(subspec).unwrap().compile_matcher();
             if glob.is_match(name) {
                 return Some(subspec);
             }
         }
     }
-    return None;
+    None
 }
 
 fn modify_register_properties(p: &mut RegisterProperties, f: &str, val: &Yaml) -> PatchResult {
@@ -239,7 +239,7 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
     let mut h = std::collections::BTreeMap::new();
     for (n, vd) in values {
         let vname = n.str()?;
-        if !vname.starts_with("_") {
+        if !vname.starts_with('_') {
             if vname.as_bytes()[0].is_ascii_digit() {
                 return Err(anyhow!(
                     "enumeratedValue {} can't start with a number",
@@ -287,7 +287,7 @@ fn make_derived_enumerated_values(name: &str) -> Result<EnumeratedValues> {
         .build(VAL_LVL)?)
 }
 
-fn make_address_blocks(value: &Vec<Yaml>) -> Result<Vec<AddressBlock>> {
+fn make_address_blocks(value: &[Yaml]) -> Result<Vec<AddressBlock>> {
     let mut blocks = Vec::new();
     for h in value {
         blocks.push(make_address_block(h.hash()?)?.build(VAL_LVL)?);
