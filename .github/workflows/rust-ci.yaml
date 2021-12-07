@@ -55,3 +55,25 @@ jobs:
           toolchain: stable
           components: rustfmt
       - run: cargo fmt -- --check
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - stm32
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rustfmt
+      - name: Install svdtools
+        run: |
+          cargo install svdtools --path .
+      - name: Check
+        run: env SVDTOOLS=svdtools bash tools/check_${{ matrix.target }}.sh
