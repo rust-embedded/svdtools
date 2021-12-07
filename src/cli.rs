@@ -49,7 +49,7 @@ impl Command {
             }
             Self::Patch { svd_file } => {
                 if let Err(e) = patch_cli::patch(svd_file) {
-                    eprintln!("error: {:?}", e);
+                    panic!("{:?}", e);
                 }
             }
             Self::Makedeps {

@@ -50,7 +50,7 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
             let deps = yaml_includes(root).unwrap();
 
             if let Err(e) = write_file(deps_file, deps) {
-                eprintln!("couldn't create {}: {}", deps_file.display(), e.to_string())
+                panic!("couldn't create {}: {}", deps_file.display(), e.to_string())
             };
         }
         _ => panic!("Incorrect yaml"),

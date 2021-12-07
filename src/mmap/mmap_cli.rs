@@ -11,7 +11,7 @@ pub fn parse_device(svd_file: &Path) {
     match get_text(&mut file) {
         Err(e) => {
             let path_str = svd_file.display();
-            eprintln!("cannot parse {}: {}", path_str, e.to_string());
+            panic!("cannot parse {}: {}", path_str, e.to_string());
         }
         Ok(text) => println!("{}", text),
     }
