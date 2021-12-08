@@ -1,5 +1,5 @@
 use crate::patch::yaml_includes;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::io::{Read, Write};
 use std::{
     fs::File,
@@ -14,15 +14,8 @@ fn write_to_file(file: &mut File, string_to_write: &str) -> Result<()> {
 }
 
 fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
-    // Open a file in write-only mode, returns `io::Result<File>`
-    let mut file = match File::create(&file_name) {
-        Err(why) => panic!(
-            "couldn't create {}: {}",
-            file_name.display(),
-            why.to_string()
-        ),
-        Ok(file) => file,
-    };
+    // Open a file in write-only mode
+    let mut file = File::create(&file_name)?;
 
     let file_name = format!("{}:", file_name.file_name().unwrap().to_str().unwrap());
     write_to_file(&mut file, &file_name)?;
@@ -35,11 +28,11 @@ fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
-    let f = File::open(yaml_file).unwrap();
+pub fn makedeps(yaml_file: &Path, deps_file: &Path) -> Result<()> {
+    let f = File::open(yaml_file)?;
     let mut contents = String::new();
-    (&f).read_to_string(&mut contents).unwrap();
-    let mut docs = YamlLoader::load_from_str(&contents).unwrap();
+    (&f).read_to_string(&mut contents)?;
+    let mut docs = YamlLoader::load_from_str(&contents)?;
     match &mut docs[0] {
         Yaml::Hash(root) => {
             root.insert(
@@ -47,13 +40,12 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) {
                 Yaml::String(yaml_file.to_str().unwrap().into()),
             );
 
-            let deps = yaml_includes(root).unwrap();
+            let deps = yaml_includes(root)?;
 
-            if let Err(e) = write_file(deps_file, deps) {
-                panic!("couldn't create {}: {}", deps_file.display(), e.to_string())
-            };
+            write_file(deps_file, deps)?;
+            Ok(())
         }
-        _ => panic!("Incorrect yaml"),
+        _ => Err(anyhow!("Incorrect yaml {:?}", yaml_file)),
     }
 }
 
@@ -73,7 +65,7 @@ mod tests {
         let test_dir = test_utils::res_dir().join(Path::new("makedeps"));
         let yaml_file = test_dir.join(Path::new("test.yaml"));
 
-        makedeps(&yaml_file, &deps_file);
+        makedeps(&yaml_file, &deps_file)?;
 
         let deps: String = fs::read_to_string(deps_file)?.parse()?;
         let exp_string = format!(

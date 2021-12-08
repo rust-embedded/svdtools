@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -39,26 +40,19 @@ enum Command {
 }
 
 impl Command {
-    pub fn run(&self) {
+    pub fn run(&self) -> Result<()> {
         match self {
             Self::Interrupts { svd_file, no_gaps } => {
-                interrupts_cli::parse_device(svd_file, !no_gaps);
+                interrupts_cli::parse_device(svd_file, !no_gaps)?;
             }
-            Self::Mmap { svd_file } => {
-                mmap_cli::parse_device(svd_file);
-            }
-            Self::Patch { svd_file } => {
-                if let Err(e) = patch_cli::patch(svd_file) {
-                    panic!("{:?}", e);
-                }
-            }
+            Self::Mmap { svd_file } => mmap_cli::parse_device(svd_file)?,
+            Self::Patch { svd_file } => patch_cli::patch(svd_file)?,
             Self::Makedeps {
                 yaml_file,
                 deps_file,
-            } => {
-                makedeps_cli::makedeps(yaml_file, deps_file);
-            }
-        };
+            } => makedeps_cli::makedeps(yaml_file, deps_file)?,
+        }
+        Ok(())
     }
 }
 
@@ -70,5 +64,7 @@ struct CliArgs {
 
 pub fn run() {
     let args = CliArgs::from_args();
-    args.command.run();
+    if let Err(e) = args.command.run() {
+        panic!("{:?}", e);
+    }
 }

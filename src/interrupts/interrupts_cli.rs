@@ -3,10 +3,11 @@ use crate::interrupts::{
     interrupt_list::{InterruptList, InterruptWithPeriph},
     svd_reader,
 };
+use anyhow::Result;
 use std::{fs::File, path::Path};
 
-pub fn parse_device(svd_file: &Path, gaps: bool) {
-    let file = File::open(svd_file).expect("svd file doesn't exist");
+pub fn parse_device(svd_file: &Path, gaps: bool) -> Result<()> {
+    let file = File::open(svd_file)?;
     let peripherals = svd_reader::peripherals_with_interrupts(file);
     let interrupt_list = InterruptList::new(peripherals);
 
@@ -16,6 +17,7 @@ pub fn parse_device(svd_file: &Path, gaps: bool) {
         let gaps = interrupt_list.gaps();
         print_gaps(&gaps);
     }
+    Ok(())
 }
 
 fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {

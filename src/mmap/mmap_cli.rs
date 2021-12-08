@@ -1,19 +1,22 @@
 use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::{fs::File, io::Read, path::Path};
 use svd_parser::svd::{Cluster, Field, Peripheral, Register, RegisterCluster, RegisterInfo};
 
 /// Output sorted text of every peripheral, register, field, and interrupt
 /// in the device, such that automated diffing is possible.
-pub fn parse_device(svd_file: &Path) {
+pub fn parse_device(svd_file: &Path) -> Result<()> {
     let mut file = File::open(svd_file).expect("svd file doesn't exist");
     match get_text(&mut file) {
         Err(e) => {
             let path_str = svd_file.display();
-            panic!("cannot parse {}: {}", path_str, e.to_string());
+            Err(e).with_context(|| format!("Parsing {}", path_str))
         }
-        Ok(text) => println!("{}", text),
+        Ok(text) => {
+            println!("{}", text);
+            Ok(())
+        }
     }
 }
 
