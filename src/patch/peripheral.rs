@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    self, Cluster, ClusterInfo, DimElement, Interrupt, Peripheral, Register, RegisterCluster,
+    self, ClusterInfo, DimElement, Interrupt, OptIter, Peripheral, Register, RegisterCluster,
     RegisterInfo,
 };
 use yaml_rust::{yaml::Hash, Yaml};
@@ -11,8 +11,9 @@ use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{check_offsets, matchname, matchsubspec, spec_ind, PatchResult, VAL_LVL};
 use super::{make_cluster, make_interrupt, make_register};
 
-pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Cluster>>;
-pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, svd::register::RegIterMut<'a>>;
+use svd::registercluster::{AllRegistersIterMut, ClusterIterMut};
+pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, OptIter<ClusterIterMut<'a>>>;
+pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, AllRegistersIterMut<'a>>;
 
 /// Collecting methods for processing peripheral contents
 pub trait PeripheralExt {
@@ -20,7 +21,7 @@ pub trait PeripheralExt {
     fn iter_registers<'a, 'b>(&'a mut self, spec: &'b str) -> RegMatchIterMut<'a, 'b>;
 
     /// Iterate over all clusters that match cpsec and live inside ptag
-    fn iter_clusters<'a, 'b>(&mut self, spec: &str) -> ClusterMatchIterMut<'a, 'b>;
+    fn iter_clusters<'a, 'b>(&'a mut self, spec: &'b str) -> ClusterMatchIterMut<'a, 'b>;
 
     /// Iterates over all interrupts matching ispec
     fn iter_interrupts<'a, 'b>(
@@ -77,7 +78,7 @@ pub trait PeripheralExt {
 
 impl PeripheralExt for Peripheral {
     fn iter_registers<'a, 'b>(&'a mut self, spec: &'b str) -> RegMatchIterMut<'a, 'b> {
-        self.reg_iter_mut().matched(spec)
+        self.all_registers_mut().matched(spec)
     }
 
     fn iter_interrupts<'a, 'b>(
@@ -272,8 +273,8 @@ impl PeripheralExt for Peripheral {
         Ok(())
     }
 
-    fn iter_clusters<'a, 'b>(&mut self, _spec: &str) -> ClusterMatchIterMut<'a, 'b> {
-        todo!()
+    fn iter_clusters<'a, 'b>(&'a mut self, spec: &'b str) -> ClusterMatchIterMut<'a, 'b> {
+        self.clusters_mut().matched(spec)
     }
 
     fn add_interrupt(&mut self, iname: &str, iadd: &Hash) -> PatchResult {
@@ -309,7 +310,7 @@ impl PeripheralExt for Peripheral {
     }
 
     fn add_register(&mut self, rname: &str, radd: &Hash) -> PatchResult {
-        if self.reg_iter().any(|r| r.name == rname) {
+        if self.all_registers_mut().any(|r| r.name == rname) {
             return Err(anyhow!(
                 "peripheral {} already has a register {}",
                 self.name,
@@ -336,7 +337,7 @@ impl PeripheralExt for Peripheral {
         })?;
 
         let mut source = self
-            .reg_iter()
+            .all_registers()
             .find(|p| p.name == srcname)
             .ok_or_else(|| {
                 anyhow!(
@@ -351,7 +352,7 @@ impl PeripheralExt for Peripheral {
             .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL)?;
-        if let Some(ptag) = self.reg_iter_mut().find(|r| r.name == rname) {
+        if let Some(ptag) = self.all_registers_mut().find(|r| r.name == rname) {
             source.address_offset = ptag.address_offset;
             *ptag = source;
         } else {
@@ -383,7 +384,7 @@ impl PeripheralExt for Peripheral {
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
         let len = prefix.len();
         let glob = globset::Glob::new(&(prefix.to_string() + "*"))?.compile_matcher();
-        for rtag in self.reg_iter_mut() {
+        for rtag in self.all_registers_mut() {
             if glob.is_match(&rtag.name) {
                 rtag.name.drain(..len);
             }
@@ -401,7 +402,7 @@ impl PeripheralExt for Peripheral {
         let glob = globset::Glob::new(&("*".to_string() + suffix))
             .unwrap()
             .compile_matcher();
-        for rtag in self.reg_iter_mut() {
+        for rtag in self.all_registers_mut() {
             if glob.is_match(&rtag.name) {
                 let nlen = rtag.name.len();
                 rtag.name.truncate(nlen - len);

@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, Register, RegisterInfo, Usage,
-    WriteConstraint, WriteConstraintRange,
+    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, OptIter, Register, RegisterInfo,
+    Usage, WriteConstraint, WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
-use super::iterators::{MatchIter, Matched, OptIter};
+use super::iterators::{MatchIter, Matched};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{check_offsets, matchname, spec_ind, PatchResult, VAL_LVL};
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
@@ -575,7 +575,13 @@ impl RegisterExt for Register {
                     ));
                 }
             };
-            assert_eq!(usage, orig_usage);
+            if usage != orig_usage {
+                return Err(anyhow!(
+                    "enumeratedValues with different usage was found: {:?} != {:?}",
+                    usage,
+                    orig_usage
+                ));
+            }
             let evs = make_derived_enumerated_values(d)?;
             for ftag in self.iter_fields(fspec) {
                 if ftag.name == d {

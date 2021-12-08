@@ -45,31 +45,6 @@ where
     }
 }
 
-/// Iterates over optional iterator
-pub struct OptIter<I>(Option<I>)
-where
-    I: Iterator;
-
-impl<I> OptIter<I>
-where
-    I: Iterator,
-{
-    /// Create new optional iterator
-    pub fn new(o: Option<I>) -> Self {
-        Self(o)
-    }
-}
-
-impl<'a, I> Iterator for OptIter<I>
-where
-    I: Iterator,
-{
-    type Item = I::Item;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.as_mut().and_then(I::next)
-    }
-}
-
 pub trait GetName {
     fn get_name(&self) -> &str;
 }
