@@ -42,7 +42,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
       <addressBlock>
         <offset>0x2</offset>
         <size>0x402</size>
-        <usage>registers2</usage>
+        <usage>registers</usage>
       </addressBlock>
     </peripheral>
     <peripheral>

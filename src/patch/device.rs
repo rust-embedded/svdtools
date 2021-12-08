@@ -101,7 +101,7 @@ impl DeviceExt for Device {
             self.copy_peripheral(
                 pname,
                 val.hash()?,
-                Path::new(device.get_str("_path")?.unwrap()),
+                Path::new(device.get_str("_path")?.unwrap_or(".")),
             )
             .with_context(|| format!("Copying peripheral `{}`", pname))?;
         }
@@ -374,5 +374,91 @@ impl DeviceExt for Device {
         } else {
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+    use std::path::Path;
+
+    fn get_periph<'a>(device: &'a Device, name: &str) -> Option<&'a Peripheral> {
+        device.peripherals.iter().find(|p| p.name == name)
+    }
+
+    #[test]
+    fn add_peripherals() {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("add")).unwrap();
+        assert_eq!(device.peripherals.len(), 1);
+        device.process(&yaml, true).unwrap();
+        assert_eq!(device.peripherals.len(), 2);
+        let periph1 = &device.peripherals[0];
+        assert_eq!(periph1.name, "DAC1");
+        let periph2 = &device.peripherals[1];
+        assert_eq!(periph2.name, "CPUID");
+    }
+
+    #[test]
+    fn delete_peripherals() {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("delete")).unwrap();
+        assert_eq!(device.peripherals.len(), 3);
+        device.process(&yaml, true).unwrap();
+        assert_eq!(device.peripherals.len(), 1);
+        let remaining_periph = &device.peripherals[0];
+        assert_eq!(remaining_periph.name, "DAC2");
+    }
+
+    #[test]
+    fn copy_peripherals() {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("copy")).unwrap();
+        assert_eq!(device.peripherals.len(), 3);
+        let dac1 = get_periph(&device, "DAC1").unwrap();
+        let dac2 = get_periph(&device, "DAC2").unwrap();
+        assert_ne!(dac1.registers, dac2.registers);
+
+        device.process(&yaml, true).unwrap();
+        assert_eq!(device.peripherals.len(), 3);
+
+        let dac1 = get_periph(&device, "DAC1").unwrap();
+        let dac2 = get_periph(&device, "DAC2").unwrap();
+        assert_eq!(dac1.registers, dac2.registers);
+    }
+
+    #[test]
+    fn modify_device() {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("modify")).unwrap();
+
+        // check device initial config
+        assert_eq!(&device.version, &Some("1.6".to_string()));
+        assert_eq!(&device.description, &None);
+
+        // check cpu initial config
+        let cpu = &device.cpu.clone().unwrap();
+        assert_eq!(cpu.nvic_priority_bits, 3);
+
+        // check peripheral initial config
+        assert_eq!(device.peripherals.len(), 2);
+        let dac1 = get_periph(&device, "DAC1").unwrap();
+        assert_eq!(dac1.name, "DAC1");
+        assert_eq!(dac1.description, None);
+
+        device.process(&yaml, true).unwrap();
+
+        // check device final config
+        assert_eq!(&device.version, &Some("1.7".to_string()));
+        assert_eq!(&device.description, &Some("STM32L4x2".to_string()));
+
+        // check cpu final config
+        let cpu = &device.cpu.clone().unwrap();
+        assert_eq!(cpu.nvic_priority_bits, 4);
+
+        // check peripheral final config
+        let dac1 = get_periph(&device, "DAC11").unwrap();
+        assert_eq!(dac1.name, "DAC11");
+        assert_eq!(
+            dac1.description,
+            Some("Digital-to-analog converter".to_string())
+        );
     }
 }
