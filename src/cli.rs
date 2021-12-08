@@ -63,8 +63,12 @@ struct CliArgs {
 }
 
 pub fn run() {
+    env_logger::init();
+
     let args = CliArgs::from_args();
     if let Err(e) = args.command.run() {
-        panic!("{:?}", e);
+        log::error!("{:?}", e);
+
+        std::process::exit(1);
     }
 }

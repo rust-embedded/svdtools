@@ -38,6 +38,8 @@ thiserror = "1.0.30"
 linked-hash-map = "0.5"
 globset = "0.4.8"
 commands = "0.0.5"
+env_logger = "0.9"
+log = { version = "~0.4", features = ["std"] }
 
 [dev-dependencies]
 tempfile = "3.1"
