@@ -4,7 +4,7 @@ version = "0.1.0"
 repository = "https://github.com/stm32-rs/svdtools"
 description = "Tool for modifying bugs in CMSIS SVD"
 authors = [
-    "The ToolsTeam <tools@teams.rust-embedded.org>",
+    "Andrey Zgarbul <zgarbul.andrey@gmail.com>",
     "MarcoIeni"
 ]
 categories = [
