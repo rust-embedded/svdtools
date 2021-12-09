@@ -20,7 +20,7 @@ _modify:
   USB_SRAM:
      name: USB
      # without quotes, get less readable value 1073768448
-     baseAddress: "0x40006800"
+     baseAddress: 0x40006800
 
 USB:
   _add:

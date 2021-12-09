@@ -1,0 +1,45 @@
+[package]
+name = "svdtools"
+version = "0.1.0"
+repository = "https://github.com/stm32-rs/svdtools"
+description = "Tool for modifying bugs in CMSIS SVD"
+authors = [
+    "The ToolsTeam <tools@teams.rust-embedded.org>",
+    "MarcoIeni"
+]
+categories = [
+    "command-line-utilities",
+    "embedded",
+    "hardware-support",
+    "no-std",
+]
+keywords = [
+    "svd",
+    "embedded",
+    "register",
+]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+include = ["/src", "CHANGELOG.md", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+quick-xml = { version = "0.18", features = ["serialize"] }
+svd-rs = { version = "0.12.1", features = ["serde"]  }
+svd-parser = "0.12"
+svd-encoder = "0.12"
+yaml-rust = "0.4"
+anyhow = "1.0.43"
+thiserror = "1.0.30"
+linked-hash-map = "0.5"
+globset = "0.4.8"
+commands = "0.0.5"
+env_logger = "0.9"
+log = { version = "~0.4", features = ["std"] }
+
+[dev-dependencies]
+tempfile = "3.1"

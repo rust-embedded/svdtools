@@ -1,0 +1,7 @@
+DAC1:
+  CR:
+    _modify:
+      EN1:
+        bitOffset: 2
+  _include:
+    - other.yaml
