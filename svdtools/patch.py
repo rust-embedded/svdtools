@@ -883,7 +883,7 @@ class Peripheral:
             )
         registers = sorted(registers, key=lambda r: r[2])
 
-        if rmod.get("_start_from_zero", ""):
+        if rmod.get("_start_from_zero"):
             dimIndex = ",".join([str(i) for i in range(dim)])
         elif dim == 1:
             dimIndex = "{0}-{0}".format(registers[0][1])
@@ -912,7 +912,7 @@ class Peripheral:
             name = rmod["name"]
         else:
             name = rspec[:li] + "%s" + rspec[len(rspec) - ri :]
-        if not rmod.get("_keep_zero_character", "") and dimIndex[0] == "0":
+        if not rmod.get("_keep_zero_character") and dimIndex[0] == "0":
             desc = rtag.find("description")
             desc.text = desc.text.replace(
                 nametag.text[li : len(nametag.text) - ri], "%s"
@@ -1233,7 +1233,7 @@ class Register:
             )
         fields = sorted(fields, key=lambda f: f[2])
 
-        if fmod.get("_start_from_zero", ""):
+        if fmod.get("_start_from_zero"):
             dimIndex = ",".join([str(i) for i in range(dim)])
         elif dim == 1:
             dimIndex = "{0}-{0}".format(fields[0][1])
