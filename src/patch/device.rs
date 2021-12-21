@@ -122,29 +122,19 @@ impl DeviceExt for Device {
                             })?;
                     }
                 }
-                "vendor" => {
-                    todo!()
-                }
-                "vendorID" => {
-                    todo!()
-                }
+                "vendor" => self.vendor = Some(val.str()?.into()),
+                "vendorID" => self.vendor_id = Some(val.str()?.into()),
                 "name" => self.name = val.str()?.into(),
-                "series" => {
-                    todo!()
-                }
-                "version" => self.version = Some(val.str()?.into()),
-                "description" => self.description = Some(val.str()?.into()),
-                "licenseText" => {
-                    todo!()
-                }
-                "headerSystemFilename" => {
-                    todo!()
-                }
+                "series" => self.series = Some(val.str()?.into()),
+                "version" => self.version = val.str()?.into(),
+                "description" => self.description = val.str()?.into(),
+                "licenseText" => self.license_text = Some(val.str()?.into()),
+                "headerSystemFilename" => self.header_system_filename = Some(val.str()?.into()),
                 "headerDefinitionsPrefix" => {
-                    todo!()
+                    self.header_definitions_prefix = Some(val.str()?.into())
                 }
-                "addressUnitBits" => self.address_unit_bits = Some(val.i64()? as u32),
-                "width" => self.width = Some(val.i64()? as u32),
+                "addressUnitBits" => self.address_unit_bits = val.i64()? as u32,
+                "width" => self.width = val.i64()? as u32,
                 "size" | "access" | "protection" | "resetValue" | "resetMask" => {
                     modify_register_properties(&mut self.default_register_properties, key, val)?;
                 }
@@ -210,17 +200,13 @@ impl DeviceExt for Device {
                 let filedev = svd_parser::parse(&contents)
                     .with_context(|| format!("Parsing file {}", contents))?;
                 filedev
-                    .peripherals
-                    .iter()
-                    .find(|p| &p.name == pcopyname)
+                    .get_peripheral(pcopyname)
                     .ok_or_else(|| anyhow!("peripheral {} not found", pcopyname))?
                     .clone()
             }
             [pcopyname] => {
                 let mut new = self
-                    .peripherals
-                    .iter()
-                    .find(|p| &p.name == pcopyname)
+                    .get_peripheral(pcopyname)
                     .ok_or_else(|| anyhow!("peripheral {} not found", pcopyname))?
                     .clone();
                 // When copying from a peripheral in the same file, remove any interrupts.
@@ -231,7 +217,7 @@ impl DeviceExt for Device {
         };
         new.name = pname.into();
         new.derived_from = None;
-        if let Some(ptag) = self.peripherals.iter_mut().find(|p| p.name == pname) {
+        if let Some(ptag) = self.get_mut_peripheral(pname) {
             new.base_address = ptag.base_address;
             new.interrupt = std::mem::take(&mut ptag.interrupt);
             *ptag = new;
@@ -281,7 +267,7 @@ impl DeviceExt for Device {
     }
 
     fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult {
-        if self.peripherals.iter().any(|p| p.name == pname) {
+        if self.get_peripheral(pname).is_some() {
             return Err(anyhow!("device already has a peripheral {}", pname));
         }
 
@@ -295,13 +281,9 @@ impl DeviceExt for Device {
     }
 
     fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult {
-        self.peripherals
-            .iter()
-            .find(|p| p.name == pderive)
+        self.get_peripheral(pderive)
             .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
-        self.peripherals
-            .iter_mut()
-            .find(|p| p.name == pname)
+        self.get_mut_peripheral(pname)
             .ok_or_else(|| anyhow!("peripheral {} not found", pname))?
             .modify_from(
                 PeripheralInfo::builder().derived_from(Some(pderive.into())),
@@ -319,9 +301,7 @@ impl DeviceExt for Device {
 
     fn rebase_peripheral(&mut self, pnew: &str, pold: &str) -> PatchResult {
         let old = self
-            .peripherals
-            .iter_mut()
-            .find(|p| p.name == pold)
+            .get_mut_peripheral(pold)
             .ok_or_else(|| anyhow!("peripheral {} not found", pold))?;
         let mut d = std::mem::replace(
             old,
@@ -338,9 +318,7 @@ impl DeviceExt for Device {
                 .single(),
         );
         let new = self
-            .peripherals
-            .iter_mut()
-            .find(|p| p.name == pnew)
+            .get_mut_peripheral(pnew)
             .ok_or_else(|| anyhow!("peripheral {} not found", pnew))?;
         d.name = new.name.clone();
         d.base_address = new.base_address;
@@ -383,10 +361,6 @@ mod tests {
     use crate::test_utils;
     use std::path::Path;
 
-    fn get_periph<'a>(device: &'a Device, name: &str) -> Option<&'a Peripheral> {
-        device.peripherals.iter().find(|p| p.name == name)
-    }
-
     #[test]
     fn add_peripherals() {
         let (mut device, yaml) = test_utils::get_patcher(Path::new("add")).unwrap();
@@ -413,15 +387,15 @@ mod tests {
     fn copy_peripherals() {
         let (mut device, yaml) = test_utils::get_patcher(Path::new("copy")).unwrap();
         assert_eq!(device.peripherals.len(), 3);
-        let dac1 = get_periph(&device, "DAC1").unwrap();
-        let dac2 = get_periph(&device, "DAC2").unwrap();
+        let dac1 = device.get_peripheral("DAC1").unwrap();
+        let dac2 = device.get_peripheral("DAC2").unwrap();
         assert_ne!(dac1.registers, dac2.registers);
 
         device.process(&yaml, true).unwrap();
         assert_eq!(device.peripherals.len(), 3);
 
-        let dac1 = get_periph(&device, "DAC1").unwrap();
-        let dac2 = get_periph(&device, "DAC2").unwrap();
+        let dac1 = device.get_peripheral("DAC1").unwrap();
+        let dac2 = device.get_peripheral("DAC2").unwrap();
         assert_eq!(dac1.registers, dac2.registers);
     }
 
@@ -430,8 +404,8 @@ mod tests {
         let (mut device, yaml) = test_utils::get_patcher(Path::new("modify")).unwrap();
 
         // check device initial config
-        assert_eq!(&device.version, &Some("1.6".to_string()));
-        assert_eq!(&device.description, &None);
+        assert_eq!(&device.version, "1.6");
+        assert_eq!(&device.description, "");
 
         // check cpu initial config
         let cpu = &device.cpu.clone().unwrap();
@@ -439,22 +413,22 @@ mod tests {
 
         // check peripheral initial config
         assert_eq!(device.peripherals.len(), 2);
-        let dac1 = get_periph(&device, "DAC1").unwrap();
+        let dac1 = device.get_peripheral("DAC1").unwrap();
         assert_eq!(dac1.name, "DAC1");
         assert_eq!(dac1.description, None);
 
         device.process(&yaml, true).unwrap();
 
         // check device final config
-        assert_eq!(&device.version, &Some("1.7".to_string()));
-        assert_eq!(&device.description, &Some("STM32L4x2".to_string()));
+        assert_eq!(&device.version, "1.7");
+        assert_eq!(&device.description, "STM32L4x2");
 
         // check cpu final config
         let cpu = &device.cpu.clone().unwrap();
         assert_eq!(cpu.nvic_priority_bits, 4);
 
         // check peripheral final config
-        let dac1 = get_periph(&device, "DAC11").unwrap();
+        let dac1 = device.get_peripheral("DAC11").unwrap();
         assert_eq!(dac1.name, "DAC11");
         assert_eq!(
             dac1.description,

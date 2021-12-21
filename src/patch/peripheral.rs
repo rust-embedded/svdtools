@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    self, ClusterInfo, DimElement, Interrupt, OptIter, Peripheral, Register, RegisterCluster,
-    RegisterInfo,
+    self, ClusterInfo, DimElement, Interrupt, Peripheral, Register, RegisterCluster, RegisterInfo,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -12,7 +11,7 @@ use super::{check_offsets, matchname, matchsubspec, spec_ind, PatchResult, VAL_L
 use super::{make_cluster, make_interrupt, make_register};
 
 use svd::registercluster::{AllRegistersIterMut, ClusterIterMut};
-pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, OptIter<ClusterIterMut<'a>>>;
+pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, ClusterIterMut<'a>>;
 pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, AllRegistersIterMut<'a>>;
 
 /// Collecting methods for processing peripheral contents
@@ -278,7 +277,7 @@ impl PeripheralExt for Peripheral {
     }
 
     fn add_interrupt(&mut self, iname: &str, iadd: &Hash) -> PatchResult {
-        if self.interrupt.iter().any(|i| i.name == iname) {
+        if self.get_interrupt(iname).is_some() {
             return Err(anyhow!(
                 "peripheral {} already has an interrupt {}",
                 self.name,
@@ -338,7 +337,7 @@ impl PeripheralExt for Peripheral {
 
         let mut source = self
             .all_registers()
-            .find(|p| p.name == srcname)
+            .find(|r| r.name == srcname)
             .ok_or_else(|| {
                 anyhow!(
                     "peripheral {} does not have register {}",

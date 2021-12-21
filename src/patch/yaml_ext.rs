@@ -1,5 +1,5 @@
+use super::iterators::OptIter;
 use anyhow::{Context, Result};
-use svd_rs::OptIter;
 use yaml_rust::{yaml::Hash, Yaml};
 
 /// Errors that can occur during building.

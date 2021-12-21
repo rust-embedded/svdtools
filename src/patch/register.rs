@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, OptIter, Register, RegisterInfo,
-    Usage, WriteConstraint, WriteConstraintRange,
+    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, Register, RegisterInfo, Usage,
+    WriteConstraint, WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -10,8 +10,7 @@ use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{check_offsets, matchname, spec_ind, PatchResult, VAL_LVL};
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
-pub type FieldIterMut<'a> = OptIter<std::slice::IterMut<'a, Field>>;
-pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, FieldIterMut<'a>>;
+pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Field>>;
 
 pub trait RegisterInfoExt {
     /// Calculate filling of register
@@ -43,9 +42,6 @@ pub trait RegisterExt {
 
     /// Clear contents of fields matched by fspec inside rtag
     fn clear_field(&mut self, fspec: &str) -> PatchResult;
-
-    /// Iterates over all fields
-    fn iter_all_fields(&mut self) -> FieldIterMut;
 
     /// Iterates over all fields that match fspec and live inside rtag
     fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
@@ -182,18 +178,14 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn iter_all_fields(&mut self) -> FieldIterMut {
-        FieldIterMut::new(self.fields.as_mut().map(|f| f.iter_mut()))
-    }
-
     fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b> {
-        self.iter_all_fields().matched(spec)
+        self.fields_mut().matched(spec)
     }
 
     fn strip_start(&mut self, substr: &str) -> PatchResult {
         let len = substr.len();
         let glob = globset::Glob::new(&(substr.to_string() + "*"))?.compile_matcher();
-        for ftag in self.iter_all_fields() {
+        for ftag in self.fields_mut() {
             if glob.is_match(&ftag.name) {
                 ftag.name.drain(..len);
             }
@@ -204,7 +196,7 @@ impl RegisterExt for Register {
     fn strip_end(&mut self, substr: &str) -> PatchResult {
         let len = substr.len();
         let glob = globset::Glob::new(&("*".to_string() + substr))?.compile_matcher();
-        for ftag in self.iter_all_fields() {
+        for ftag in self.fields_mut() {
             if glob.is_match(&ftag.name) {
                 let nlen = ftag.name.len();
                 ftag.name.truncate(nlen - len);
@@ -246,7 +238,7 @@ impl RegisterExt for Register {
     }
 
     fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult {
-        if self.iter_all_fields().any(|f| f.name == fname) {
+        if self.get_field(fname).is_some() {
             return Err(anyhow!(
                 "register {} already has a field {}",
                 self.name,
@@ -563,7 +555,9 @@ impl RegisterExt for Register {
                 .flat_map(|f| f.enumerated_values.iter())
                 .filter(|e| e.name.as_deref() == Some(d));
             let orig_usage = match (derived_enums.next(), derived_enums.next()) {
-                (Some(e), None) => e.usage(),
+                (Some(e), None) => e.usage().ok_or_else(|| {
+                    anyhow!("{}: multilevel derive for {} is not supported", pname, d)
+                })?,
                 (None, _) => {
                     return Err(anyhow!("{}: enumeratedValues {} can't be found", pname, d))
                 }
