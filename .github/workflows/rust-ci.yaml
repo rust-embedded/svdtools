@@ -32,6 +32,22 @@ jobs:
           toolchain: stable
       - run: cargo test
 
+  test_convert:
+    name: Test Convert
+    env:
+      RUSTFLAGS: "-D warnings"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: |
+          cargo run --release -- convert res/example1/stm32l4x2.svd stm32l4x2.yaml
+          cargo run --release -- convert res/example1/stm32l4x2.svd stm32l4x2.json
+          cargo run --release -- convert stm32l4x2.yaml stm32l4x2.svd
+          cargo run --release -- convert stm32l4x2.json stm32l4x2.svd
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
