@@ -1,11 +1,11 @@
-use svd_parser::svd;
+use svd_rs::Name;
 
 use super::matchname;
 
 pub struct MatchIter<'b, I>
 where
     I: Iterator,
-    I::Item: GetName,
+    I::Item: Name,
 {
     it: I,
     spec: &'b str,
@@ -14,12 +14,12 @@ where
 impl<'b, I> Iterator for MatchIter<'b, I>
 where
     I: Iterator,
-    I::Item: GetName,
+    I::Item: Name,
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
         for next in self.it.by_ref() {
-            if matchname(next.get_name(), self.spec) {
+            if matchname(next.name(), self.spec) {
                 return Some(next);
             }
         }
@@ -30,7 +30,7 @@ where
 pub trait Matched
 where
     Self: Iterator + Sized,
-    Self::Item: GetName,
+    Self::Item: Name,
 {
     fn matched(self, spec: &str) -> MatchIter<Self>;
 }
@@ -38,51 +38,34 @@ where
 impl<I> Matched for I
 where
     Self: Iterator + Sized,
-    Self::Item: GetName,
+    Self::Item: Name,
 {
     fn matched(self, spec: &str) -> MatchIter<Self> {
         MatchIter { it: self, spec }
     }
 }
 
-pub trait GetName {
-    fn get_name(&self) -> &str;
-}
-impl GetName for svd::Interrupt {
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-}
-impl GetName for svd::Field {
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-}
-impl GetName for svd::Register {
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-}
-impl GetName for svd::Cluster {
-    fn get_name(&self) -> &str {
-        &self.name
+/// Iterates over optional iterator
+pub struct OptIter<I>(Option<I>)
+where
+    I: Iterator;
+
+impl<I> OptIter<I>
+where
+    I: Iterator,
+{
+    /// Create new optional iterator
+    pub fn new(o: Option<I>) -> Self {
+        Self(o)
     }
 }
 
-impl<T> GetName for &T
+impl<'a, I> Iterator for OptIter<I>
 where
-    T: GetName,
+    I: Iterator,
 {
-    fn get_name(&self) -> &str {
-        T::get_name(*self)
-    }
-}
-
-impl<T> GetName for &mut T
-where
-    T: GetName,
-{
-    fn get_name(&self) -> &str {
-        T::get_name(*self)
+    type Item = I::Item;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut().and_then(I::next)
     }
 }
