@@ -1,4 +1,5 @@
 pub mod common;
+pub mod convert;
 pub mod interrupts;
 pub mod makedeps;
 pub mod mmap;

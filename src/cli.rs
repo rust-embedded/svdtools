@@ -3,10 +3,12 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use svdtools::{
-    interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli, patch::patch_cli,
+    convert::convert_cli, interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli,
+    patch::patch_cli,
 };
 
 #[derive(Parser, Debug)]
+#[clap(about, version, author)]
 enum Command {
     /// Patches an SVD file as specified by a YAML file
     Patch {
@@ -37,6 +39,17 @@ enum Command {
         #[clap(parse(from_os_str))]
         svd_file: PathBuf,
     },
+    /// Convert SVD representation between file formats
+    Convert {
+        #[clap(parse(from_os_str))]
+        in_path: PathBuf,
+        #[clap(parse(from_os_str))]
+        out_path: PathBuf,
+        #[clap(long = "input-format")]
+        input_format: Option<convert_cli::InputFormat>,
+        #[clap(long = "output-format")]
+        output_format: Option<convert_cli::OutputFormat>,
+    },
 }
 
 impl Command {
@@ -51,6 +64,12 @@ impl Command {
                 yaml_file,
                 deps_file,
             } => makedeps_cli::makedeps(yaml_file, deps_file)?,
+            Self::Convert {
+                in_path,
+                out_path,
+                input_format,
+                output_format,
+            } => convert_cli::convert(in_path, out_path, *input_format, *output_format)?,
         }
         Ok(())
     }
