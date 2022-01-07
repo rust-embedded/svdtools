@@ -48,6 +48,8 @@ pub fn convert(
     out_path: &Path,
     input_format: Option<InputFormat>,
     output_format: Option<OutputFormat>,
+    expand: bool,
+    ignore_enums: bool,
 ) -> Result<()> {
     let input_format = match input_format {
         None => match in_path.extension().and_then(|e| e.to_str()) {
@@ -68,9 +70,17 @@ pub fn convert(
     File::open(in_path)?.read_to_string(&mut input)?;
 
     let device = match input_format {
-        InputFormat::Xml => svd_parser::parse(&input)?,
+        InputFormat::Xml => svd_parser::parse_with_config(
+            &input,
+            &svd_parser::Config::default().ignore_enums(ignore_enums),
+        )?,
         InputFormat::Yaml => serde_yaml::from_str(&input)?,
         InputFormat::Json => serde_json::from_str(&input)?,
+    };
+    let device = if expand {
+        svd_parser::expand(&device)?
+    } else {
+        device
     };
 
     let output = match output_format {
