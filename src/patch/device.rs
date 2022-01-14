@@ -65,6 +65,9 @@ pub trait DeviceExt {
     /// Update all derivedFrom referencing pold
     fn rebase_peripheral(&mut self, pnew: &str, pold: &str) -> PatchResult;
 
+    /// Clear contents of all fields inside peripherals matched by pspec
+    fn clear_fields(&mut self, fspec: &str) -> PatchResult;
+
     /// Work through a peripheral, handling all registers
     fn process_peripheral(
         &mut self,
@@ -143,6 +146,16 @@ impl DeviceExt for Device {
                     .modify_peripheral(key, val.hash()?)
                     .with_context(|| format!("Modifying peripherals matched to `{}`", key))?,
             }
+        }
+
+        // Handle field clearing
+        for pspec in device.str_vec_iter("_clear_fields") {
+            self.clear_fields(pspec).with_context(|| {
+                format!(
+                    "Clearing contents of fields in peripherals matched to `{}` ",
+                    pspec
+                )
+            })?;
         }
 
         // Handle any new peripherals (!)
@@ -330,6 +343,13 @@ impl DeviceExt for Device {
             .filter(|p| p.derived_from.as_deref() == Some(pold))
         {
             p.derived_from = Some(pnew.into());
+        }
+        Ok(())
+    }
+
+    fn clear_fields(&mut self, pspec: &str) -> PatchResult {
+        for ptag in self.iter_peripherals(pspec, false) {
+            ptag.clear_fields("*")?;
         }
         Ok(())
     }

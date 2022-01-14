@@ -584,6 +584,12 @@ class Device:
         for p in parent.findall("./peripheral[@derivedFrom='{}']".format(pold)):
             p.set("derivedFrom", pnew)
 
+    def clear_fields(self, pspec):
+        """Clear contents of all fields inside peripherals matched by pspec"""
+        for ptag in self.iter_peripherals(pspec, check_derived=False):
+            p = Peripheral(ptag)
+            p.clear_fields("*")
+
     def process_peripheral(self, pspec, peripheral, update_fields=True):
         """Work through a peripheral, handling all registers."""
         # Find all peripherals that match the spec
@@ -647,6 +653,9 @@ class Device:
                 p.strip(prefix)
             for suffix in peripheral.get("_strip_end", []):
                 p.strip(suffix, strip_end=True)
+            # Handle field clearing
+            for rspec in peripheral.get("_clear_fields", []):
+                p.clear_fields(rspec)
             # Handle additions
             for rname in peripheral.get("_add", {}):
                 radd = peripheral["_add"][rname]
@@ -1005,6 +1014,12 @@ class Peripheral:
         ET.SubElement(ctag, "dim").text = str(dim)
         ET.SubElement(ctag, "dimIncrement").text = hex(dimIncrement)
         ET.SubElement(ctag, "dimIndex").text = dimIndex
+
+    def clear_fields(self, rspec):
+        """Clear contents of all fields inside registers matched by rspec"""
+        for rtag in list(self.iter_registers(rspec)):
+            r = Register(rtag)
+            r.clear_field("*")
 
     def process_register(self, rspec, register, update_fields=True):
         """Work through a register, handling all fields."""
@@ -1433,6 +1448,10 @@ def process_device(svd, device, update_fields=True):
             d.modify_child(key, val)
         else:
             d.modify_peripheral(key, val)
+
+    # Handle field clearing
+    for pspec in device.get("_clear_fields", []):
+        d.clear_fields(pspec)
 
     # Handle any new peripherals (!)
     for pname in device.get("_add", []):

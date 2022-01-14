@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+* Add `_clear_fields` in `Device` and `Peripheral`
+
 ## [v0.1.20] 2021-10-06
 
 * Remove displayName from newly derived registers, fixing #83 (#85)

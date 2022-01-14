@@ -73,6 +73,9 @@ pub trait PeripheralExt {
 
     /// Collect registers in peripheral into clusters
     fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash) -> PatchResult;
+
+    /// Clear contents of all fields inside registers matched by rspec
+    fn clear_fields(&mut self, rspec: &str) -> PatchResult;
 }
 
 impl PeripheralExt for Peripheral {
@@ -197,6 +200,16 @@ impl PeripheralExt for Peripheral {
         for suffix in pmod.str_vec_iter("_strip_end") {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{}` from register names", suffix))?;
+        }
+
+        // Handle field clearing
+        for rspec in pmod.str_vec_iter("_clear_fields") {
+            self.clear_fields(rspec).with_context(|| {
+                format!(
+                    "Clearing contents of fields in registers matched to `{}` ",
+                    rspec
+                )
+            })?;
         }
 
         // Handle additions
@@ -639,6 +652,13 @@ impl PeripheralExt for Peripheral {
                 )
             };
             regs.insert(place, RegisterCluster::Cluster(cluster));
+        }
+        Ok(())
+    }
+
+    fn clear_fields(&mut self, rspec: &str) -> PatchResult {
+        for rtag in self.iter_registers(rspec) {
+            rtag.clear_field("*")?;
         }
         Ok(())
     }
