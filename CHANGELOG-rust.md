@@ -7,6 +7,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [v0.2.0] 2022-01-15
 
+* Use `svd-parser` 0.13.1
 * Add `_clear_fields` in `Device` and `Peripheral` (#90)
 * Add new `convert` command to convert between SVD (XML), JSON, and YAML (#92)
 
