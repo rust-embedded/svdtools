@@ -921,7 +921,11 @@ class Peripheral:
             name = rmod["name"]
         else:
             name = rspec[:li] + "%s" + rspec[len(rspec) - ri :]
-        if not rmod.get("_keep_zero_character") and dimIndex[0] == "0":
+        if "description" in rmod:
+            desc = rmod["description"]
+            if desc != "_original":
+                rtag.find("description").text = desc
+        elif dimIndex[0] == "0":
             desc = rtag.find("description")
             desc.text = desc.text.replace(
                 nametag.text[li : len(nametag.text) - ri], "%s"
@@ -1008,6 +1012,8 @@ class Peripheral:
                 li, ri = spec_ind(rspec)
                 name = rspec[:li] + rspec[len(rspec) - ri :]
             new_rtag.find("name").text = name
+            if "description" in rmod:
+                rtag.find("description").text = rmod["description"]
             offset = new_rtag.find("addressOffset")
             offset.text = hex(int(offset.text, 0) - addressOffset)
             ctag.append(new_rtag)
@@ -1273,8 +1279,15 @@ class Register:
             name = fmod["name"]
         else:
             name = fspec[:li] + "%s" + fspec[len(fspec) - ri :]
-        desc = ftag.find("description")
-        desc.text = desc.text.replace(nametag.text[li : len(nametag.text) - ri], "%s")
+        if "description" in fmod:
+            desc = fmod["description"]
+            if desc != "_original":
+                ftag.find("description").text = desc
+        elif dimIndex[0] == "0":
+            desc = ftag.find("description")
+            desc.text = desc.text.replace(
+                nametag.text[li : len(nametag.text) - ri], "%s"
+            )
         nametag.text = name
         # self.process_field(name, fmod)
         ET.SubElement(ftag, "dim").text = str(dim)
