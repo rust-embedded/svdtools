@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+* Provide option to opt out of regex replace of 0's in description when creating arrays
 * Add `_clear_fields` in `Device` and `Peripheral`
 
 ## [v0.1.20] 2021-10-06
