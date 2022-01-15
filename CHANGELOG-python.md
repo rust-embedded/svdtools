@@ -1,9 +1,15 @@
 # Changelog
 
+This changelog tracks the Python `svdtools` project. See
+[CHANGELOG-rust.md](CHANGELOG-rust.md) for the Rust `svdtools` project.
+
 ## [Unreleased]
 
-* Provide option to opt out of regex replace of 0's in description when creating arrays
-* Add `_clear_fields` in `Device` and `Peripheral`
+## [v0.1.21] 2022-01-15
+
+* Provide option to opt out of regex replace of 0's in description when
+  creating arrays (#90)
+* Add `_clear_fields` in `Device` and `Peripheral` (#93)
 
 ## [v0.1.20] 2021-10-06
 
@@ -135,7 +141,8 @@
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.20...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.21...HEAD
+[v0.1.21]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.20...v0.1.21
 [v0.1.20]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.19...v0.1.20
 [v0.1.19]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.18...v0.1.19
 [v0.1.18]: https://github.com/stm32-rs/stm32-rs/compare/v0.1.17...v0.1.18
