@@ -1,0 +1,12 @@
+_svd: stm32l4x2.svd
+
+# SVD incorrectly labels APB1ENR1 bit 18 as USART1EN instead of USART3EN.
+# SVD incorrectly labels APB1ENR1 bit 26 as USBF instead of USBFSEN.
+DAC1:
+  CR:
+    _modify:
+      EN1:
+        description: EN2 description
+
+_include:
+  - subdir/tsc.yaml

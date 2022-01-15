@@ -2,9 +2,9 @@
 
 # svdtools
 
-**svdtools** is a Python package for modifying vendor-supplied, often buggy SVD
+**svdtools** is a Python (Rust) package for modifying vendor-supplied, often buggy SVD
 files. It can be imported as a library for use in other applications, or run
-directly via the included `svd` CLI utility.
+directly via the included `svd`(`svdtools`) CLI utility.
 
 A common use case is patching vendor-supplied SVD files, then applying
 [svd2rust](https://github.com/rust-embedded/svd2rust) to the resulting patched
@@ -15,7 +15,7 @@ SVD.
 [travis-badge]: https://travis-ci.com/stm32-rs/svdtools.svg?branch=master
 [travis-url]: https://travis-ci.com/stm32-rs/svdtools
 
-## Getting Started
+## Getting Started with Python version
 
 Python 3.6 or newer is required to install and use `svdtools`. To install:
 
@@ -32,6 +32,15 @@ An example is given in `make example`, which calls
 See [Device and Peripheral YAML Format](#device-and-peripheral-yaml-format) for
 more information on creating patches.
 
+## Getting Started with Rust version
+
+This crate is guaranteed to compile on stable Rust 1.46.0 and up. To install:
+
+```bash
+$ cargo install svdtools
+```
+
+Once installation has completed, the `svdtools` utility can be called from the command line. Command line interface is same as CLI for Python version.
 
 ## Develop
 
