@@ -8,7 +8,7 @@ This changelog tracks the Python `svdtools` project. See
 ## [v0.1.21] 2022-01-15
 
 * Provide option to opt out of regex replace of 0's in description when
-  creating arrays (#90)
+  creating arrays by using a custom `description` attribute (#90, #95)
 * Add `_clear_fields` in `Device` and `Peripheral` (#93)
 
 ## [v0.1.20] 2021-10-06

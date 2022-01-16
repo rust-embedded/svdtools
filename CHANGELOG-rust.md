@@ -10,6 +10,8 @@ This changelog tracks the Rust `svdtools` project. See
 * Use `svd-parser` 0.13.1
 * Add `_clear_fields` in `Device` and `Peripheral` (#90)
 * Add new `convert` command to convert between SVD (XML), JSON, and YAML (#92)
+* Provide option to opt out of regex replace of 0's in description when
+  creating arrays by using a custom `description` attribute (#95)
 
 ## [v0.1.0] 2021-12-09
 
