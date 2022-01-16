@@ -23,8 +23,6 @@ readme = "README.md"
 include = ["/res", "/src", "/tests", "CHANGELOG-rust.md", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2021"
 
-# See more keys and tCHANGELOG-rust.mdheir definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 clap = { version = "3.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
