@@ -484,7 +484,11 @@ impl PeripheralExt for Peripheral {
             } else {
                 rinfo.name = format!("{}%s{}", &rspec[..li], &rspec[rspec.len() - ri..]);
             }
-            if dim_index[0] == "0" {
+            if let Some(desc) = rmod.get_str("description")? {
+                if desc != "_original" {
+                    rinfo.description = Some(desc.into());
+                }
+            } else if dim_index[0] == "0" {
                 if let Some(desc) = rinfo.description.as_mut() {
                     *desc = desc.replace('0', "%s");
                 }
@@ -638,6 +642,9 @@ impl PeripheralExt for Peripheral {
                     } else {
                         let (li, ri) = spec_ind(&rspec);
                         reg.name = format!("{}{}", &rspec[..li], &rspec[rspec.len() - ri..]);
+                    }
+                    if let Some(desc) = rmod.get_str("description")? {
+                        reg.description = Some(desc.into());
                     }
                     reg.address_offset -= address_offset;
                     children.push(RegisterCluster::Register(reg));

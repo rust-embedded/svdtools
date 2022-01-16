@@ -379,7 +379,11 @@ impl RegisterExt for Register {
             } else {
                 finfo.name = format!("{}%s{}", &fspec[..li], &fspec[fspec.len() - ri..]);
             }
-            if dim_index[0] == "0" {
+            if let Some(desc) = fmod.get_str("description")? {
+                if desc != "_original" {
+                    finfo.description = Some(desc.into());
+                }
+            } else if dim_index[0] == "0" {
                 if let Some(desc) = finfo.description.as_mut() {
                     *desc = desc.replace('0', "%s");
                 }
