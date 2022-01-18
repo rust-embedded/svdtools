@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* Add support for PyYAML v6
+
 ## [v0.1.21] 2022-01-15
 
 * Provide option to opt out of regex replace of 0's in description when

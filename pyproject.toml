@@ -14,7 +14,7 @@ requires-python = ">=3.6"
 description-file = "README.md"
 requires = [
   "click ~= 8.0",
-  "PyYAML ~= 5.3",
+  "PyYAML >= 5.3, < 7",
   "lxml ~= 4.6",
   "braceexpand ~= 0.1.7",
 ]
