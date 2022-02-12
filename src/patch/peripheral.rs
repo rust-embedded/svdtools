@@ -317,6 +317,9 @@ impl PeripheralExt for Peripheral {
     fn modify_register(&mut self, rspec: &str, rmod: &Hash) -> PatchResult {
         for rtag in self.iter_registers(rspec) {
             rtag.modify_from(make_register(rmod)?, VAL_LVL)?;
+            if let Some("") = rmod.get_str("access")? {
+                rtag.properties.access = None;
+            }
         }
         Ok(())
     }
