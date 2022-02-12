@@ -5,6 +5,11 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.1] 2022-02-12
+
+* Use `svd-encoder` 0.13.1
+* Remove register `access` if empty
+
 ## [v0.2.0] 2022-01-15
 
 * Use `svd-parser` 0.13.1
@@ -17,6 +22,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/stm32-rs/stm32-rs/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/stm32-rs/svdtools/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/stm32-rs/svdtools/compare/35c3a79...v0.2.0
 [v0.1.0]: https://github.com/stm32-rs/svdtools/pull/84
