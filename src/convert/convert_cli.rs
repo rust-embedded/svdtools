@@ -67,11 +67,24 @@ pub fn convert(
     let mut input = String::new();
     File::open(in_path)?.read_to_string(&mut input)?;
 
-    let device = match input_format {
+    let mut device = match input_format {
         InputFormat::Xml => svd_parser::parse(&input)?,
         InputFormat::Yaml => serde_yaml::from_str(&input)?,
         InputFormat::Json => serde_json::from_str(&input)?,
     };
+
+    if device.schema_version == "" {
+        device.schema_version = "1.1".into();
+    }
+    if device.xmlns_xs == "" {
+        device.xmlns_xs = "http://www.w3.org/2001/XMLSchema-instance".into();
+    }
+    if device.no_namespace_schema_location == "" {
+        device.no_namespace_schema_location = format!(
+            "CMSIS-SVD_Schema_{}.xsd",
+            device.schema_version.replace(".", "_")
+        );
+    }
 
     let output = match output_format {
         OutputFormat::Xml => svd_encoder::encode(&device)?,

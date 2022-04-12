@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Fix `schema_version` in `convert`
+
 ## [v0.2.1] 2022-02-12
 
 * Use `svd-encoder` 0.13.1
