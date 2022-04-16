@@ -30,7 +30,7 @@ fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {
 
         // TODO replace this with str_utils::get_description once comparison
         // with python is done in order to remove duplicated whitespaces
-        let description = description.replace("\r\n", " ").replace("\n", " ");
+        let description = description.replace("\r\n", " ").replace('\n', " ");
 
         println!(
             "{} {}: {} (in {})",

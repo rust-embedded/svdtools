@@ -596,7 +596,7 @@ impl RegisterExt for Register {
                 return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
             }
             let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
-            let name = make_ev_name(name, usage)?;
+            let name = make_ev_name(&name.replace("%s", ""), usage)?;
             for ftag in self.iter_fields(fspec) {
                 if ftag.bit_range.offset == *min_offset {
                     let evs = make_ev_array(fmod)?
