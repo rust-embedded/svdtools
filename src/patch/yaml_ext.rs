@@ -72,7 +72,7 @@ pub fn parse_i64(val: &Yaml) -> Option<i64> {
     match val {
         Yaml::Integer(i) => Some(*i),
         Yaml::String(text) => {
-            let text = text.replace("_", "");
+            let text = text.replace('_', "");
             (if text.starts_with("0x") || text.starts_with("0X") {
                 i64::from_str_radix(&text["0x".len()..], 16)
             } else if text.starts_with('#') {

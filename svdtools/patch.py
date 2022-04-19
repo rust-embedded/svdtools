@@ -1356,7 +1356,9 @@ class Register:
 
             if derived is None:
                 if enum is None:
-                    enum = make_enumerated_values(name, field, usage=usage)
+                    enum = make_enumerated_values(
+                        name.replace("%s", ""), field, usage=usage
+                    )
                     enum_name = enum.find("name").text
                     enum_usage = enum.find("usage").text
 
