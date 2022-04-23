@@ -1,6 +1,6 @@
 [package]
 name = "svdtools"
-version = "0.2.1"
+version = "0.2.2"
 repository = "https://github.com/stm32-rs/svdtools"
 description = "Tool for modifying bugs in CMSIS SVD"
 authors = [
