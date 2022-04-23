@@ -12,6 +12,7 @@ use svdtools::{
 enum Command {
     /// Patches an SVD file as specified by a YAML file
     Patch {
+        /// Path to input SVD file
         #[clap(parse(from_os_str))]
         svd_file: PathBuf,
     },
@@ -27,6 +28,7 @@ enum Command {
     },
     /// Print list of all interrupts described by an SVD file
     Interrupts {
+        /// Path to input SVD file
         #[clap(parse(from_os_str))]
         svd_file: PathBuf,
 
@@ -36,19 +38,35 @@ enum Command {
     },
     /// Generate text-based memory map of an SVD file.
     Mmap {
+        /// Path to input SVD file
         #[clap(parse(from_os_str))]
         svd_file: PathBuf,
     },
     /// Convert SVD representation between file formats
     Convert {
+        /// Path to input file
         #[clap(parse(from_os_str))]
         in_path: PathBuf,
+
+        /// Path to output file
         #[clap(parse(from_os_str))]
         out_path: PathBuf,
+
+        /// Format of input file (XML, JSON or YAML)
         #[clap(long = "input-format")]
         input_format: Option<convert_cli::InputFormat>,
+
+        /// Format of output file (XML, JSON or YAML)
         #[clap(long = "output-format")]
         output_format: Option<convert_cli::OutputFormat>,
+
+        /// Expand arrays, clusters and derived values
+        #[clap(long)]
+        expand: bool,
+
+        /// Skip enumeratedValues and writeConstraints during parsing (XML input only)
+        #[clap(long)]
+        ignore_enums: bool,
     },
 }
 
@@ -69,7 +87,16 @@ impl Command {
                 out_path,
                 input_format,
                 output_format,
-            } => convert_cli::convert(in_path, out_path, *input_format, *output_format)?,
+                expand,
+                ignore_enums,
+            } => convert_cli::convert(
+                in_path,
+                out_path,
+                *input_format,
+                *output_format,
+                *expand,
+                *ignore_enums,
+            )?,
         }
         Ok(())
     }
