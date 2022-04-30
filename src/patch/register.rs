@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, Register, RegisterInfo, Usage,
-    WriteConstraint, WriteConstraintRange,
+    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues, ReadAction,
+    Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -57,6 +57,12 @@ pub trait RegisterExt {
         fmod: &Hash,
         usage: Usage,
     ) -> PatchResult;
+
+    /// Set readAction for field
+    fn set_field_read_action(&mut self, fspec: &str, action: ReadAction);
+
+    /// Set modifiedWriteValues for field
+    fn set_field_modified_write_values(&mut self, fspec: &str, mwv: ModifiedWriteValues);
 
     /// Add a writeConstraint range given by field to all fspec in rtag
     fn process_field_range(&mut self, pname: &str, fspec: &str, fmod: &[Yaml]) -> PatchResult;
@@ -452,21 +458,67 @@ impl RegisterExt for Register {
     }
 
     fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult {
+        const READ_KEYS: [&str; 5] = ["_read", "_RM", "_RS", "_RC", "_RME"];
+        const READ_VALS: [Option<ReadAction>; 5] = [
+            None,
+            Some(ReadAction::Modify),
+            Some(ReadAction::Set),
+            Some(ReadAction::Clear),
+            Some(ReadAction::ModifyExternal),
+        ];
+        const WRITE_KEYS: [&str; 10] = [
+            "_write", "_WM", "_WS", "_WC", "_W1S", "_W0C", "_W1C", "_W0S", "_W1T", "_W0T",
+        ];
+        const WRITE_VALS: [Option<ModifiedWriteValues>; 10] = [
+            None,
+            Some(ModifiedWriteValues::Modify),
+            Some(ModifiedWriteValues::Set),
+            Some(ModifiedWriteValues::Clear),
+            Some(ModifiedWriteValues::OneToSet),
+            Some(ModifiedWriteValues::ZeroToClear),
+            Some(ModifiedWriteValues::OneToClear),
+            Some(ModifiedWriteValues::ZeroToSet),
+            Some(ModifiedWriteValues::OneToToggle),
+            Some(ModifiedWriteValues::ZeroToToggle),
+        ];
         match fmod {
             Yaml::Hash(fmod) => {
-                let is_read = fmod.get_hash("_read")?;
-                let is_write = fmod.get_hash("_write")?;
-                if is_read.is_none() && is_write.is_none() {
+                let is_read = READ_KEYS
+                    .iter()
+                    .any(|key| fmod.contains_key(&key.to_yaml()));
+                let is_write = WRITE_KEYS
+                    .iter()
+                    .any(|key| fmod.contains_key(&key.to_yaml()));
+                if !is_read && !is_write {
                     self.process_field_enum(pname, fspec, fmod, Usage::ReadWrite)
                         .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
-                    if let Some(fmod) = is_read {
-                        self.process_field_enum(pname, fspec, fmod, Usage::Read)
-                            .with_context(|| "Adding read-only enumeratedValues")?;
+                    if is_read {
+                        for (key, action) in READ_KEYS.into_iter().zip(READ_VALS.into_iter()) {
+                            if let Some(fmod) = fmod.get_hash(key)? {
+                                if !fmod.is_empty() {
+                                    self.process_field_enum(pname, fspec, fmod, Usage::Read)
+                                        .with_context(|| "Adding read-only enumeratedValues")?;
+                                }
+                                if let Some(action) = action {
+                                    self.set_field_read_action(fspec, action);
+                                }
+                                break;
+                            }
+                        }
                     }
-                    if let Some(fmod) = is_write {
-                        self.process_field_enum(pname, fspec, fmod, Usage::Write)
-                            .with_context(|| "Adding write-only enumeratedValues")?;
+                    if is_write {
+                        for (key, mwv) in WRITE_KEYS.into_iter().zip(WRITE_VALS.into_iter()) {
+                            if let Some(fmod) = fmod.get_hash(key)? {
+                                if !fmod.is_empty() {
+                                    self.process_field_enum(pname, fspec, fmod, Usage::Write)
+                                        .with_context(|| "Adding write-only enumeratedValues")?;
+                                }
+                                if let Some(mwv) = mwv {
+                                    self.set_field_modified_write_values(fspec, mwv);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -477,6 +529,26 @@ impl RegisterExt for Register {
             _ => {}
         }
         Ok(())
+    }
+
+    fn set_field_read_action(&mut self, fspec: &str, action: ReadAction) {
+        for ftag in self.iter_fields(fspec) {
+            ftag.read_action = if action == ReadAction::Modify {
+                None
+            } else {
+                Some(action)
+            };
+        }
+    }
+
+    fn set_field_modified_write_values(&mut self, fspec: &str, mwv: ModifiedWriteValues) {
+        for ftag in self.iter_fields(fspec) {
+            ftag.modified_write_values = if mwv == ModifiedWriteValues::Modify {
+                None
+            } else {
+                Some(mwv)
+            };
+        }
     }
 
     fn process_field_enum(

@@ -1324,21 +1324,83 @@ class Register:
             ET.SubElement(fnew, "bitOffset").text = str(bitoffset + i)
             ET.SubElement(fnew, "bitWidth").text = str(1)
 
-    def process_field(self, pname, fspec, field):
+    def process_field(self, pname, fspec, fmod):
         """Work through a field, handling either an enum or a range."""
-        if isinstance(field, dict):
-            usages = ("_read", "_write")
+        if isinstance(fmod, dict):
+            read_keys = ["_read", "_RM", "_RS", "_RC", "_RME"]
+            read_vals = ["", "modify", "set", "clear", "modifyExternal"]
+            write_keys = [
+                "_write",
+                "_WM",
+                "_WS",
+                "_WC",
+                "_W1S",
+                "_W0C",
+                "_W1C",
+                "_W0S",
+                "_W1T",
+                "_W0T",
+            ]
+            write_vals = [
+                "",
+                "modify",
+                "set",
+                "clear",
+                "oneToSet",
+                "zeroToClear",
+                "oneToClear",
+                "zeroToSet",
+                "oneToToggle",
+                "zeroToToggle",
+            ]
+            is_read = any(key in fmod for key in read_keys)
+            is_write = any(key in fmod for key in write_keys)
+            if not is_read and not is_write:
+                self.process_field_enum(pname, fspec, fmod)
+            else:
+                if is_read:
+                    for key, action in zip(read_keys, read_vals):
+                        if key in fmod:
+                            mod = fmod[key]
+                            if mod:
+                                self.process_field_enum(pname, fspec, mod, usage="read")
+                            if action:
+                                self.set_field_read_action(fspec, action)
+                            break
+                if is_write:
+                    for key, mwv in zip(write_keys, write_vals):
+                        if key in fmod:
+                            mod = fmod[key]
+                            if mod:
+                                self.process_field_enum(
+                                    pname, fspec, mod, usage="write"
+                                )
+                            if mwv:
+                                self.set_field_modified_write_values(fspec, mwv)
+                            break
 
-            if not any(u in field for u in usages):
-                self.process_field_enum(pname, fspec, field)
+        elif isinstance(fmod, list) and len(fmod) == 2:
+            self.process_field_range(pname, fspec, fmod)
 
-            for usage in (u for u in usages if u in field):
-                self.process_field_enum(
-                    pname, fspec, field[usage], usage=usage.replace("_", "")
-                )
+    def set_field_read_action(self, fspec, action):
+        for ftag in self.iter_fields(fspec):
+            tag = ftag.find("readAction")
+            if tag is None:
+                tag = ET.SubElement(ftag, "readAction")
+            elif action == "modify":
+                ftag.remove(tag)
+                return
+            tag.text = action
 
-        elif isinstance(field, list) and len(field) == 2:
-            self.process_field_range(pname, fspec, field)
+    def set_field_modified_write_values(self, fspec, mwv):
+        for ftag in self.iter_fields(fspec):
+            tag = ftag.find("modifiedWriteValues")
+            if tag is None:
+                tag = ET.SubElement(ftag, "modifiedWriteValues")
+            elif mwv == "modify":
+                ftag.remove(tag)
+                return
+            tag.text = mwv
 
     def process_field_enum(self, pname, fspec, field, usage="read-write"):
         """Add an enumeratedValues given by field to all fspec in rtag."""

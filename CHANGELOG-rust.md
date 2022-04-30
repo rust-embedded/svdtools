@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Add support for `modifiedWriteValues` & `readAction` for fields
+
 ## [v0.2.2] 2022-04-23
 
 * Use `svd-encoder` 0.13.2
