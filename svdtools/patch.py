@@ -1387,9 +1387,6 @@ class Register:
             tag = ftag.find("readAction")
             if tag is None:
                 tag = ET.SubElement(ftag, "readAction")
-            elif action == "modify":
-                ftag.remove(tag)
-                return
             tag.text = action
 
     def set_field_modified_write_values(self, fspec, mwv):
