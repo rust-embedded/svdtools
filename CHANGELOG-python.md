@@ -5,6 +5,10 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.1.23] 2022-05-01
+
+* Add support for `modifiedWriteValues` & `readAction` for fields
+
 ## [v0.1.22] 2022-04-23
 
 * Add support for PyYAML v6 (#96)
@@ -146,7 +150,8 @@ This changelog tracks the Python `svdtools` project. See
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.22...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.23...HEAD
+[v0.1.23]: https://github.com/stm32-rs/svdtools/compare/v0.1.22...v0.1.23
 [v0.1.22]: https://github.com/stm32-rs/svdtools/compare/v0.1.21...v0.1.22
 [v0.1.21]: https://github.com/stm32-rs/svdtools/compare/v0.1.20...v0.1.21
 [v0.1.20]: https://github.com/stm32-rs/svdtools/compare/v0.1.19...v0.1.20

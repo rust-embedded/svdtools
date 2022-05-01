@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.3] 2022-05-01
+
 * Add support for `modifiedWriteValues` & `readAction` for fields
 
 ## [v0.2.2] 2022-04-23
@@ -30,7 +32,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.3...HEAD
+[v0.2.3]: https://github.com/stm32-rs/svdtools/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/stm32-rs/svdtools/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/stm32-rs/svdtools/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/stm32-rs/svdtools/compare/35c3a79...v0.2.0
