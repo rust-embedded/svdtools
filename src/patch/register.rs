@@ -533,11 +533,7 @@ impl RegisterExt for Register {
 
     fn set_field_read_action(&mut self, fspec: &str, action: ReadAction) {
         for ftag in self.iter_fields(fspec) {
-            ftag.read_action = if action == ReadAction::Modify {
-                None
-            } else {
-                Some(action)
-            };
+            ftag.read_action = Some(action);
         }
     }
 
