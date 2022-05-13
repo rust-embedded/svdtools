@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Added action to build binaries and release for every version tag and latest commit
 * Use `svd-parser` 0.13.4, add `expand_properties` option in `convert`
 * `patch`: check enum `usage`, don't add it if unneeded
 
