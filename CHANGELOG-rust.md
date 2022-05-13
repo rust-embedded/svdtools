@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Use `svd-parser` 0.13.4, add `expand_properties` option in `convert`
+* `patch`: check enum `usage`, don't add it if unneeded
+
 ## [v0.2.3] 2022-05-01
 
 * Add support for `modifiedWriteValues` & `readAction` for fields
