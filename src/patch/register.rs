@@ -691,7 +691,9 @@ impl RegisterExt for Register {
                 if ftag.bit_range.offset == *min_offset {
                     let evs = make_ev_array(fmod)?
                         .name(Some(name.clone()))
-                        .usage(make_usage(access, checked_usage))
+                        // TODO: uncomment when python version reaches same functionality
+                        //.usage(make_usage(access, checked_usage))
+                        .usage(Some(checked_usage))
                         .build(VAL_LVL)?;
                     set_enum(ftag, evs, checked_usage, replace_if_exists, access)?;
                 } else {
@@ -739,6 +741,7 @@ fn check_usage(access: Access, usage: Option<Usage>) -> anyhow::Result<Usage> {
     })
 }
 
+#[allow(unused)]
 fn make_usage(access: Access, usage: Usage) -> Option<Usage> {
     match (access, usage) {
         (Access::ReadWrite | Access::ReadWriteOnce, Usage::ReadWrite)
