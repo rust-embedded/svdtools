@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.4] 2022-05-15
+
 * Added action to build binaries and release for every version tag and latest commit
 * Use `svd-parser` 0.13.4, add `expand_properties` option in `convert`
 * `patch`: check enum `usage`, don't add it if unneeded
@@ -36,7 +38,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.4...HEAD
+[v0.2.4]: https://github.com/stm32-rs/svdtools/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/stm32-rs/svdtools/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/stm32-rs/svdtools/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/stm32-rs/svdtools/compare/v0.2.0...v0.2.1
