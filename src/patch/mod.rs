@@ -220,7 +220,7 @@ fn get_register_properties(h: &Hash) -> Result<RegisterProperties> {
         .reset_mask(h.get_u64("resetMask")?))
 }
 
-fn make_ev_name(name: &str, usage: Usage) -> Result<String> {
+fn make_ev_name(name: &str, usage: Option<Usage>) -> Result<String> {
     if name.as_bytes()[0].is_ascii_digit() {
         return Err(anyhow!(
             "enumeratedValue {}: can't start with a number",
@@ -228,7 +228,7 @@ fn make_ev_name(name: &str, usage: Usage) -> Result<String> {
         ));
     }
     Ok(name.to_string()
-        + match usage {
+        + match usage.unwrap_or_default() {
             Usage::Read => "R",
             Usage::Write => "W",
             Usage::ReadWrite => "",

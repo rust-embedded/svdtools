@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
-    BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues, ReadAction,
-    Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
+    Access, BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues,
+    ReadAction, Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -55,7 +55,7 @@ pub trait RegisterExt {
         pname: &str,
         fspec: &str,
         fmod: &Hash,
-        usage: Usage,
+        usage: Option<Usage>,
     ) -> PatchResult;
 
     /// Set readAction for field
@@ -493,14 +493,14 @@ impl RegisterExt for Register {
                     .iter()
                     .any(|key| fmod.contains_key(&key.to_yaml()));
                 if !is_read && !is_write {
-                    self.process_field_enum(pname, fspec, fmod, Usage::ReadWrite)
+                    self.process_field_enum(pname, fspec, fmod, None)
                         .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
                         for (key, action) in READ_KEYS.into_iter().zip(READ_VALS.into_iter()) {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
-                                    self.process_field_enum(pname, fspec, fmod, Usage::Read)
+                                    self.process_field_enum(pname, fspec, fmod, Some(Usage::Read))
                                         .with_context(|| "Adding read-only enumeratedValues")?;
                                 }
                                 if let Some(action) = action {
@@ -514,7 +514,7 @@ impl RegisterExt for Register {
                         for (key, mwv) in WRITE_KEYS.into_iter().zip(WRITE_VALS.into_iter()) {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
-                                    self.process_field_enum(pname, fspec, fmod, Usage::Write)
+                                    self.process_field_enum(pname, fspec, fmod, Some(Usage::Write))
                                         .with_context(|| "Adding write-only enumeratedValues")?;
                                 }
                                 if let Some(mwv) = mwv {
@@ -555,42 +555,58 @@ impl RegisterExt for Register {
         pname: &str,
         fspec: &str,
         mut fmod: &Hash,
-        usage: Usage,
+        usage: Option<Usage>,
     ) -> PatchResult {
         fn set_enum(
             f: &mut FieldInfo,
-            val: EnumeratedValues,
+            mut val: EnumeratedValues,
             usage: Usage,
             replace: bool,
+            access: Access,
         ) -> PatchResult {
+            let occupied_error = || {
+                Err(anyhow!(
+                    "field {} already has {:?} enumeratedValues",
+                    f.name,
+                    usage
+                ))
+            };
             if usage == Usage::ReadWrite {
                 if f.enumerated_values.is_empty() || replace {
                     f.enumerated_values = vec![val];
                 } else {
-                    return Err(anyhow!(
-                        "field {} already has {:?} enumeratedValues",
-                        f.name,
-                        usage
-                    ));
+                    return occupied_error();
                 }
             } else {
                 match f.enumerated_values.as_mut_slice() {
                     [] => f.enumerated_values.push(val),
-                    [v] => {
-                        if v.usage == Some(usage) || v.usage == Some(Usage::ReadWrite) {
+                    [v] if v.usage == Some(usage) || v.usage == Some(Usage::ReadWrite) => {
+                        if replace {
+                            *v = val;
+                        } else {
+                            return occupied_error();
+                        }
+                    }
+                    [v] if v.usage.is_none() => match (access, usage) {
+                        (Access::ReadWrite | Access::ReadWriteOnce, Usage::Read) => {
+                            v.usage = Some(Usage::Write);
+                            val.usage = Some(Usage::Read);
+                            f.enumerated_values.push(val);
+                        }
+                        (Access::ReadWrite | Access::ReadWriteOnce, Usage::Write) => {
+                            v.usage = Some(Usage::Read);
+                            val.usage = Some(Usage::Write);
+                            f.enumerated_values.push(val);
+                        }
+                        _ => {
                             if replace {
                                 *v = val;
                             } else {
-                                return Err(anyhow!(
-                                    "field {} already has {:?} enumeratedValues",
-                                    f.name,
-                                    usage
-                                ));
+                                return occupied_error();
                             }
-                        } else {
-                            f.enumerated_values.push(val);
                         }
-                    }
+                    },
+                    [_] => f.enumerated_values.push(val),
                     [v1, v2] => {
                         if replace {
                             if v1.usage == Some(usage) {
@@ -600,11 +616,7 @@ impl RegisterExt for Register {
                                 *v2 = val;
                             }
                         } else {
-                            return Err(anyhow!(
-                                "field {} already has {:?} enumeratedValues",
-                                f.name,
-                                usage
-                            ));
+                            return occupied_error();
                         }
                     }
                     _ => return Err(anyhow!("Incorrect enumeratedValues")),
@@ -619,6 +631,7 @@ impl RegisterExt for Register {
             replace_if_exists = true;
         }
 
+        let reg_access = self.properties.access;
         if let Some(d) = fmod.get_str("_derivedFrom")? {
             // This is a derived enumeratedValues => Try to find the
             // original definition to extract its <usage>
@@ -644,19 +657,22 @@ impl RegisterExt for Register {
                     ));
                 }
             };
-            if usage != orig_usage {
-                return Err(anyhow!(
-                    "enumeratedValues with different usage was found: {:?} != {:?}",
-                    usage,
-                    orig_usage
-                ));
-            }
             let evs = make_derived_enumerated_values(d)?;
             for ftag in self.iter_fields(fspec) {
+                let access = ftag.access.or(reg_access).unwrap_or_default();
+                let checked_usage = check_usage(access, usage)
+                    .with_context(|| format!("In field {}", ftag.name))?;
+                if checked_usage != orig_usage {
+                    return Err(anyhow!(
+                        "enumeratedValues with different usage was found: {:?} != {:?}",
+                        usage,
+                        orig_usage
+                    ));
+                }
                 if ftag.name == d {
                     return Err(anyhow!("EnumeratedValues can't be derived from itself"));
                 }
-                set_enum(ftag, evs.clone(), usage, true)?;
+                set_enum(ftag, evs.clone(), orig_usage, true, access)?;
             }
         } else {
             let offsets = self
@@ -669,14 +685,25 @@ impl RegisterExt for Register {
             let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
             let name = make_ev_name(&name.replace("%s", ""), usage)?;
             for ftag in self.iter_fields(fspec) {
+                let access = ftag.access.or(reg_access).unwrap_or_default();
+                let checked_usage = check_usage(access, usage)
+                    .with_context(|| format!("In field {}", ftag.name))?;
                 if ftag.bit_range.offset == *min_offset {
                     let evs = make_ev_array(fmod)?
                         .name(Some(name.clone()))
-                        .usage(Some(usage))
+                        // TODO: uncomment when python version reaches same functionality
+                        //.usage(make_usage(access, checked_usage))
+                        .usage(Some(checked_usage))
                         .build(VAL_LVL)?;
-                    set_enum(ftag, evs, usage, replace_if_exists)?;
+                    set_enum(ftag, evs, checked_usage, replace_if_exists, access)?;
                 } else {
-                    set_enum(ftag, make_derived_enumerated_values(&name)?, usage, true)?;
+                    set_enum(
+                        ftag,
+                        make_derived_enumerated_values(&name)?,
+                        checked_usage,
+                        true,
+                        access,
+                    )?;
                 }
             }
         }
@@ -696,5 +723,30 @@ impl RegisterExt for Register {
             return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
         }
         Ok(())
+    }
+}
+
+fn check_usage(access: Access, usage: Option<Usage>) -> anyhow::Result<Usage> {
+    Ok(match (access, usage) {
+        (Access::ReadWrite | Access::ReadWriteOnce, usage) => usage.unwrap_or_default(),
+        (Access::ReadOnly, None | Some(Usage::Read)) => Usage::Read,
+        (Access::WriteOnly | Access::WriteOnce, None | Some(Usage::Write)) => Usage::Write,
+        (_, _) => {
+            return Err(anyhow!(
+                "EnumeratedValues usage {:?} is incompatible with access {:?}",
+                usage,
+                access
+            ));
+        }
+    })
+}
+
+#[allow(unused)]
+fn make_usage(access: Access, usage: Usage) -> Option<Usage> {
+    match (access, usage) {
+        (Access::ReadWrite | Access::ReadWriteOnce, Usage::ReadWrite)
+        | (Access::ReadOnly, Usage::Read)
+        | (Access::WriteOnly | Access::WriteOnce, Usage::Write) => None,
+        _ => Some(usage),
     }
 }

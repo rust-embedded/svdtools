@@ -64,6 +64,10 @@ enum Command {
         #[clap(long)]
         expand: bool,
 
+        /// Take size, access, reset_value, reset_mask from parents if absent in register
+        #[clap(long)]
+        expand_properties: bool,
+
         /// Skip enumeratedValues and writeConstraints during parsing (XML input only)
         #[clap(long)]
         ignore_enums: bool,
@@ -88,6 +92,7 @@ impl Command {
                 input_format,
                 output_format,
                 expand,
+                expand_properties,
                 ignore_enums,
             } => convert_cli::convert(
                 in_path,
@@ -95,6 +100,7 @@ impl Command {
                 *input_format,
                 *output_format,
                 *expand,
+                *expand_properties,
                 *ignore_enums,
             )?,
         }

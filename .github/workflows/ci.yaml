@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  SVDTOOLS: svd
+
 on:
   push:
     branches: [ staging, trying, master ]
@@ -11,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install Python
         uses: actions/setup-python@v2
         with:
@@ -40,7 +43,7 @@ jobs:
           - rp2040
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
