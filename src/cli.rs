@@ -71,6 +71,14 @@ enum Command {
         /// Skip enumeratedValues and writeConstraints during parsing (XML input only)
         #[clap(long)]
         ignore_enums: bool,
+
+        /// Path to format config file
+        ///
+        /// If not specified, the default format config will be used.
+        ///
+        /// Only used for SVD output format.
+        #[clap(long = "format-config", parse(from_os_str))]
+        format_config: Option<PathBuf>,
     },
 }
 
@@ -94,6 +102,7 @@ impl Command {
                 expand,
                 expand_properties,
                 ignore_enums,
+                format_config,
             } => convert_cli::convert(
                 in_path,
                 out_path,
@@ -102,6 +111,7 @@ impl Command {
                 *expand,
                 *expand_properties,
                 *ignore_enums,
+                format_config.as_ref().map(|p| p.as_path()),
             )?,
         }
         Ok(())
