@@ -108,9 +108,11 @@ impl Command {
                 out_path,
                 *input_format,
                 *output_format,
-                *expand,
-                *expand_properties,
-                *ignore_enums,
+                convert_cli::ParserConfig {
+                    expand: *expand,
+                    expand_properties: *expand_properties,
+                    ignore_enums: *ignore_enums,
+                },
                 format_config.as_ref().map(|p| p.as_path()),
             )?,
         }

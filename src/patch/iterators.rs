@@ -18,12 +18,9 @@ where
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
-        for next in self.it.by_ref() {
-            if matchname(next.name(), self.spec) {
-                return Some(next);
-            }
-        }
-        None
+        self.it
+            .by_ref()
+            .find(|next| matchname(next.name(), self.spec))
     }
 }
 
@@ -60,7 +57,7 @@ where
     }
 }
 
-impl<'a, I> Iterator for OptIter<I>
+impl<I> Iterator for OptIter<I>
 where
     I: Iterator,
 {

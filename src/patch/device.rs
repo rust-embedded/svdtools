@@ -19,14 +19,9 @@ pub struct PerIter<'a, 'b> {
 impl<'a, 'b> Iterator for PerIter<'a, 'b> {
     type Item = &'a mut Peripheral;
     fn next(&mut self) -> Option<Self::Item> {
-        for next in self.it.by_ref() {
-            if matchname(&next.name, self.spec)
-                && !(self.check_derived && next.derived_from.is_some())
-            {
-                return Some(next);
-            }
-        }
-        None
+        self.it.by_ref().find(|next| {
+            matchname(&next.name, self.spec) && !(self.check_derived && next.derived_from.is_some())
+        })
     }
 }
 
