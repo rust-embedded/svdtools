@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* `convert`: Add `format_config` option
+
 ## [v0.2.4] 2022-05-15
 
 * Added action to build binaries and release for every version tag and latest commit
