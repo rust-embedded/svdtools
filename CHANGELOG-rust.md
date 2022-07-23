@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.5] 2022-07-23
+
+* update `svd-rs` crates to 0.14
 * `convert`: Add `format_config` option
 
 ## [v0.2.4] 2022-05-15
@@ -40,7 +43,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.5...HEAD
+[v0.2.5]: https://github.com/stm32-rs/svdtools/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/stm32-rs/svdtools/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/stm32-rs/svdtools/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/stm32-rs/svdtools/compare/v0.2.1...v0.2.2
