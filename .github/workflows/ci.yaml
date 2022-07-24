@@ -51,8 +51,6 @@ jobs:
           profile: minimal
           override: true
           components: rustfmt
-      - name: Install xmllint
-        run: sudo apt-get install libxml2-utils
       - name: Install Python
         uses: actions/setup-python@v2
         with:
