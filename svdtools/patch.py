@@ -435,8 +435,23 @@ class Device:
 
     def modify_peripheral(self, pspec, pmod):
         """Modify pspec inside device according to pmod."""
-        for ptag in self.iter_peripherals(pspec):
+        for ptag in self.iter_peripherals(pspec, check_derived=False):
             for (key, value) in pmod.items():
+                if key == "name":
+                    # If this peripheral has derivations, update the derived
+                    # peripherals to reference the new name.
+                    parent = self.device.find("peripherals")
+                    old_name = ptag.find("name").text
+                    for derived in parent.findall(
+                        "./peripheral[@derivedFrom='{}']".format(old_name)
+                    ):
+                        derived.set("derivedFrom", value)
+                    ptag.find("name").text = value
+
+                # We do not change derivedFrom peripherals beyond this point.
+                if "derivedFrom" in ptag.attrib:
+                    continue
+
                 if key == "addressBlock":
                     ab = ptag.find(key)
                     for (ab_key, ab_value) in value.items():
