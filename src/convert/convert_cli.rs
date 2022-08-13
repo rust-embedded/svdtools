@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::str::FromStr;
 use std::{fs::File, path::Path};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InputFormat {
     Xml,
@@ -23,7 +23,7 @@ impl FromStr for InputFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum OutputFormat {
     Xml,
