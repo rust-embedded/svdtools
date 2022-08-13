@@ -19,14 +19,14 @@ struct PeripheralXml {
     interrupt: Option<Vec<Interrupt>>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 pub struct Interrupt {
     pub name: String,
     pub description: Option<String>,
     pub value: u32,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Peripheral {
     pub name: String,
     pub interrupt: Vec<Interrupt>,

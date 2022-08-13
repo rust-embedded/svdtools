@@ -42,7 +42,7 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
             root.get_str("_svd")?
                 .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
-    );
+    )?;
     let mut svdpath_out = svdpath.clone();
     svdpath_out.set_extension("svd.patched");
     let f = File::open(svdpath)?;
@@ -69,8 +69,8 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
 }
 
 /// Gets the absolute path of relpath from the point of view of frompath.
-fn abspath(frompath: &Path, relpath: &Path) -> PathBuf {
-    std::fs::canonicalize(frompath.parent().unwrap().join(relpath)).unwrap()
+fn abspath(frompath: &Path, relpath: &Path) -> Result<PathBuf, std::io::Error> {
+    std::fs::canonicalize(frompath.parent().unwrap().join(relpath))
 }
 
 /// Recursively loads any included YAML files.
@@ -80,7 +80,9 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
     let self_path = PathBuf::from(parent.get(&y_path).unwrap().str()?);
     let inc = parent.get_vec("_include")?.unwrap_or(&Vec::new()).clone();
     for relpath in inc {
-        let path = abspath(&self_path, Path::new(relpath.as_str().unwrap()));
+        let relpath = relpath.as_str().unwrap();
+        let path = abspath(&self_path, Path::new(relpath))
+            .with_context(|| anyhow!("Opening file \"{}\" from file {:?}", relpath, self_path))?;
         if included.contains(&path) {
             continue;
         }
