@@ -202,7 +202,7 @@ impl DeviceExt for Device {
             .collect::<Vec<_>>();
         let mut new = match pcopysrc.as_slice() {
             [ppath, pcopyname] => {
-                let f = File::open(abspath(path, Path::new(ppath))).unwrap();
+                let f = File::open(abspath(path, Path::new(ppath))?)?;
                 let mut contents = String::new();
                 (&f).read_to_string(&mut contents).unwrap();
                 let filedev = svd_parser::parse(&contents)
