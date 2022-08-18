@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
-use yaml_rust::yaml::Hash;
+use yaml_rust::{yaml::Hash, Yaml};
 
 use std::{fs::File, io::Read, path::Path};
 
@@ -54,7 +54,7 @@ pub trait DeviceExt {
 
     /// Remove registers from pname and mark it as derivedFrom pderive.
     /// Update all derivedFrom referencing pname
-    fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult;
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult;
 
     /// Move registers from pold to pnew.
     /// Update all derivedFrom referencing pold
@@ -163,9 +163,8 @@ impl DeviceExt for Device {
         // Handle any derived peripherals
         for (pname, pderive) in device.hash_iter("_derive") {
             let pname = pname.str()?;
-            let pderive = pderive.str()?;
             self.derive_peripheral(pname, pderive)
-                .with_context(|| format!("Deriving peripheral `{}` from `{}`", pname, pderive))?;
+                .with_context(|| format!("Deriving peripheral `{}` from `{:?}`", pname, pderive))?;
         }
 
         // Handle any rebased peripherals
@@ -288,15 +287,37 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult {
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult {
+        let (pderive, info) = if let Some(pderive) = pderive.as_str() {
+            (
+                pderive,
+                PeripheralInfo::builder().derived_from(Some(pderive.into())),
+            )
+        } else if let Some(hash) = pderive.as_hash() {
+            let pderive = hash.get_str("_from")?.ok_or_else(|| {
+                anyhow!(
+                    "derive: source peripheral not given, please add a _from field to {}",
+                    pname
+                )
+            })?;
+            (
+                pderive,
+                make_peripheral(hash, true)?.derived_from(Some(pderive.into())),
+            )
+        } else {
+            return Err(anyhow!("derive: incorrect syntax for {}", pname));
+        };
         self.get_peripheral(pderive)
             .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
-        self.get_mut_peripheral(pname)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pname))?
-            .modify_from(
-                PeripheralInfo::builder().derived_from(Some(pderive.into())),
-                VAL_LVL,
-            )?;
+
+        match self.get_mut_peripheral(pname) {
+            Some(peripheral) => peripheral.modify_from(info, VAL_LVL)?,
+            None => {
+                let peripheral = info.name(pname.into()).build(VAL_LVL)?.single();
+                self.peripherals.push(peripheral);
+            }
+        }
+
         for p in self
             .peripherals
             .iter_mut()
