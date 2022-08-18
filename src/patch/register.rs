@@ -90,6 +90,9 @@ pub trait RegisterExt {
 
 impl RegisterExt for Register {
     fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) -> PatchResult {
+        if self.derived_from.is_some() {
+            return Ok(());
+        }
         // Handle deletions
         for fspec in rmod.str_vec_iter("_delete") {
             self.delete_field(fspec)
@@ -272,6 +275,9 @@ impl RegisterExt for Register {
 
     fn clear_field(&mut self, fspec: &str) -> PatchResult {
         for ftag in self.iter_fields(fspec) {
+            if ftag.derived_from.is_some() {
+                continue;
+            }
             ftag.enumerated_values = Vec::new();
             ftag.write_constraint = None;
         }

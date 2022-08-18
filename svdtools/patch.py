@@ -405,13 +405,11 @@ class Device:
     def __init__(self, device):
         self.device = device
 
-    def iter_peripherals(self, pspec, check_derived=True):
+    def iter_peripherals(self, pspec):
         """Iterates over all peripherals that match pspec."""
         for ptag in self.device.iter("peripheral"):
             name = ptag.find("name").text
             if matchname(name, pspec):
-                if check_derived and "derivedFrom" in ptag.attrib:
-                    continue
                 yield ptag
 
     def modify_child(self, key, val):
@@ -491,7 +489,7 @@ class Device:
 
     def delete_peripheral(self, pspec):
         """Delete registers matched by rspec inside ptag."""
-        for ptag in list(self.iter_peripherals(pspec, check_derived=False)):
+        for ptag in list(self.iter_peripherals(pspec)):
             self.device.find("peripherals").remove(ptag)
 
     def derive_peripheral(self, pname, pderive):
@@ -586,7 +584,9 @@ class Device:
 
     def clear_fields(self, pspec):
         """Clear contents of all fields inside peripherals matched by pspec"""
-        for ptag in self.iter_peripherals(pspec, check_derived=False):
+        for ptag in self.iter_peripherals(pspec):
+            if "derivedFrom" in ptag.attrib:
+                continue
             p = Peripheral(ptag)
             p.clear_fields("*")
 
@@ -594,7 +594,7 @@ class Device:
         """Work through a peripheral, handling all registers."""
         # Find all peripherals that match the spec
         pcount = 0
-        for ptag in self.iter_peripherals(pspec, check_derived=False):
+        for ptag in self.iter_peripherals(pspec):
             pcount += 1
             p = Peripheral(ptag)
 
@@ -1024,6 +1024,8 @@ class Peripheral:
     def clear_fields(self, rspec):
         """Clear contents of all fields inside registers matched by rspec"""
         for rtag in list(self.iter_registers(rspec)):
+            if "derivedFrom" in rtag.attrib:
+                continue
             r = Register(rtag)
             r.clear_field("*")
 
@@ -1033,6 +1035,8 @@ class Peripheral:
         pname = self.ptag.find("name").text
         rcount = 0
         for rtag in self.iter_registers(rspec):
+            if "derivedFrom" in rtag.attrib:
+                continue
             r = Register(rtag)
             rcount += 1
             # Handle deletions
@@ -1195,6 +1199,8 @@ class Register:
     def clear_field(self, fspec):
         """Clear contents of fields matched by fspec inside rtag."""
         for ftag in list(self.iter_fields(fspec)):
+            if "derivedFrom" in ftag.attrib:
+                continue
             for tag in ftag.findall("enumeratedValues"):
                 ftag.remove(tag)
             for tag in ftag.findall("writeConstraint"):

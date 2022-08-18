@@ -723,6 +723,9 @@ impl PeripheralExt for Peripheral {
 
     fn clear_fields(&mut self, rspec: &str) -> PatchResult {
         for rtag in self.iter_registers(rspec) {
+            if rtag.derived_from.is_some() {
+                continue;
+            }
             rtag.clear_field("*")?;
         }
         Ok(())
