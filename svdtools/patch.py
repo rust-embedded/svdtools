@@ -634,6 +634,10 @@ class Device:
                             p.delete_interrupt(ispec)
                     else:
                         p.delete_register(rspec)
+            # Handle copy
+            for rname in peripheral.get("_copy", {}):
+                rderive = peripheral["_copy"][rname]
+                p.copy_register(rname, rderive)
             # Handle modifications
             for rspec in peripheral.get("_modify", {}):
                 rmod = peripheral["_modify"][rspec]
@@ -667,14 +671,15 @@ class Device:
                         p.add_interrupt(iname, radd[iname])
                 else:
                     p.add_register(rname, radd)
+            # Handle derive
             for rname in peripheral.get("_derive", {}):
                 rderive = peripheral["_derive"][rname]
                 if rname == "_registers":
                     for rname in rderive:
                         p.derive_register(rname, rderive[rname])
-                elif rname == "_interrupts":
+                elif rname == "_clusters":
                     raise NotImplementedError(
-                        "deriving interrupts not implemented yet: {}".format(rname)
+                        "deriving clusters not implemented yet: {}".format(rname)
                     )
                 else:
                     p.derive_register(rname, rderive)
@@ -803,6 +808,29 @@ class Peripheral:
         rnew.tail = "\n        "
 
     def derive_register(self, rname, rderive):
+        """
+        Remove fields from rname and mark it as derivedFrom rderive.
+        Update all derivedFrom referencing rname.
+        """
+        parent = self.ptag.find("registers")
+        rtag = parent.find("./register[name='{}']".format(rname))
+        derived = parent.find("./register[name='{}']".format(rderive))
+        if rtag is None:
+            raise SvdPatchError("register {} not found".format(rname))
+        if derived is None:
+            raise SvdPatchError("register {} not found".format(rderive))
+        for value in list(rtag):
+            if value.tag in ("name", "addressOffset"):
+                continue
+            rtag.remove(value)
+        for value in rtag:
+            last = value
+        last.tail = "\n    "
+        rtag.set("derivedFrom", rderive)
+        for p in parent.findall("./register[@derivedFrom='{}']".format(rname)):
+            p.set("derivedFrom", rderive)
+
+    def copy_register(self, rname, rderive):
         """Add rname given by deriving from rsource to ptag"""
         parent = self.ptag.find("registers")
         if not "_from" in rderive:
