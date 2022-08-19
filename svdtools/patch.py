@@ -517,9 +517,11 @@ class Device:
         if isinstance(pmod, str):
             pderive = pmod
             base_address = None
+            description = None
         elif isinstance(pmod, dict):
             pderive = pmod["_from"]
             base_address = pmod.get("baseAddress", None)
+            description = pmod.get("description", None)
         else:
             raise SvdPatchError("derive: incorrect syntax for {}".format(pname))
         ptag = parent.find("./peripheral[name='{}']".format(pname))
@@ -532,11 +534,13 @@ class Device:
             ET.SubElement(ptag, "addressOffset").text = base_address
         else:
             for value in list(ptag):
-                if value.tag in ("name", "baseAddress", "interrupt"):
+                if value.tag in ("name", "baseAddress", "interrupt", "description"):
                     continue
                 ptag.remove(value)
             if base_address:
                 ptag.find("baseAddress").text = base_address
+            if description:
+                ptag.find("description").text = description
         for value in ptag:
             last = value
         last.tail = "\n    "
@@ -845,9 +849,11 @@ class Peripheral:
         if isinstance(rmod, str):
             rderive = rmod
             address_offset = None
+            description = None
         elif isinstance(rmod, dict):
             rderive = rmod["_from"]
             address_offset = rmod.get("addressOffset", None)
+            description = rmod.get(description, None)
         else:
             raise SvdPatchError("derive: incorrect syntax for {}".format(rname))
         rtag = parent.find("./register[name='{}']".format(rname))
@@ -860,11 +866,13 @@ class Peripheral:
             ET.SubElement(rtag, "addressOffset").text = address_offset
         else:
             for value in list(rtag):
-                if value.tag in ("name", "addressOffset"):
+                if value.tag in ("name", "addressOffset", "description"):
                     continue
                 rtag.remove(value)
             if address_offset:
                 rtag.find("addressOffset").text = address_offset
+            if description:
+                rtag.find("description").text = description
         for value in rtag:
             last = value
         last.tail = "\n    "
@@ -1105,10 +1113,10 @@ class Peripheral:
         pname = self.ptag.find("name").text
         rcount = 0
         for rtag in self.iter_registers(rspec):
+            rcount += 1
             if "derivedFrom" in rtag.attrib:
                 continue
             r = Register(rtag)
-            rcount += 1
             # Handle deletions
             for fspec in register.get("_delete", []):
                 r.delete_field(fspec)
