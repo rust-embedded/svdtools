@@ -508,22 +508,35 @@ class Device:
         for ptag in list(self.iter_peripherals(pspec)):
             self.device.find("peripherals").remove(ptag)
 
-    def derive_peripheral(self, pname, pderive):
+    def derive_peripheral(self, pname, pmod):
         """
         Remove registers from pname and mark it as derivedFrom pderive.
         Update all derivedFrom referencing pname.
         """
         parent = self.device.find("peripherals")
+        if isinstance(pmod, str):
+            pderive = pmod
+            base_address = None
+        elif isinstance(pmod, dict):
+            pderive = pmod["_from"]
+            base_address = pmod.get("baseAddress", None)
+        else:
+            raise SvdPatchError("derive: incorrect syntax for {}".format(pname))
         ptag = parent.find("./peripheral[name='{}']".format(pname))
         derived = parent.find("./peripheral[name='{}']".format(pderive))
-        if ptag is None:
-            raise SvdPatchError("peripheral {} not found".format(pname))
         if derived is None:
             raise SvdPatchError("peripheral {} not found".format(pderive))
-        for value in list(ptag):
-            if value.tag in ("name", "baseAddress", "interrupt"):
-                continue
-            ptag.remove(value)
+        if ptag is None:
+            ptag = ET.SubElement(parent, "register")
+            ET.SubElement(ptag, "name").text = pname
+            ET.SubElement(ptag, "addressOffset").text = base_address
+        else:
+            for value in list(ptag):
+                if value.tag in ("name", "baseAddress", "interrupt"):
+                    continue
+                ptag.remove(value)
+            if base_address:
+                ptag.find("baseAddress").text = base_address
         for value in ptag:
             last = value
         last.tail = "\n    "
@@ -823,22 +836,35 @@ class Peripheral:
                 ET.SubElement(rnew, key).text = str(value)
         rnew.tail = "\n        "
 
-    def derive_register(self, rname, rderive):
+    def derive_register(self, rname, rmod):
         """
         Remove fields from rname and mark it as derivedFrom rderive.
         Update all derivedFrom referencing rname.
         """
         parent = self.ptag.find("registers")
+        if isinstance(rmod, str):
+            rderive = rmod
+            address_offset = None
+        elif isinstance(rmod, dict):
+            rderive = rmod["_from"]
+            address_offset = rmod.get("addressOffset", None)
+        else:
+            raise SvdPatchError("derive: incorrect syntax for {}".format(rname))
         rtag = parent.find("./register[name='{}']".format(rname))
         derived = parent.find("./register[name='{}']".format(rderive))
-        if rtag is None:
-            raise SvdPatchError("register {} not found".format(rname))
         if derived is None:
             raise SvdPatchError("register {} not found".format(rderive))
-        for value in list(rtag):
-            if value.tag in ("name", "addressOffset"):
-                continue
-            rtag.remove(value)
+        if rtag is None:
+            rtag = ET.SubElement(parent, "register")
+            ET.SubElement(rtag, "name").text = rname
+            ET.SubElement(rtag, "addressOffset").text = address_offset
+        else:
+            for value in list(rtag):
+                if value.tag in ("name", "addressOffset"):
+                    continue
+                rtag.remove(value)
+            if address_offset:
+                rtag.find("addressOffset").text = address_offset
         for value in rtag:
             last = value
         last.tail = "\n    "
