@@ -2,6 +2,7 @@ use anyhow::{anyhow, Context};
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::{yaml::Hash, Yaml};
 
+use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
 use super::iterators::{MatchIter, Matched};
@@ -220,7 +221,10 @@ impl DeviceExt for Device {
     }
 
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult {
+        let mut modified = HashSet::new();
         for ptag in self.iter_peripherals(pspec) {
+            modified.insert(ptag.name.clone());
+
             ptag.modify_from(make_peripheral(pmod, true)?, VAL_LVL)?;
             if let Some(ints) = pmod.get_hash("interrupts")? {
                 for (iname, val) in ints {
@@ -243,6 +247,17 @@ impl DeviceExt for Device {
                 }
             } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
                 ptag.address_block = Some(make_address_blocks(abmod)?);
+            }
+        }
+        // If this peripheral has derivations, update the derived
+        // peripherals to reference the new name.
+        if let Some(value) = pmod.get_str("name")? {
+            for p in self.peripherals.iter_mut() {
+                if let Some(old_name) = p.derived_from.as_mut() {
+                    if modified.contains(old_name) {
+                        *old_name = value.into();
+                    }
+                }
             }
         }
         Ok(())
