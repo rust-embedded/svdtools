@@ -526,7 +526,7 @@ class Device:
             raise SvdPatchError("derive: incorrect syntax for {}".format(pname))
         ptag = parent.find("./peripheral[name='{}']".format(pname))
         derived = parent.find("./peripheral[name='{}']".format(pderive))
-        if derived is None:
+        if (not ("." in pderive)) and (derived is None):
             raise SvdPatchError("peripheral {} not found".format(pderive))
         if ptag is None:
             ptag = ET.SubElement(parent, "register")

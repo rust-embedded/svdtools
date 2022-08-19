@@ -377,6 +377,7 @@ impl PeripheralExt for Peripheral {
         } else {
             return Err(anyhow!("derive: incorrect syntax for {}", rname));
         };
+
         self.get_register(rderive)
             .ok_or_else(|| anyhow!("register {} not found", rderive))?;
 

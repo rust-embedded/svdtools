@@ -297,8 +297,11 @@ impl DeviceExt for Device {
         } else {
             return Err(anyhow!("derive: incorrect syntax for {}", pname));
         };
-        self.get_peripheral(pderive)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
+
+        if !pderive.contains('.') {
+            self.get_peripheral(pderive)
+                .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
+        }
 
         match self.get_mut_peripheral(pname) {
             Some(peripheral) => peripheral.modify_from(info, VAL_LVL)?,
