@@ -12,9 +12,9 @@ use svdtools::{
 enum Command {
     /// Patches an SVD file as specified by a YAML file
     Patch {
-        /// Path to input SVD file
+        /// Path to input YAML file
         #[clap(parse(from_os_str))]
-        svd_file: PathBuf,
+        yaml_file: PathBuf,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
@@ -89,7 +89,7 @@ impl Command {
                 interrupts_cli::parse_device(svd_file, !no_gaps)?;
             }
             Self::Mmap { svd_file } => mmap_cli::parse_device(svd_file)?,
-            Self::Patch { svd_file } => patch_cli::patch(svd_file)?,
+            Self::Patch { yaml_file } => patch_cli::patch(yaml_file)?,
             Self::Makedeps {
                 yaml_file,
                 deps_file,
