@@ -82,7 +82,7 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
     for relpath in inc {
         let relpath = relpath.as_str().unwrap();
         let path = abspath(&self_path, Path::new(relpath))
-            .with_context(|| anyhow!("Opening file \"{}\" from file {:?}", relpath, self_path))?;
+            .with_context(|| anyhow!("Opening file \"{relpath}\" from file {self_path:?}"))?;
         if included.contains(&path) {
             continue;
         }
@@ -251,10 +251,7 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
             let vd = vd.vec()?;
             let value = vd[0].i64()? as u64;
             let description = vd.get(1).and_then(Yaml::as_str).ok_or_else(|| {
-                anyhow!(
-                    "enumeratedValue can't have empty description for value {}",
-                    value
-                )
+                anyhow!("enumeratedValue can't have empty description for value {value}")
             })?;
             use std::collections::btree_map::Entry;
             match h.entry(value) {

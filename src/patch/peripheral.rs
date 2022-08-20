@@ -100,7 +100,7 @@ impl PeripheralExt for Peripheral {
             if let Some(deletions) = pmod.get_hash("_delete").ok().flatten() {
                 for ispec in deletions.str_vec_iter("_interrupts") {
                     self.delete_interrupt(ispec)
-                        .with_context(|| format!("Deleting interrupts matched to `{}`", ispec))?;
+                        .with_context(|| format!("Deleting interrupts matched to `{ispec}`"))?;
                 }
             }
             for (rspec, rmod) in pmod
@@ -113,7 +113,7 @@ impl PeripheralExt for Peripheral {
                     for (ispec, val) in rmod.hash()? {
                         let ispec = ispec.str()?;
                         self.modify_interrupt(ispec, val.hash()?).with_context(|| {
-                            format!("Modifying interrupts matched to `{}`", ispec)
+                            format!("Modifying interrupts matched to `{ispec}`")
                         })?;
                     }
                 }
@@ -123,7 +123,7 @@ impl PeripheralExt for Peripheral {
                     for (iname, val) in radd.hash()? {
                         let iname = iname.str()?;
                         self.add_interrupt(iname, val.hash()?)
-                            .with_context(|| format!("Adding interrupt `{}`", iname))?;
+                            .with_context(|| format!("Adding interrupt `{iname}`"))?;
                     }
                 }
             }
@@ -136,26 +136,23 @@ impl PeripheralExt for Peripheral {
             match deletions {
                 Yaml::String(rspec) => {
                     self.delete_register(rspec)
-                        .with_context(|| format!("Deleting registers matched to `{}`", rspec))?;
+                        .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                 }
                 Yaml::Array(deletions) => {
                     for rspec in deletions {
                         let rspec = rspec.str()?;
-                        self.delete_register(rspec).with_context(|| {
-                            format!("Deleting registers matched to `{}`", rspec)
-                        })?;
+                        self.delete_register(rspec)
+                            .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                 }
                 Yaml::Hash(deletions) => {
                     for rspec in deletions.str_vec_iter("_registers") {
-                        self.delete_register(rspec).with_context(|| {
-                            format!("Deleting registers matched to `{}`", rspec)
-                        })?;
+                        self.delete_register(rspec)
+                            .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                     for ispec in deletions.str_vec_iter("_interrupts") {
-                        self.delete_interrupt(ispec).with_context(|| {
-                            format!("Deleting interrupts matched to `{}`", ispec)
-                        })?;
+                        self.delete_interrupt(ispec)
+                            .with_context(|| format!("Deleting interrupts matched to `{ispec}`"))?;
                     }
                 }
                 _ => {}
@@ -167,17 +164,17 @@ impl PeripheralExt for Peripheral {
             let rderive = rderive.hash()?;
             let rname = rname.str()?;
             self.copy_register(rname, rderive)
-                .with_context(|| format!("Copying register `{}`", rname))?
+                .with_context(|| format!("Copying register `{rname}`"))?
         }
 
         // Handle strips
         for prefix in pmod.str_vec_iter("_strip") {
             self.strip_start(prefix)
-                .with_context(|| format!("Stripping prefix `{}` from register names", prefix))?;
+                .with_context(|| format!("Stripping prefix `{prefix}` from register names"))?;
         }
         for suffix in pmod.str_vec_iter("_strip_end") {
             self.strip_end(suffix)
-                .with_context(|| format!("Stripping suffix `{}` from register names", suffix))?;
+                .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
         }
 
         // Handle modifications
@@ -187,40 +184,35 @@ impl PeripheralExt for Peripheral {
                 "_registers" => {
                     for (rspec, val) in rmod {
                         let rspec = rspec.str()?;
-                        self.modify_register(rspec, val.hash()?).with_context(|| {
-                            format!("Modifying registers matched to `{}`", rspec)
-                        })?;
+                        self.modify_register(rspec, val.hash()?)
+                            .with_context(|| format!("Modifying registers matched to `{rspec}`"))?;
                     }
                 }
                 "_interrupts" => {
                     for (ispec, val) in rmod {
                         let ispec = ispec.str()?;
                         self.modify_interrupt(ispec, val.hash()?).with_context(|| {
-                            format!("Modifying interrupts matched to `{}`", ispec)
+                            format!("Modifying interrupts matched to `{ispec}`")
                         })?;
                     }
                 }
                 "_cluster" => {
                     for (cspec, val) in rmod {
                         let cspec = cspec.str()?;
-                        self.modify_cluster(cspec, val.hash()?).with_context(|| {
-                            format!("Modifying clusters matched to `{}`", cspec)
-                        })?;
+                        self.modify_cluster(cspec, val.hash()?)
+                            .with_context(|| format!("Modifying clusters matched to `{cspec}`"))?;
                     }
                 }
                 rspec => self
                     .modify_register(rspec, rmod)
-                    .with_context(|| format!("Modifying registers matched to `{}`", rspec))?,
+                    .with_context(|| format!("Modifying registers matched to `{rspec}`"))?,
             }
         }
 
         // Handle field clearing
         for rspec in pmod.str_vec_iter("_clear_fields") {
             self.clear_fields(rspec).with_context(|| {
-                format!(
-                    "Clearing contents of fields in registers matched to `{}` ",
-                    rspec
-                )
+                format!("Clearing contents of fields in registers matched to `{rspec}` ")
             })?;
         }
 
@@ -232,19 +224,19 @@ impl PeripheralExt for Peripheral {
                     for (rname, val) in radd {
                         let rname = rname.str()?;
                         self.add_register(rname, val.hash()?)
-                            .with_context(|| format!("Adding register `{}`", rname))?;
+                            .with_context(|| format!("Adding register `{rname}`"))?;
                     }
                 }
                 "_interrupts" => {
                     for (iname, val) in radd {
                         let iname = iname.str()?;
                         self.add_interrupt(iname, val.hash()?)
-                            .with_context(|| format!("Adding interrupt `{}`", iname))?;
+                            .with_context(|| format!("Adding interrupt `{iname}`"))?;
                     }
                 }
                 rname => self
                     .add_register(rname, radd)
-                    .with_context(|| format!("Adding register `{}`", rname))?,
+                    .with_context(|| format!("Adding register `{rname}`"))?,
             }
         }
 
@@ -255,19 +247,16 @@ impl PeripheralExt for Peripheral {
                     for (rname, val) in rderive.hash()? {
                         let rname = rname.str()?;
                         self.derive_register(rname, val).with_context(|| {
-                            format!("Deriving register `{}` from `{:?}`", rname, val)
+                            format!("Deriving register `{rname}` from `{val:?}`")
                         })?;
                     }
                 }
                 "_clusters" => {
-                    return Err(anyhow!(
-                        "deriving clusters is not implemented yet: {}",
-                        rname
-                    ))
+                    return Err(anyhow!("deriving clusters is not implemented yet: {rname}"))
                 }
                 _ => {
                     self.derive_register(rname, rderive).with_context(|| {
-                        format!("Deriving register `{}` from `{:?}`", rname, rderive)
+                        format!("Deriving register `{rname}` from `{rderive:?}`")
                     })?;
                 }
             }
@@ -278,7 +267,7 @@ impl PeripheralExt for Peripheral {
             let rspec = rspec.str()?;
             if !rspec.starts_with('_') {
                 self.process_register(rspec, register.hash()?, update_fields)
-                    .with_context(|| format!("According to `{}`", rspec))?;
+                    .with_context(|| format!("According to `{rspec}`"))?;
             }
         }
 
@@ -286,14 +275,14 @@ impl PeripheralExt for Peripheral {
         for (rspec, rmod) in pmod.hash_iter("_array") {
             let rspec = rspec.str()?;
             self.collect_in_array(rspec, rmod.hash()?)
-                .with_context(|| format!("Collecting registers matched to `{}` in array", rspec))?;
+                .with_context(|| format!("Collecting registers matched to `{rspec}` in array"))?;
         }
 
         // Handle clusters
         for (cname, cmod) in pmod.hash_iter("_cluster") {
             let cname = cname.str()?;
             self.collect_in_cluster(cname, cmod.hash()?)
-                .with_context(|| format!("Collecting registers in cluster `{}`", cname))?;
+                .with_context(|| format!("Collecting registers in cluster `{cname}`"))?;
         }
 
         Ok(())
@@ -306,9 +295,8 @@ impl PeripheralExt for Peripheral {
     fn add_interrupt(&mut self, iname: &str, iadd: &Hash) -> PatchResult {
         if self.get_interrupt(iname).is_some() {
             return Err(anyhow!(
-                "peripheral {} already has an interrupt {}",
-                self.name,
-                iname
+                "peripheral {} already has an interrupt {iname}",
+                self.name
             ));
         }
         self.interrupt
@@ -341,9 +329,8 @@ impl PeripheralExt for Peripheral {
     fn add_register(&mut self, rname: &str, radd: &Hash) -> PatchResult {
         if self.all_registers_mut().any(|r| r.name == rname) {
             return Err(anyhow!(
-                "peripheral {} already has a register {}",
-                self.name,
-                rname
+                "peripheral {} already has a register {rname}",
+                self.name
             ));
         }
         self.registers
@@ -365,10 +352,7 @@ impl PeripheralExt for Peripheral {
             )
         } else if let Some(hash) = rderive.as_hash() {
             let rderive = hash.get_str("_from")?.ok_or_else(|| {
-                anyhow!(
-                    "derive: source register not given, please add a _from field to {}",
-                    rname
-                )
+                anyhow!("derive: source register not given, please add a _from field to {rname}")
             })?;
             (
                 rderive,
@@ -401,22 +385,13 @@ impl PeripheralExt for Peripheral {
 
     fn copy_register(&mut self, rname: &str, rderive: &Hash) -> PatchResult {
         let srcname = rderive.get_str("_from")?.ok_or_else(|| {
-            anyhow!(
-                "derive: source register not given, please add a _from field to {}",
-                rname
-            )
+            anyhow!("derive: source register not given, please add a _from field to {rname}")
         })?;
 
         let mut source = self
             .all_registers()
             .find(|r| r.name == srcname)
-            .ok_or_else(|| {
-                anyhow!(
-                    "peripheral {} does not have register {}",
-                    self.name,
-                    srcname
-                )
-            })?
+            .ok_or_else(|| anyhow!("peripheral {} does not have register {srcname}", self.name,))?
             .clone();
         let fixes = make_register(rderive)?
             .name(rname.into())
@@ -532,9 +507,8 @@ impl PeripheralExt for Peripheral {
                 && bitmasks.iter().all(|&m| m == bitmasks[0]))
             {
                 return Err(anyhow!(
-                    "{}: registers cannot be collected into {} array",
-                    self.name,
-                    rspec
+                    "{}: registers cannot be collected into {rspec} array",
+                    self.name
                 ));
             }
             let mut rinfo = registers.swap_remove(0);
@@ -602,15 +576,11 @@ impl PeripheralExt for Peripheral {
                     }
                 }
                 if registers.is_empty() {
-                    return Err(anyhow!("{}: registers {} not found", pname, rspec));
+                    return Err(anyhow!("{pname}: registers {rspec} not found"));
                 }
                 if single {
                     if registers.len() > 1 {
-                        return Err(anyhow!(
-                            "{}: more than one registers {} found",
-                            pname,
-                            rspec
-                        ));
+                        return Err(anyhow!("{pname}: more than one registers {rspec} found"));
                     }
                 } else {
                     registers.sort_by_key(|r| r.address_offset);
@@ -657,9 +627,8 @@ impl PeripheralExt for Peripheral {
             }
             if !check {
                 return Err(anyhow!(
-                    "{}: registers cannot be collected into {} cluster",
-                    self.name,
-                    cname
+                    "{}: registers cannot be collected into {cname} cluster",
+                    self.name
                 ));
             }
             let address_offset = rdict
@@ -673,7 +642,7 @@ impl PeripheralExt for Peripheral {
                 .description(Some(if let Some(desc) = cmod.get_str("description")? {
                     desc.into()
                 } else {
-                    format!("Cluster {}, containing {}", cname, rspecs.join(", "))
+                    format!("Cluster {cname}, containing {}", rspecs.join(", "))
                 }))
                 .address_offset(address_offset);
             let cluster = if single {
@@ -742,7 +711,7 @@ impl PeripheralExt for Peripheral {
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
-            Err(anyhow!("Could not find `{}:{}`", &pname, rspec))
+            Err(anyhow!("Could not find `{pname}:{rspec}`"))
         } else {
             Ok(())
         }

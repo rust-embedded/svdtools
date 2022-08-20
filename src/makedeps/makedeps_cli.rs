@@ -45,7 +45,7 @@ pub fn makedeps(yaml_file: &Path, deps_file: &Path) -> Result<()> {
             write_file(deps_file, deps)?;
             Ok(())
         }
-        _ => Err(anyhow!("Incorrect yaml {:?}", yaml_file)),
+        _ => Err(anyhow!("Incorrect yaml {yaml_file:?}")),
     }
 }
 
