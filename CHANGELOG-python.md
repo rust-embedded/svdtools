@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* Move `_strip`, `_strip_end` before `_modify`
+
 ## [v0.1.23] 2022-05-01
 
 * Add support for `modifiedWriteValues` & `readAction` for fields

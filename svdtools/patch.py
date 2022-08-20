@@ -671,6 +671,11 @@ class Device:
             for rname in peripheral.get("_copy", {}):
                 rderive = peripheral["_copy"][rname]
                 p.copy_register(rname, rderive)
+            # Handle strips
+            for prefix in peripheral.get("_strip", []):
+                p.strip(prefix)
+            for suffix in peripheral.get("_strip_end", []):
+                p.strip(suffix, strip_end=True)
             # Handle modifications
             for rspec in peripheral.get("_modify", {}):
                 rmod = peripheral["_modify"][rspec]
@@ -685,11 +690,6 @@ class Device:
                         p.modify_cluster(cspec, rmod[cspec])
                 else:
                     p.modify_register(rspec, rmod)
-            # Handle strips
-            for prefix in peripheral.get("_strip", []):
-                p.strip(prefix)
-            for suffix in peripheral.get("_strip_end", []):
-                p.strip(suffix, strip_end=True)
             # Handle field clearing
             for rspec in peripheral.get("_clear_fields", []):
                 p.clear_fields(rspec)
@@ -1120,6 +1120,11 @@ class Peripheral:
             # Handle deletions
             for fspec in register.get("_delete", []):
                 r.delete_field(fspec)
+            # Handle strips
+            for prefix in register.get("_strip", []):
+                r.strip(prefix)
+            for suffix in register.get("_strip_end", []):
+                r.strip(suffix, strip_end=True)
             # Handle field clearing
             for fspec in register.get("_clear", []):
                 r.clear_field(fspec)
@@ -1147,11 +1152,6 @@ class Peripheral:
                     else {}
                 )
                 r.split_fields(fspec, fsplit)
-            # Handle strips
-            for prefix in register.get("_strip", []):
-                r.strip(prefix)
-            for suffix in register.get("_strip_end", []):
-                r.strip(suffix, strip_end=True)
             # Handle fields
             if update_fields:
                 for fspec in register:
