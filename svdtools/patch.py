@@ -156,21 +156,20 @@ def make_enumerated_values(name, values, usage="read-write"):
     ET.SubElement(ev, "name").text = name + usagekey
     ET.SubElement(ev, "usage").text = usage
     if len(set(v[0] for v in values.values())) != len(values):
-        raise ValueError("enumeratedValue {}: can't have duplicate values".format(name))
+        raise ValueError(f"enumeratedValue {name}: can't have duplicate values")
     if name[0] in "0123456789":
-        raise ValueError("enumeratedValue {}: can't start with a number".format(name))
+        raise ValueError(f"enumeratedValue {name}: can't start with a number")
     for vname in values:
         if vname.startswith("_"):
             continue
         if vname[0] in "0123456789":
             raise ValueError(
-                "enumeratedValue {}.{}: can't start with a number".format(name, vname)
+                f"enumeratedValue {name}.{vname}: can't start with a number"
             )
         value, description = values[vname]
         if not description:
             raise ValueError(
-                "enumeratedValue {}: can't have empty description"
-                " for value {}".format(name, value)
+                f"enumeratedValue {name}: can't have empty description for value {value}"
             )
         el = ET.SubElement(ev, "enumeratedValue")
         ET.SubElement(el, "name").text = vname
@@ -441,7 +440,7 @@ class Device:
                     parent = self.device.find("peripherals")
                     old_name = ptag.find("name").text
                     for derived in parent.findall(
-                        "./peripheral[@derivedFrom='{}']".format(old_name)
+                        f"./peripheral[@derivedFrom='{old_name}']"
                     ):
                         derived.set("derivedFrom", value)
                     ptag.find("name").text = value
@@ -475,7 +474,7 @@ class Device:
         parent = self.device.find("peripherals")
         for ptag in parent.iter("peripheral"):
             if ptag.find("name").text == pname:
-                raise SvdPatchError("device already has a peripheral {}".format(pname))
+                raise SvdPatchError(f"device already has a peripheral {pname}")
         if "derivedFrom" in padd:
             derived = padd["derivedFrom"]
             pnew = ET.SubElement(parent, "peripheral", {"derivedFrom": derived})
@@ -523,11 +522,11 @@ class Device:
             base_address = pmod.get("baseAddress", None)
             description = pmod.get("description", None)
         else:
-            raise SvdPatchError("derive: incorrect syntax for {}".format(pname))
-        ptag = parent.find("./peripheral[name='{}']".format(pname))
-        derived = parent.find("./peripheral[name='{}']".format(pderive))
+            raise SvdPatchError(f"derive: incorrect syntax for {pname}")
+        ptag = parent.find(f"./peripheral[name='{pname}']")
+        derived = parent.find(f"./peripheral[name='{pderive}']")
         if (not ("." in pderive)) and (derived is None):
-            raise SvdPatchError("peripheral {} not found".format(pderive))
+            raise SvdPatchError(f"peripheral {pderive} not found")
         if ptag is None:
             ptag = ET.SubElement(parent, "register")
             ET.SubElement(ptag, "name").text = pname
@@ -545,7 +544,7 @@ class Device:
             last = value
         last.tail = "\n    "
         ptag.set("derivedFrom", pderive)
-        for p in parent.findall("./peripheral[@derivedFrom='{}']".format(pname)):
+        for p in parent.findall(f"./peripheral[@derivedFrom='{pname}']"):
             p.set("derivedFrom", pderive)
 
     def copy_peripheral(self, pname, pmod, path):
@@ -553,7 +552,7 @@ class Device:
         Create copy of peripheral
         """
         parent = self.device.find("peripherals")
-        ptag = parent.find("./peripheral[name='{}']".format(pname))
+        ptag = parent.find(f"./peripheral[name='{pname}']")
         pcopysrc = pmod["from"].split(":")
         pcopyname = pcopysrc[-1]
         if len(pcopysrc) == 2:
@@ -562,9 +561,9 @@ class Device:
             source = filedev.device.find("peripherals")
         else:
             source = parent
-        pcopy = copy.deepcopy(source.find("./peripheral[name='{}']".format(pcopyname)))
+        pcopy = copy.deepcopy(source.find(f"./peripheral[name='{pcopyname}']"))
         if pcopy is None:
-            raise SvdPatchError("peripheral {} not found".format(pcopy))
+            raise SvdPatchError(f"peripheral {pcopy} not found")
 
         # When copying from a peripheral in the same file, remove the
         # copied baseAddress and any interrupts.
@@ -593,12 +592,12 @@ class Device:
         Update all derivedFrom referencing pold.
         """
         parent = self.device.find("peripherals")
-        old = parent.find("./peripheral[name='{}']".format(pold))
-        new = parent.find("./peripheral[name='{}']".format(pnew))
+        old = parent.find(f"./peripheral[name='{pold}']")
+        new = parent.find(f"./peripheral[name='{pnew}']")
         if old is None:
-            raise SvdPatchError("peripheral {} not found".format(pold))
+            raise SvdPatchError(f"peripheral {pold} not found")
         if new is None:
-            raise SvdPatchError("peripheral {} not found".format(pnew))
+            raise SvdPatchError(f"peripheral {pnew} not found")
         for value in new:
             last = value
         last.tail = "\n      "
@@ -612,7 +611,7 @@ class Device:
         last.tail = "\n    "
         del new.attrib["derivedFrom"]
         old.set("derivedFrom", pnew)
-        for p in parent.findall("./peripheral[@derivedFrom='{}']".format(pold)):
+        for p in parent.findall(f"./peripheral[@derivedFrom='{pold}']"):
             p.set("derivedFrom", pnew)
 
     def clear_fields(self, pspec):
@@ -712,7 +711,7 @@ class Device:
                         p.derive_register(rname, rderive[rname])
                 elif rname == "_clusters":
                     raise NotImplementedError(
-                        "deriving clusters not implemented yet: {}".format(rname)
+                        f"deriving clusters not implemented yet: {rname}"
                     )
                 else:
                     p.derive_register(rname, rderive)
@@ -730,7 +729,7 @@ class Device:
                 cmod = peripheral["_cluster"][cname]
                 p.collect_in_cluster(cname, cmod)
         if pcount == 0:
-            raise MissingPeripheralError("Could not find {}".format(pspec))
+            raise MissingPeripheralError(f"Could not find {pspec}")
 
 
 class Peripheral:
@@ -855,11 +854,11 @@ class Peripheral:
             address_offset = rmod.get("addressOffset", None)
             description = rmod.get(description, None)
         else:
-            raise SvdPatchError("derive: incorrect syntax for {}".format(rname))
-        rtag = parent.find("./register[name='{}']".format(rname))
-        derived = parent.find("./register[name='{}']".format(rderive))
+            raise SvdPatchError(f"derive: incorrect syntax for {rname}")
+        rtag = parent.find(f"./register[name='{rname}']")
+        derived = parent.find(f"./register[name='{rderive}']")
         if derived is None:
-            raise SvdPatchError("register {} not found".format(rderive))
+            raise SvdPatchError(f"register {rderive} not found")
         if rtag is None:
             rtag = ET.SubElement(parent, "register")
             ET.SubElement(rtag, "name").text = rname
@@ -877,7 +876,7 @@ class Peripheral:
             last = value
         last.tail = "\n    "
         rtag.set("derivedFrom", rderive)
-        for p in parent.findall("./register[@derivedFrom='{}']".format(rname)):
+        for p in parent.findall(f"./register[@derivedFrom='{rname}']"):
             p.set("derivedFrom", rderive)
 
     def copy_register(self, rname, rderive):
@@ -885,9 +884,7 @@ class Peripheral:
         parent = self.ptag.find("registers")
         if not "_from" in rderive:
             raise SvdPatchError(
-                "derive: source register not given, please add a _from field to {}".format(
-                    rname
-                )
+                f"derive: source register not given, please add a _from field to {rname}"
             )
         srcname = rderive["_from"]
         source = None
@@ -1163,7 +1160,7 @@ class Peripheral:
                 fmod = register["_array"][fspec]
                 r.collect_fields_in_array(fspec, fmod)
         if rcount == 0:
-            raise MissingRegisterError("Could not find {}:{}".format(pname, rspec))
+            raise MissingRegisterError(f"Could not find {pname}:{rspec}")
 
 
 def sorted_fields(fields):
@@ -1299,16 +1296,14 @@ class Register:
             name = key
         elif value is not None:
             rname = self.rtag.find("name").text
-            raise RegisterMergeError(
-                "Invalid usage of merge for {}.{}".format(rname, key)
-            )
+            raise RegisterMergeError(f"Invalid usage of merge for {rname}.{key}")
         else:
             fields = list(self.iter_fields(key))
             name = os.path.commonprefix([f.find("name").text for f in fields])
         if len(fields) == 0:
             rname = self.rtag.find("name").text
             raise RegisterMergeError(
-                "Could not find any fields to merge {}.{}".format(rname, fspec)
+                f"Could not find any fields to merge {rname}.{fspec}"
             )
         parent = self.rtag.find("fields")
         desc = fields[0].find("description").text
@@ -1387,7 +1382,7 @@ class Register:
         if len(fields) == 0:
             rname = self.rtag.find("name").text
             raise RegisterMergeError(
-                "Could not find any fields to split {}.{}".format(rname, fspec)
+                f"Could not find any fields to split {rname}.{fspec}"
             )
         parent = self.rtag.find("fields")
         if isinstance(fsplit, dict) and "name" in fsplit:
@@ -1518,22 +1513,16 @@ class Register:
                         # original definition to extract its <usage>
                         derived_name = ev.attrib["derivedFrom"]
                         derived_enums = self.rtag.findall(
-                            "./fields/field/enumeratedValues/[name='{}']".format(
-                                derived_name
-                            )
+                            f"./fields/field/enumeratedValues/[name='{derived_name}']"
                         )
 
                         if derived_enums == []:
                             raise SvdPatchError(
-                                "{}: field {} derives enumeratedValues {} which could not be found".format(
-                                    pname, name, derived_name
-                                )
+                                f"{pname}: field {name} derives enumeratedValues {derived_name} which could not be found"
                             )
                         elif len(derived_enums) != 1:
                             raise SvdPatchError(
-                                "{}: field {} derives enumeratedValues {} which was found multiple times".format(
-                                    pname, name, derived_name
-                                )
+                                f"{pname}: field {name} derives enumeratedValues {derived_name} which was found multiple times"
                             )
 
                         ev_usage = derived_enums[0].find("usage").text
@@ -1543,9 +1532,7 @@ class Register:
                             ftag.remove(ev)
                         else:
                             raise SvdPatchError(
-                                "{}: field {} already has enumeratedValues for {}".format(
-                                    pname, name, ev_usage
-                                )
+                                f"{pname}: field {name} already has enumeratedValues for {ev_usage}"
                             )
                 ftag.append(enum)
                 derived = enum_name
@@ -1553,9 +1540,7 @@ class Register:
                 ftag.append(make_derived_enumerated_values(derived))
         if derived is None:
             rname = self.rtag.find("name").text
-            raise MissingFieldError(
-                "Could not find {}:{}.{}".format(pname, rname, fspec)
-            )
+            raise MissingFieldError(f"Could not find {pname}:{rname}.{fspec}")
 
     def process_field_range(self, pname, fspec, field):
         """Add a writeConstraint range given by field to all fspec in rtag."""
@@ -1565,9 +1550,7 @@ class Register:
             set_any = True
         if not set_any:
             rname = self.rtag.find("name").text
-            raise MissingFieldError(
-                "Could not find {}:{}.{}".format(pname, rname, fspec)
-            )
+            raise MissingFieldError(f"Could not find {pname}:{rname}.{fspec}")
 
     def get_bitmask(self):
         """Calculate filling of register"""

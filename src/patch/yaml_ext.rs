@@ -173,7 +173,7 @@ impl GetVal for Hash {
             None => Ok(None),
             Some(v) => v
                 .bool()
-                .with_context(|| format!("Under key `{}`", k))
+                .with_context(|| format!("Under key `{k}`"))
                 .map(Some),
         }
     }
@@ -182,7 +182,7 @@ impl GetVal for Hash {
             None => Ok(None),
             Some(v) => v
                 .i64()
-                .with_context(|| format!("Under key `{}`", k))
+                .with_context(|| format!("Under key `{k}`"))
                 .map(Some),
         }
     }
@@ -191,7 +191,7 @@ impl GetVal for Hash {
             None => Ok(None),
             Some(v) => v
                 .str()
-                .with_context(|| format!("Under key `{}`", k))
+                .with_context(|| format!("Under key `{k}`"))
                 .map(Some),
         }
     }
@@ -200,7 +200,7 @@ impl GetVal for Hash {
             None => Ok(None),
             Some(v) => v
                 .hash()
-                .with_context(|| format!("Under key `{}`", k))
+                .with_context(|| format!("Under key `{k}`"))
                 .map(Some),
         }
     }
@@ -216,7 +216,7 @@ impl GetVal for Hash {
             None => Ok(None),
             Some(v) => v
                 .vec()
-                .with_context(|| format!("Under key `{}`", k))
+                .with_context(|| format!("Under key `{k}`"))
                 .map(Some),
         }
     }

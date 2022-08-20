@@ -96,36 +96,36 @@ impl RegisterExt for Register {
         // Handle deletions
         for fspec in rmod.str_vec_iter("_delete") {
             self.delete_field(fspec)
-                .with_context(|| format!("Deleting fields matched to `{}`", fspec))?;
+                .with_context(|| format!("Deleting fields matched to `{fspec}`"))?;
         }
 
         // Handle strips
         for prefix in rmod.str_vec_iter("_strip") {
             self.strip_start(prefix)
-                .with_context(|| format!("Stripping prefix `{}` from field names", prefix))?;
+                .with_context(|| format!("Stripping prefix `{prefix}` from field names"))?;
         }
         for suffix in rmod.str_vec_iter("_strip_end") {
             self.strip_end(suffix)
-                .with_context(|| format!("Stripping suffix `{}` from field names", suffix))?;
+                .with_context(|| format!("Stripping suffix `{suffix}` from field names"))?;
         }
 
         // Handle field clearing
         for fspec in rmod.str_vec_iter("_clear") {
             self.clear_field(fspec)
-                .with_context(|| format!("Clearing contents of fields matched to `{}` ", fspec))?;
+                .with_context(|| format!("Clearing contents of fields matched to `{fspec}`"))?;
         }
 
         // Handle modifications
         for (fspec, fmod) in rmod.hash_iter("_modify") {
             let fspec = fspec.str()?;
             self.modify_field(fspec, fmod.hash()?)
-                .with_context(|| format!("Modifying fields matched to `{}`", fspec))?;
+                .with_context(|| format!("Modifying fields matched to `{fspec}`"))?;
         }
         // Handle additions
         for (fname, fadd) in rmod.hash_iter("_add") {
             let fname = fname.str()?;
             self.add_field(fname, fadd.hash()?)
-                .with_context(|| format!("Adding field `{}`", fname))?;
+                .with_context(|| format!("Adding field `{fname}`"))?;
         }
 
         // Handle merges
@@ -134,14 +134,14 @@ impl RegisterExt for Register {
                 for (fspec, fmerge) in h {
                     let fspec = fspec.str()?;
                     self.merge_fields(fspec, Some(fmerge))
-                        .with_context(|| format!("Merging fields matched to `{}`", fspec))?;
+                        .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
                 }
             }
             Some(Yaml::Array(a)) => {
                 for fspec in a {
                     let fspec = fspec.str()?;
                     self.merge_fields(fspec, None)
-                        .with_context(|| format!("Merging fields matched to `{}`", fspec))?;
+                        .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
                 }
             }
             _ => {}
@@ -153,14 +153,14 @@ impl RegisterExt for Register {
                 for (fspec, fsplit) in h {
                     let fspec = fspec.str()?;
                     self.split_fields(fspec, fsplit.hash()?)
-                        .with_context(|| format!("Splitting fields matched to `{}`", fspec))?;
+                        .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
                 }
             }
             Some(Yaml::Array(a)) => {
                 for fspec in a {
                     let fspec = fspec.str()?;
                     self.split_fields(fspec, &Hash::new())
-                        .with_context(|| format!("Splitting fields matched to `{}`", fspec))?;
+                        .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
                 }
             }
             _ => {}
@@ -172,7 +172,7 @@ impl RegisterExt for Register {
                 let fspec = fspec.str()?;
                 if !fspec.starts_with('_') {
                     self.process_field(pname, fspec, field)
-                        .with_context(|| format!("Processing field matched to `{}`", fspec))?;
+                        .with_context(|| format!("Processing field matched to `{fspec}`"))?;
                 }
             }
         }
@@ -181,7 +181,7 @@ impl RegisterExt for Register {
         for (fspec, fmod) in rmod.hash_iter("_array") {
             let fspec = fspec.str()?;
             self.collect_fields_in_array(fspec, fmod.hash()?)
-                .with_context(|| format!("Collecting fields matched to `{}` in array", fspec))?;
+                .with_context(|| format!("Collecting fields matched to `{fspec}` in array"))?;
         }
 
         Ok(())
@@ -236,7 +236,7 @@ impl RegisterExt for Register {
                             max: a[1].i64()? as u64,
                         }))
                     }
-                    _ => return Err(anyhow!("Unknown writeConstraint type {:?}", value)),
+                    _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
                 };
                 ftag.write_constraint = wc;
             }
@@ -252,9 +252,8 @@ impl RegisterExt for Register {
     fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult {
         if self.get_field(fname).is_some() {
             return Err(anyhow!(
-                "register {} already has a field {}",
-                self.name,
-                fname
+                "register {} already has a field {fname}",
+                self.name
             ));
         }
         // TODO: add field arrays
@@ -299,7 +298,7 @@ impl RegisterExt for Register {
                 }
                 (key.to_string(), names)
             }
-            Some(_) => return Err(anyhow!("Invalid usage of merge for {}.{}", self.name, key)),
+            Some(_) => return Err(anyhow!("Invalid usage of merge for {}.{key}", self.name)),
             None => {
                 let names: Vec<String> =
                     self.iter_fields(key).map(|f| f.name.to_string()).collect();
@@ -313,9 +312,8 @@ impl RegisterExt for Register {
 
         if names.is_empty() {
             return Err(anyhow!(
-                "Could not find any fields to merge {}.{}",
-                self.name,
-                key
+                "Could not find any fields to merge {}.{key}",
+                self.name
             ));
         }
         let mut bitwidth = 0;
@@ -364,7 +362,7 @@ impl RegisterExt for Register {
                 }
             }
             if fields.is_empty() {
-                return Err(anyhow!("{}: fields {} not found", self.name, fspec));
+                return Err(anyhow!("{}: fields {fspec} not found", self.name));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
             let dim = fields.len();
@@ -383,9 +381,8 @@ impl RegisterExt for Register {
             let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
             if !check_offsets(&offsets, dim_increment) {
                 return Err(anyhow!(
-                    "{}: registers cannot be collected into {} array",
-                    self.name,
-                    fspec
+                    "{}: registers cannot be collected into {fspec} array",
+                    self.name
                 ));
             }
             let mut finfo = fields.swap_remove(0);
@@ -420,16 +417,14 @@ impl RegisterExt for Register {
         let (new_fields, name) = match (it.next(), it.next()) {
             (None, _) => {
                 return Err(anyhow!(
-                    "Could not find any fields to split {}.{}",
-                    self.name,
-                    fspec
+                    "Could not find any fields to split {}.{fspec}",
+                    self.name
                 ))
             }
             (Some(_), Some(_)) => {
                 return Err(anyhow!(
-                    "Only one field can be spitted at time {}.{}",
-                    self.name,
-                    fspec
+                    "Only one field can be spitted at time {}.{fspec}",
+                    self.name
                 ))
             }
             (Some(first), None) => {
@@ -572,9 +567,8 @@ impl RegisterExt for Register {
         ) -> PatchResult {
             let occupied_error = || {
                 Err(anyhow!(
-                    "field {} already has {:?} enumeratedValues",
-                    f.name,
-                    usage
+                    "field {} already has {usage:?} enumeratedValues",
+                    f.name
                 ))
             };
             if usage == Usage::ReadWrite {
@@ -650,16 +644,12 @@ impl RegisterExt for Register {
                 .filter(|e| e.name.as_deref() == Some(d));
             let orig_usage = match (derived_enums.next(), derived_enums.next()) {
                 (Some(e), None) => e.usage().ok_or_else(|| {
-                    anyhow!("{}: multilevel derive for {} is not supported", pname, d)
+                    anyhow!("{pname}: multilevel derive for {d} is not supported")
                 })?,
-                (None, _) => {
-                    return Err(anyhow!("{}: enumeratedValues {} can't be found", pname, d))
-                }
+                (None, _) => return Err(anyhow!("{pname}: enumeratedValues {d} can't be found")),
                 (Some(_), Some(_)) => {
                     return Err(anyhow!(
-                        "{}: enumeratedValues {} was found multiple times",
-                        pname,
-                        d
+                        "{pname}: enumeratedValues {d} was found multiple times"
                     ));
                 }
             };
@@ -670,9 +660,7 @@ impl RegisterExt for Register {
                     .with_context(|| format!("In field {}", ftag.name))?;
                 if checked_usage != orig_usage {
                     return Err(anyhow!(
-                        "enumeratedValues with different usage was found: {:?} != {:?}",
-                        usage,
-                        orig_usage
+                        "enumeratedValues with different usage was found: {usage:?} != {orig_usage:?}"
                     ));
                 }
                 if ftag.name == d {
@@ -686,7 +674,7 @@ impl RegisterExt for Register {
                 .map(|f| (f.bit_range.offset, f.name.to_string()))
                 .collect::<Vec<_>>();
             if offsets.is_empty() {
-                return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
+                return Err(anyhow!("Could not find {pname}:{}.{fspec}", self.name));
             }
             let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
             let name = make_ev_name(&name.replace("%s", ""), usage)?;
@@ -726,7 +714,7 @@ impl RegisterExt for Register {
             set_any = true;
         }
         if !set_any {
-            return Err(anyhow!("Could not find {}:{}.{}", pname, &self.name, fspec));
+            return Err(anyhow!("Could not find {pname}:{}.{fspec}", self.name));
         }
         Ok(())
     }
@@ -739,9 +727,7 @@ fn check_usage(access: Access, usage: Option<Usage>) -> anyhow::Result<Usage> {
         (Access::WriteOnly | Access::WriteOnce, None | Some(Usage::Write)) => Usage::Write,
         (_, _) => {
             return Err(anyhow!(
-                "EnumeratedValues usage {:?} is incompatible with access {:?}",
-                usage,
-                access
+                "EnumeratedValues usage {usage:?} is incompatible with access {access:?}"
             ));
         }
     })

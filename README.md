@@ -34,7 +34,7 @@ more information on creating patches.
 
 ## Getting Started with Rust version
 
-This crate is guaranteed to compile on stable Rust 1.46.0 and up. To install:
+This crate is guaranteed to compile on stable Rust 1.58.0 and up. To install:
 
 ```bash
 $ cargo install svdtools

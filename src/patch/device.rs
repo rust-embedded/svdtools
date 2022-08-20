@@ -66,7 +66,7 @@ impl DeviceExt for Device {
         // Handle any deletions
         for pspec in device.str_vec_iter("_delete") {
             self.delete_peripheral(pspec)
-                .with_context(|| format!("Deleting peripheral matched to `{}`", pspec))?;
+                .with_context(|| format!("Deleting peripheral matched to `{pspec}`"))?;
         }
 
         // Handle any copied peripherals
@@ -77,7 +77,7 @@ impl DeviceExt for Device {
                 val.hash()?,
                 Path::new(device.get_str("_path")?.unwrap_or(".")),
             )
-            .with_context(|| format!("Copying peripheral `{}`", pname))?;
+            .with_context(|| format!("Copying peripheral `{pname}`"))?;
         }
 
         // Handle any modifications
@@ -92,7 +92,7 @@ impl DeviceExt for Device {
                         let pspec = pspec.str()?;
                         self.modify_peripheral(pspec, pmod.hash()?)
                             .with_context(|| {
-                                format!("Modifying peripherals matched to `{}`", pspec)
+                                format!("Modifying peripherals matched to `{pspec}`")
                             })?;
                     }
                 }
@@ -115,17 +115,14 @@ impl DeviceExt for Device {
 
                 _ => self
                     .modify_peripheral(key, val.hash()?)
-                    .with_context(|| format!("Modifying peripherals matched to `{}`", key))?,
+                    .with_context(|| format!("Modifying peripherals matched to `{key}`"))?,
             }
         }
 
         // Handle field clearing
         for pspec in device.str_vec_iter("_clear_fields") {
             self.clear_fields(pspec).with_context(|| {
-                format!(
-                    "Clearing contents of fields in peripherals matched to `{}` ",
-                    pspec
-                )
+                format!("Clearing contents of fields in peripherals matched to `{pspec}` ")
             })?;
         }
 
@@ -133,14 +130,14 @@ impl DeviceExt for Device {
         for (pname, padd) in device.hash_iter("_add") {
             let pname = pname.str()?;
             self.add_peripheral(pname, padd.hash()?)
-                .with_context(|| format!("Adding peripheral `{}`", pname))?;
+                .with_context(|| format!("Adding peripheral `{pname}`"))?;
         }
 
         // Handle any derived peripherals
         for (pname, pderive) in device.hash_iter("_derive") {
             let pname = pname.str()?;
             self.derive_peripheral(pname, pderive)
-                .with_context(|| format!("Deriving peripheral `{}` from `{:?}`", pname, pderive))?;
+                .with_context(|| format!("Deriving peripheral `{pname}` from `{pderive:?}`"))?;
         }
 
         // Handle any rebased peripherals
@@ -148,7 +145,7 @@ impl DeviceExt for Device {
             let pname = pname.str()?;
             let pold = pold.str()?;
             self.rebase_peripheral(pname, pold)
-                .with_context(|| format!("Rebasing peripheral from `{}` to `{}`", pold, pname))?;
+                .with_context(|| format!("Rebasing peripheral from `{pold}` to `{pname}`"))?;
         }
 
         // Now process all peripherals
@@ -157,7 +154,7 @@ impl DeviceExt for Device {
             if !periphspec.starts_with('_') {
                 //val["_path"] = device["_path"]; // TODO: check
                 self.process_peripheral(periphspec, val.hash()?, update_fields)
-                    .with_context(|| format!("According to `{}`", periphspec))?;
+                    .with_context(|| format!("According to `{periphspec}`"))?;
             }
         }
 
@@ -181,16 +178,16 @@ impl DeviceExt for Device {
                 let mut contents = String::new();
                 (&f).read_to_string(&mut contents).unwrap();
                 let filedev = svd_parser::parse(&contents)
-                    .with_context(|| format!("Parsing file {}", contents))?;
+                    .with_context(|| format!("Parsing file {contents}"))?;
                 filedev
                     .get_peripheral(pcopyname)
-                    .ok_or_else(|| anyhow!("peripheral {} not found", pcopyname))?
+                    .ok_or_else(|| anyhow!("peripheral {pcopyname} not found"))?
                     .clone()
             }
             [pcopyname] => {
                 let mut new = self
                     .get_peripheral(pcopyname)
-                    .ok_or_else(|| anyhow!("peripheral {} not found", pcopyname))?
+                    .ok_or_else(|| anyhow!("peripheral {pcopyname} not found"))?
                     .clone();
                 // When copying from a peripheral in the same file, remove any interrupts.
                 new.interrupt = Vec::new();
@@ -265,7 +262,7 @@ impl DeviceExt for Device {
 
     fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult {
         if self.get_peripheral(pname).is_some() {
-            return Err(anyhow!("device already has a peripheral {}", pname));
+            return Err(anyhow!("device already has a peripheral {pname}"));
         }
 
         self.peripherals.push(
@@ -300,7 +297,7 @@ impl DeviceExt for Device {
 
         if !pderive.contains('.') {
             self.get_peripheral(pderive)
-                .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
+                .ok_or_else(|| anyhow!("peripheral {pderive} not found"))?;
         }
 
         match self.get_mut_peripheral(pname) {
@@ -324,7 +321,7 @@ impl DeviceExt for Device {
     fn rebase_peripheral(&mut self, pnew: &str, pold: &str) -> PatchResult {
         let old = self
             .get_mut_peripheral(pold)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pold))?;
+            .ok_or_else(|| anyhow!("peripheral {pold} not found"))?;
         let mut d = std::mem::replace(
             old,
             PeripheralInfo::builder()
@@ -341,7 +338,7 @@ impl DeviceExt for Device {
         );
         let new = self
             .get_mut_peripheral(pnew)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pnew))?;
+            .ok_or_else(|| anyhow!("peripheral {pnew} not found"))?;
         d.name = new.name.clone();
         d.base_address = new.base_address;
         d.interrupt = new.interrupt.clone();
@@ -380,7 +377,7 @@ impl DeviceExt for Device {
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
         if pcount == 0 {
-            Err(anyhow!("Could not find `{}`", pspec))
+            Err(anyhow!("Could not find `{pspec}`"))
         } else {
             Ok(())
         }

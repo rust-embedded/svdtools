@@ -16,9 +16,9 @@ pub fn get_description(opt_str: &Option<String>) -> String {
 
 /// Make everything uppercase except first two character, which should be "0x"
 pub fn format_address(hex_address: u64) -> String {
-    let addr = format! {"{:x}", hex_address};
+    let addr = format! {"{hex_address:x}"};
     let addr = addr.to_uppercase();
-    format!("0x{}", addr)
+    format!("0x{addr}")
 }
 
 #[cfg(test)]

@@ -21,6 +21,6 @@ pub fn access_with_brace(access: Option<Access>) -> String {
     if access.is_empty() {
         access.to_string()
     } else {
-        format!(" ({})", access)
+        format!(" ({access})")
     }
 }

@@ -11,7 +11,7 @@ pub fn parse_device(svd_file: &Path) -> Result<()> {
     match get_text(&mut file) {
         Err(e) => {
             let path_str = svd_file.display();
-            Err(e).with_context(|| format!("Parsing {}", path_str))
+            Err(e).with_context(|| format!("Parsing {path_str}"))
         }
         Ok(text) => {
             println!("{}", text);
@@ -71,8 +71,8 @@ fn get_interrupts(peripheral: &Peripheral, mmap: &mut Vec<String>) {
     for i in &peripheral.interrupt {
         let description = str_utils::get_description(&i.description);
         let text = format!(
-            "INTERRUPT {:03}: {} ({}): {}",
-            i.value, i.name, peripheral.name, description
+            "INTERRUPT {:03}: {} ({}): {description}",
+            i.value, i.name, peripheral.name
         );
         mmap.push(text);
     }
@@ -95,10 +95,7 @@ fn get_registers(
                         Register::Single(r) => {
                             let addr = str_utils::format_address(first_addr);
                             let rname = r.name.to_string() + suffix;
-                            let text = format!(
-                                "{} B  REGISTER {}{}: {}",
-                                addr, rname, access, description
-                            );
+                            let text = format!("{addr} B  REGISTER {rname}{access}: {description}");
                             mmap.push(text);
                             get_fields(r, &addr, mmap);
                         }
@@ -109,10 +106,8 @@ fn get_registers(
                                 );
                                 let rname = r.name.replace("%s", &idx);
                                 let description = description.replace("%s", &idx);
-                                let text = format!(
-                                    "{} B  REGISTER {}{}: {}",
-                                    addr, rname, access, description
-                                );
+                                let text =
+                                    format!("{addr} B  REGISTER {rname}{access}: {description}");
                                 mmap.push(text);
                                 get_fields(r, &addr, mmap);
                             }
@@ -125,7 +120,8 @@ fn get_registers(
                     match c {
                         Cluster::Single(c) => {
                             let addr = str_utils::format_address(first_addr);
-                            let text = format!("{} B  CLUSTER {}: {}", addr, c.name, description);
+                            let cname = &c.name;
+                            let text = format!("{addr} B  CLUSTER {cname}: {description}");
                             mmap.push(text);
                             get_registers(first_addr, Some(&c.children), "", mmap);
                         }
@@ -135,8 +131,7 @@ fn get_registers(
                                 let addr = str_utils::format_address(caddr);
                                 let cname = c.name.replace("%s", &idx);
                                 let description = description.replace("%s", &idx);
-                                let text =
-                                    format!("{} B  CLUSTER {}: {}", addr, cname, description);
+                                let text = format!("{addr} B  CLUSTER {cname}: {description}");
                                 mmap.push(text);
                                 get_registers(caddr, Some(&c.children), &idx, mmap);
                             }
@@ -156,19 +151,20 @@ fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
             match f {
                 Field::Single(f) => {
                     let bit_offset = f.bit_range.offset;
+                    let bit_width = f.bit_range.width;
+                    let fname = &f.name;
                     let text = format!(
-                        "{} C   FIELD {:02}w{:02} {}{}: {}",
-                        addr, bit_offset, f.bit_range.width, f.name, access, description
+                        "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{access}: {description}"
                     );
                     mmap.push(text);
                 }
                 Field::Array(f, d) => {
                     for (i, idx) in d.indexes().enumerate() {
                         let bit_offset = f.bit_range.offset + (i as u32) * d.dim_increment;
+                        let bit_width = f.bit_range.width;
                         let fname = f.name.replace("%s", &idx);
                         let text = format!(
-                            "{} C   FIELD {:02}w{:02} {}{}: {}",
-                            addr, bit_offset, f.bit_range.width, fname, access, description
+                            "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{access}: {description}"
                         );
                         mmap.push(text);
                     }
