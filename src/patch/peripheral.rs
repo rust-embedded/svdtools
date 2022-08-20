@@ -46,6 +46,10 @@ pub trait PeripheralExt {
     /// Add rname given by radd to ptag
     fn add_register(&mut self, rname: &str, radd: &Hash) -> PatchResult;
 
+    /// Remove fields from rname and mark it as derivedFrom rderive.
+    /// Update all derivedFrom referencing rname
+    fn derive_register(&mut self, rname: &str, rderive: &Yaml) -> PatchResult;
+
     /// Add rname given by deriving from rsource to ptag
     fn copy_register(&mut self, rname: &str, rderive: &Hash) -> PatchResult;
 
@@ -158,6 +162,14 @@ impl PeripheralExt for Peripheral {
             }
         }
 
+        // Handle any copied peripherals
+        for (rname, rderive) in pmod.hash_iter("_copy") {
+            let rderive = rderive.hash()?;
+            let rname = rname.str()?;
+            self.copy_register(rname, rderive)
+                .with_context(|| format!("Copying register `{}`", rname))?
+        }
+
         // Handle modifications
         for (rspec, rmod) in pmod.hash_iter("_modify") {
             let rmod = rmod.hash()?;
@@ -237,25 +249,27 @@ impl PeripheralExt for Peripheral {
         }
 
         for (rname, rderive) in pmod.hash_iter("_derive") {
-            let rderive = rderive.hash()?;
             let rname = rname.str()?;
             match rname {
                 "_registers" => {
-                    for (rname, val) in rderive {
+                    for (rname, val) in rderive.hash()? {
                         let rname = rname.str()?;
-                        self.copy_register(rname, val.hash()?)
-                            .with_context(|| format!("Copying register `{}`", rname))?;
+                        self.derive_register(rname, val).with_context(|| {
+                            format!("Deriving register `{}` from `{:?}`", rname, val)
+                        })?;
                     }
                 }
-                "_interrupts" => {
+                "_clusters" => {
                     return Err(anyhow!(
-                        "deriving interrupts not implemented yet: {}",
+                        "deriving clusters is not implemented yet: {}",
                         rname
                     ))
                 }
-                _ => self
-                    .copy_register(rname, rderive)
-                    .with_context(|| format!("Copying register `{}`", rname))?,
+                _ => {
+                    self.derive_register(rname, rderive).with_context(|| {
+                        format!("Deriving register `{}` from `{:?}`", rname, rderive)
+                    })?;
+                }
             }
         }
 
@@ -340,6 +354,48 @@ impl PeripheralExt for Peripheral {
                     .build(VAL_LVL)?
                     .single(),
             ));
+        Ok(())
+    }
+
+    fn derive_register(&mut self, rname: &str, rderive: &Yaml) -> PatchResult {
+        let (rderive, info) = if let Some(rderive) = rderive.as_str() {
+            (
+                rderive,
+                RegisterInfo::builder().derived_from(Some(rderive.into())),
+            )
+        } else if let Some(hash) = rderive.as_hash() {
+            let rderive = hash.get_str("_from")?.ok_or_else(|| {
+                anyhow!(
+                    "derive: source register not given, please add a _from field to {}",
+                    rname
+                )
+            })?;
+            (
+                rderive,
+                make_register(hash)?.derived_from(Some(rderive.into())),
+            )
+        } else {
+            return Err(anyhow!("derive: incorrect syntax for {}", rname));
+        };
+
+        self.get_register(rderive)
+            .ok_or_else(|| anyhow!("register {} not found", rderive))?;
+
+        match self.get_mut_register(rname) {
+            Some(register) => register.modify_from(info, VAL_LVL)?,
+            None => {
+                let register = info.name(rname.into()).build(VAL_LVL)?.single();
+                self.registers
+                    .get_or_insert_with(Default::default)
+                    .push(RegisterCluster::Register(register));
+            }
+        }
+        for r in self
+            .registers_mut()
+            .filter(|r| r.derived_from.as_deref() == Some(rname))
+        {
+            r.derived_from = Some(rderive.into());
+        }
         Ok(())
     }
 
@@ -668,6 +724,9 @@ impl PeripheralExt for Peripheral {
 
     fn clear_fields(&mut self, rspec: &str) -> PatchResult {
         for rtag in self.iter_registers(rspec) {
+            if rtag.derived_from.is_some() {
+                continue;
+            }
             rtag.clear_field("*")?;
         }
         Ok(())

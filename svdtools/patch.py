@@ -405,13 +405,11 @@ class Device:
     def __init__(self, device):
         self.device = device
 
-    def iter_peripherals(self, pspec, check_derived=True):
+    def iter_peripherals(self, pspec):
         """Iterates over all peripherals that match pspec."""
         for ptag in self.device.iter("peripheral"):
             name = ptag.find("name").text
             if matchname(name, pspec):
-                if check_derived and "derivedFrom" in ptag.attrib:
-                    continue
                 yield ptag
 
     def modify_child(self, key, val):
@@ -437,6 +435,22 @@ class Device:
         """Modify pspec inside device according to pmod."""
         for ptag in self.iter_peripherals(pspec):
             for (key, value) in pmod.items():
+                if key == "name":
+                    # If this peripheral has derivations, update the derived
+                    # peripherals to reference the new name.
+                    parent = self.device.find("peripherals")
+                    old_name = ptag.find("name").text
+                    for derived in parent.findall(
+                        "./peripheral[@derivedFrom='{}']".format(old_name)
+                    ):
+                        derived.set("derivedFrom", value)
+                    ptag.find("name").text = value
+                    continue
+
+                # We do not change derivedFrom peripherals beyond this point.
+                if "derivedFrom" in ptag.attrib:
+                    continue
+
                 if key == "addressBlock":
                     ab = ptag.find(key)
                     for (ab_key, ab_value) in value.items():
@@ -491,25 +505,42 @@ class Device:
 
     def delete_peripheral(self, pspec):
         """Delete registers matched by rspec inside ptag."""
-        for ptag in list(self.iter_peripherals(pspec, check_derived=False)):
+        for ptag in list(self.iter_peripherals(pspec)):
             self.device.find("peripherals").remove(ptag)
 
-    def derive_peripheral(self, pname, pderive):
+    def derive_peripheral(self, pname, pmod):
         """
         Remove registers from pname and mark it as derivedFrom pderive.
         Update all derivedFrom referencing pname.
         """
         parent = self.device.find("peripherals")
+        if isinstance(pmod, str):
+            pderive = pmod
+            base_address = None
+            description = None
+        elif isinstance(pmod, dict):
+            pderive = pmod["_from"]
+            base_address = pmod.get("baseAddress", None)
+            description = pmod.get("description", None)
+        else:
+            raise SvdPatchError("derive: incorrect syntax for {}".format(pname))
         ptag = parent.find("./peripheral[name='{}']".format(pname))
         derived = parent.find("./peripheral[name='{}']".format(pderive))
-        if ptag is None:
-            raise SvdPatchError("peripheral {} not found".format(pname))
-        if derived is None:
+        if (not ("." in pderive)) and (derived is None):
             raise SvdPatchError("peripheral {} not found".format(pderive))
-        for value in list(ptag):
-            if value.tag in ("name", "baseAddress", "interrupt"):
-                continue
-            ptag.remove(value)
+        if ptag is None:
+            ptag = ET.SubElement(parent, "register")
+            ET.SubElement(ptag, "name").text = pname
+            ET.SubElement(ptag, "addressOffset").text = base_address
+        else:
+            for value in list(ptag):
+                if value.tag in ("name", "baseAddress", "interrupt", "description"):
+                    continue
+                ptag.remove(value)
+            if base_address:
+                ptag.find("baseAddress").text = base_address
+            if description:
+                ptag.find("description").text = description
         for value in ptag:
             last = value
         last.tail = "\n    "
@@ -586,7 +617,9 @@ class Device:
 
     def clear_fields(self, pspec):
         """Clear contents of all fields inside peripherals matched by pspec"""
-        for ptag in self.iter_peripherals(pspec, check_derived=False):
+        for ptag in self.iter_peripherals(pspec):
+            if "derivedFrom" in ptag.attrib:
+                continue
             p = Peripheral(ptag)
             p.clear_fields("*")
 
@@ -594,7 +627,7 @@ class Device:
         """Work through a peripheral, handling all registers."""
         # Find all peripherals that match the spec
         pcount = 0
-        for ptag in self.iter_peripherals(pspec, check_derived=False):
+        for ptag in self.iter_peripherals(pspec):
             pcount += 1
             p = Peripheral(ptag)
 
@@ -634,6 +667,10 @@ class Device:
                             p.delete_interrupt(ispec)
                     else:
                         p.delete_register(rspec)
+            # Handle copy
+            for rname in peripheral.get("_copy", {}):
+                rderive = peripheral["_copy"][rname]
+                p.copy_register(rname, rderive)
             # Handle modifications
             for rspec in peripheral.get("_modify", {}):
                 rmod = peripheral["_modify"][rspec]
@@ -667,14 +704,15 @@ class Device:
                         p.add_interrupt(iname, radd[iname])
                 else:
                     p.add_register(rname, radd)
+            # Handle derive
             for rname in peripheral.get("_derive", {}):
                 rderive = peripheral["_derive"][rname]
                 if rname == "_registers":
                     for rname in rderive:
                         p.derive_register(rname, rderive[rname])
-                elif rname == "_interrupts":
+                elif rname == "_clusters":
                     raise NotImplementedError(
-                        "deriving interrupts not implemented yet: {}".format(rname)
+                        "deriving clusters not implemented yet: {}".format(rname)
                     )
                 else:
                     p.derive_register(rname, rderive)
@@ -802,7 +840,47 @@ class Peripheral:
                 ET.SubElement(rnew, key).text = str(value)
         rnew.tail = "\n        "
 
-    def derive_register(self, rname, rderive):
+    def derive_register(self, rname, rmod):
+        """
+        Remove fields from rname and mark it as derivedFrom rderive.
+        Update all derivedFrom referencing rname.
+        """
+        parent = self.ptag.find("registers")
+        if isinstance(rmod, str):
+            rderive = rmod
+            address_offset = None
+            description = None
+        elif isinstance(rmod, dict):
+            rderive = rmod["_from"]
+            address_offset = rmod.get("addressOffset", None)
+            description = rmod.get(description, None)
+        else:
+            raise SvdPatchError("derive: incorrect syntax for {}".format(rname))
+        rtag = parent.find("./register[name='{}']".format(rname))
+        derived = parent.find("./register[name='{}']".format(rderive))
+        if derived is None:
+            raise SvdPatchError("register {} not found".format(rderive))
+        if rtag is None:
+            rtag = ET.SubElement(parent, "register")
+            ET.SubElement(rtag, "name").text = rname
+            ET.SubElement(rtag, "addressOffset").text = address_offset
+        else:
+            for value in list(rtag):
+                if value.tag in ("name", "addressOffset", "description"):
+                    continue
+                rtag.remove(value)
+            if address_offset:
+                rtag.find("addressOffset").text = address_offset
+            if description:
+                rtag.find("description").text = description
+        for value in rtag:
+            last = value
+        last.tail = "\n    "
+        rtag.set("derivedFrom", rderive)
+        for p in parent.findall("./register[@derivedFrom='{}']".format(rname)):
+            p.set("derivedFrom", rderive)
+
+    def copy_register(self, rname, rderive):
         """Add rname given by deriving from rsource to ptag"""
         parent = self.ptag.find("registers")
         if not "_from" in rderive:
@@ -1024,6 +1102,8 @@ class Peripheral:
     def clear_fields(self, rspec):
         """Clear contents of all fields inside registers matched by rspec"""
         for rtag in list(self.iter_registers(rspec)):
+            if "derivedFrom" in rtag.attrib:
+                continue
             r = Register(rtag)
             r.clear_field("*")
 
@@ -1033,8 +1113,10 @@ class Peripheral:
         pname = self.ptag.find("name").text
         rcount = 0
         for rtag in self.iter_registers(rspec):
-            r = Register(rtag)
             rcount += 1
+            if "derivedFrom" in rtag.attrib:
+                continue
+            r = Register(rtag)
             # Handle deletions
             for fspec in register.get("_delete", []):
                 r.delete_field(fspec)
@@ -1195,6 +1277,8 @@ class Register:
     def clear_field(self, fspec):
         """Clear contents of fields matched by fspec inside rtag."""
         for ftag in list(self.iter_fields(fspec)):
+            if "derivedFrom" in ftag.attrib:
+                continue
             for tag in ftag.findall("enumeratedValues"):
                 ftag.remove(tag)
             for tag in ftag.findall("writeConstraint"):

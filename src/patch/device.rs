@@ -1,38 +1,23 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
-use yaml_rust::yaml::Hash;
+use yaml_rust::{yaml::Hash, Yaml};
 
+use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
+use super::iterators::{MatchIter, Matched};
 use super::modify_register_properties;
 use super::peripheral::PeripheralExt;
 use super::yaml_ext::{AsType, GetVal};
 use super::{abspath, matchname, PatchResult, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 
-pub struct PerIter<'a, 'b> {
-    it: std::slice::IterMut<'a, Peripheral>,
-    spec: &'b str,
-    check_derived: bool,
-}
-
-impl<'a, 'b> Iterator for PerIter<'a, 'b> {
-    type Item = &'a mut Peripheral;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.it.by_ref().find(|next| {
-            matchname(&next.name, self.spec) && !(self.check_derived && next.derived_from.is_some())
-        })
-    }
-}
+pub type PerMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Peripheral>>;
 
 /// Collecting methods for processing device contents
 pub trait DeviceExt {
     /// Iterates over all peripherals that match pspec
-    fn iter_peripherals<'a, 'b>(
-        &'a mut self,
-        spec: &'b str,
-        check_derived: bool,
-    ) -> PerIter<'a, 'b>;
+    fn iter_peripherals<'a, 'b>(&'a mut self, spec: &'b str) -> PerMatchIterMut<'a, 'b>;
 
     /// Work through a device, handling all peripherals
     fn process(&mut self, device: &Hash, update_fields: bool) -> PatchResult;
@@ -54,7 +39,7 @@ pub trait DeviceExt {
 
     /// Remove registers from pname and mark it as derivedFrom pderive.
     /// Update all derivedFrom referencing pname
-    fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult;
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult;
 
     /// Move registers from pold to pnew.
     /// Update all derivedFrom referencing pold
@@ -73,17 +58,8 @@ pub trait DeviceExt {
 }
 
 impl DeviceExt for Device {
-    fn iter_peripherals<'a, 'b>(
-        &'a mut self,
-        spec: &'b str,
-        check_derived: bool,
-    ) -> PerIter<'a, 'b> {
-        // check_derived=True
-        PerIter {
-            spec,
-            check_derived,
-            it: self.peripherals.iter_mut(),
-        }
+    fn iter_peripherals<'a, 'b>(&'a mut self, spec: &'b str) -> PerMatchIterMut<'a, 'b> {
+        self.peripherals.iter_mut().matched(spec)
     }
 
     fn process(&mut self, device: &Hash, update_fields: bool) -> PatchResult {
@@ -163,9 +139,8 @@ impl DeviceExt for Device {
         // Handle any derived peripherals
         for (pname, pderive) in device.hash_iter("_derive") {
             let pname = pname.str()?;
-            let pderive = pderive.str()?;
             self.derive_peripheral(pname, pderive)
-                .with_context(|| format!("Deriving peripheral `{}` from `{}`", pname, pderive))?;
+                .with_context(|| format!("Deriving peripheral `{}` from `{:?}`", pname, pderive))?;
         }
 
         // Handle any rebased peripherals
@@ -246,7 +221,10 @@ impl DeviceExt for Device {
     }
 
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult {
-        for ptag in self.iter_peripherals(pspec, true) {
+        let mut modified = HashSet::new();
+        for ptag in self.iter_peripherals(pspec) {
+            modified.insert(ptag.name.clone());
+
             ptag.modify_from(make_peripheral(pmod, true)?, VAL_LVL)?;
             if let Some(ints) = pmod.get_hash("interrupts")? {
                 for (iname, val) in ints {
@@ -271,6 +249,17 @@ impl DeviceExt for Device {
                 ptag.address_block = Some(make_address_blocks(abmod)?);
             }
         }
+        // If this peripheral has derivations, update the derived
+        // peripherals to reference the new name.
+        if let Some(value) = pmod.get_str("name")? {
+            for p in self.peripherals.iter_mut() {
+                if let Some(old_name) = p.derived_from.as_mut() {
+                    if modified.contains(old_name) {
+                        *old_name = value.into();
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -288,15 +277,40 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn derive_peripheral(&mut self, pname: &str, pderive: &str) -> PatchResult {
-        self.get_peripheral(pderive)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
-        self.get_mut_peripheral(pname)
-            .ok_or_else(|| anyhow!("peripheral {} not found", pname))?
-            .modify_from(
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult {
+        let (pderive, info) = if let Some(pderive) = pderive.as_str() {
+            (
+                pderive,
                 PeripheralInfo::builder().derived_from(Some(pderive.into())),
-                VAL_LVL,
-            )?;
+            )
+        } else if let Some(hash) = pderive.as_hash() {
+            let pderive = hash.get_str("_from")?.ok_or_else(|| {
+                anyhow!(
+                    "derive: source peripheral not given, please add a _from field to {}",
+                    pname
+                )
+            })?;
+            (
+                pderive,
+                make_peripheral(hash, true)?.derived_from(Some(pderive.into())),
+            )
+        } else {
+            return Err(anyhow!("derive: incorrect syntax for {}", pname));
+        };
+
+        if !pderive.contains('.') {
+            self.get_peripheral(pderive)
+                .ok_or_else(|| anyhow!("peripheral {} not found", pderive))?;
+        }
+
+        match self.get_mut_peripheral(pname) {
+            Some(peripheral) => peripheral.modify_from(info, VAL_LVL)?,
+            None => {
+                let peripheral = info.name(pname.into()).build(VAL_LVL)?.single();
+                self.peripherals.push(peripheral);
+            }
+        }
+
         for p in self
             .peripherals
             .iter_mut()
@@ -343,7 +357,10 @@ impl DeviceExt for Device {
     }
 
     fn clear_fields(&mut self, pspec: &str) -> PatchResult {
-        for ptag in self.iter_peripherals(pspec, false) {
+        for ptag in self.iter_peripherals(pspec) {
+            if ptag.derived_from.is_some() {
+                continue;
+            }
             ptag.clear_fields("*")?;
         }
         Ok(())
@@ -357,7 +374,7 @@ impl DeviceExt for Device {
     ) -> PatchResult {
         // Find all peripherals that match the spec
         let mut pcount = 0;
-        for ptag in self.iter_peripherals(pspec, false) {
+        for ptag in self.iter_peripherals(pspec) {
             pcount += 1;
             ptag.process(peripheral, update_fields)
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
