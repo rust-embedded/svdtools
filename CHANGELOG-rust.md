@@ -5,7 +5,22 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
-* Move `_strip`, `_strip_end` before `_modify`
+## [v0.2.6] 2022-08-21
+
+**Breaking changes**:
+
+* Move `_strip`, `_strip_end` before `_modify` (#89)
+    * Existing patch files may need updating to refer to the stripped
+      versions of names being modified
+* Allow `_derive` to rename derived peripherals, optionally specify a new base
+    address and description (#118)
+    * If registers were being copied and modified, use `_copy` instead of
+      `_derive` for those peripherals.
+
+Other changes:
+
+* Improve error messages on missing files (#117)
+* Fix help documentation for `svdtools patch` command (#119)
 
 ## [v0.2.5] 2022-07-23
 
