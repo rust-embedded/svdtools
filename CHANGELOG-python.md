@@ -5,7 +5,17 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
-* Move `_strip`, `_strip_end` before `_modify`
+## [v0.1.24] 2022-08-21
+
+**Breaking changes**:
+
+* Move `_strip`, `_strip_end` before `_modify` (#89)
+    * Existing patch files may need updating to refer to the stripped
+      versions of names being modified
+* Allow `_derive` to rename derived peripherals, optionally specify a new base
+    address and description (#118)
+    * If registers were being copied and modified, use `_copy` instead of
+      `_derive` for those peripherals.
 
 ## [v0.1.23] 2022-05-01
 
