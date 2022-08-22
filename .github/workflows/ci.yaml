@@ -40,7 +40,7 @@ jobs:
           - esp8266
           - stm32
           - lpc55
-          - rp2040
+          #- rp2040
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
