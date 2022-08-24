@@ -94,6 +94,13 @@ def get_int(node, tag, default=None):
         return int(text, 10)
 
 
+def derived_str(dname):
+    if dname is None:
+        return ""
+    else:
+        return f" (={dname})"
+
+
 def expand_dim(node, field=False):
     """
     Given a node (a cluster, a register or a field) which may have a `dim` child,
@@ -167,18 +174,21 @@ def parse_register(rtag):
     rdesc = get_string(rtag, "description")
     raccess = get_access(rtag)
     roffset = get_int(rtag, "addressOffset")
+    r_derived = derived_str(rtag.attrib.get("derivedFrom", None))
     for ftag in iter_fields(rtag):
         for ftag in expand_dim(ftag, field=True):
             fname = get_string(ftag, "name")
             foffset, fwidth = get_field_offset_width(ftag)
             fdesc = get_string(ftag, "description")
             faccess = get_access(ftag)
+            f_derived = derived_str(ftag.attrib.get("derivedFrom", None))
             fields[fname] = {
                 "name": fname,
                 "offset": foffset,
                 "width": fwidth,
                 "description": fdesc,
                 "access": faccess,
+                "derived": f_derived,
             }
     return {
         "name": rname,
@@ -186,6 +196,7 @@ def parse_register(rtag):
         "description": rdesc,
         "access": raccess,
         "fields": fields,
+        "derived": r_derived,
     }
 
 
@@ -218,10 +229,16 @@ def parse(svdfile):
                 cname = get_string(ctag, "name")
                 cdesc = get_string(ctag, "description")
                 coff = get_int(ctag, "addressOffset")
+                c_derived = derived_str(ctag.attrib.get("derivedFrom", None))
                 for rtag in expand_cluster(ctag):
                     register = parse_register(rtag)
                     registers[register["name"]] = register
-                clusters[cname] = {"name": cname, "description": cdesc, "offset": coff}
+                clusters[cname] = {
+                    "name": cname,
+                    "description": cdesc,
+                    "offset": coff,
+                    "derived": c_derived,
+                }
         for rtag in iter_registers(ptag):
             for rtag in expand_dim(rtag):
                 register = parse_register(rtag)
@@ -263,19 +280,20 @@ def to_text(device):
         for c in p["clusters"].values():
             addr = p["base"] + c["offset"]
             mmap.append(
-                f"0x{addr:08X} B  CLUSTER {c['name']}: " + f"{c['description']}"
+                f"0x{addr:08X} B  CLUSTER {c['name']}{c['derived']}: "
+                + f"{c['description']}"
             )
         for r in p["registers"].values():
             addr = p["base"] + r["offset"]
             mmap.append(
-                f"0x{addr:08X} B  REGISTER {r['name']}{r['access']}: "
+                f"0x{addr:08X} B  REGISTER {r['name']}{r['derived']}{r['access']}: "
                 + f"{r['description']}"
             )
             for f in r["fields"].values():
                 offset, width = f["offset"], f["width"]
                 mmap.append(
                     f"0x{addr:08X} C   FIELD {offset:02d}w{width:02d} "
-                    + f"{f['name']}{f['access']}: "
+                    + f"{f['name']}{f['derived']}{f['access']}: "
                     + f"{f['description']}"
                 )
     return "\n".join(sorted(mmap))

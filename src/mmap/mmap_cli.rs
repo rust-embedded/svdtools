@@ -78,6 +78,14 @@ fn get_interrupts(peripheral: &Peripheral, mmap: &mut Vec<String>) {
     }
 }
 
+fn derived_str(dname: &Option<String>) -> String {
+    if let Some(dname) = dname.as_ref() {
+        format!(" (={dname})")
+    } else {
+        String::new()
+    }
+}
+
 fn get_registers(
     base_address: u64,
     registers: Option<&Vec<RegisterCluster>>,
@@ -95,19 +103,24 @@ fn get_registers(
                         Register::Single(r) => {
                             let addr = str_utils::format_address(first_addr);
                             let rname = r.name.to_string() + suffix;
-                            let text = format!("{addr} B  REGISTER {rname}{access}: {description}");
+                            let derived = derived_str(&r.derived_from);
+                            let text = format!(
+                                "{addr} B  REGISTER {rname}{derived}{access}: {description}"
+                            );
                             mmap.push(text);
                             get_fields(r, &addr, mmap);
                         }
                         Register::Array(r, d) => {
+                            let derived = derived_str(&r.derived_from);
                             for (i, idx) in d.indexes().enumerate() {
                                 let addr = str_utils::format_address(
                                     first_addr + (i as u64) * (d.dim_increment as u64),
                                 );
                                 let rname = r.name.replace("%s", &idx);
                                 let description = description.replace("%s", &idx);
-                                let text =
-                                    format!("{addr} B  REGISTER {rname}{access}: {description}");
+                                let text = format!(
+                                    "{addr} B  REGISTER {rname}{derived}{access}: {description}"
+                                );
                                 mmap.push(text);
                                 get_fields(r, &addr, mmap);
                             }
@@ -121,17 +134,20 @@ fn get_registers(
                         Cluster::Single(c) => {
                             let addr = str_utils::format_address(first_addr);
                             let cname = &c.name;
-                            let text = format!("{addr} B  CLUSTER {cname}: {description}");
+                            let derived = derived_str(&c.derived_from);
+                            let text = format!("{addr} B  CLUSTER {cname}{derived}: {description}");
                             mmap.push(text);
                             get_registers(first_addr, Some(&c.children), "", mmap);
                         }
                         Cluster::Array(c, d) => {
+                            let derived = derived_str(&c.derived_from);
                             for (i, idx) in d.indexes().enumerate() {
                                 let caddr = first_addr + (i as u64) * (d.dim_increment as u64);
                                 let addr = str_utils::format_address(caddr);
                                 let cname = c.name.replace("%s", &idx);
                                 let description = description.replace("%s", &idx);
-                                let text = format!("{addr} B  CLUSTER {cname}: {description}");
+                                let text =
+                                    format!("{addr} B  CLUSTER {cname}{derived}: {description}");
                                 mmap.push(text);
                                 get_registers(caddr, Some(&c.children), &idx, mmap);
                             }
@@ -153,18 +169,20 @@ fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
                     let bit_offset = f.bit_range.offset;
                     let bit_width = f.bit_range.width;
                     let fname = &f.name;
+                    let derived = derived_str(&f.derived_from);
                     let text = format!(
-                        "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{access}: {description}"
+                        "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{derived}{access}: {description}"
                     );
                     mmap.push(text);
                 }
                 Field::Array(f, d) => {
+                    let derived = derived_str(&f.derived_from);
                     for (i, idx) in d.indexes().enumerate() {
                         let bit_offset = f.bit_range.offset + (i as u32) * d.dim_increment;
                         let bit_width = f.bit_range.width;
                         let fname = f.name.replace("%s", &idx);
                         let text = format!(
-                            "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{access}: {description}"
+                            "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{derived}{access}: {description}"
                         );
                         mmap.push(text);
                     }
