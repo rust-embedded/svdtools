@@ -5,6 +5,10 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.1.25] 2022-09-04
+
+* Fix bug in deriving registers (#124)
+
 ## [v0.1.24] 2022-08-21
 
 **Breaking changes**:
@@ -162,7 +166,9 @@ This changelog tracks the Python `svdtools` project. See
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.23...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.25...HEAD
+[v0.1.25]: https://github.com/stm32-rs/svdtools/compare/v0.1.24...v0.1.25
+[v0.1.24]: https://github.com/stm32-rs/svdtools/compare/v0.1.23...v0.1.24
 [v0.1.23]: https://github.com/stm32-rs/svdtools/compare/v0.1.22...v0.1.23
 [v0.1.22]: https://github.com/stm32-rs/svdtools/compare/v0.1.21...v0.1.22
 [v0.1.21]: https://github.com/stm32-rs/svdtools/compare/v0.1.20...v0.1.21
