@@ -852,7 +852,7 @@ class Peripheral:
         elif isinstance(rmod, dict):
             rderive = rmod["_from"]
             address_offset = rmod.get("addressOffset", None)
-            description = rmod.get(description, None)
+            description = rmod.get("description", None)
         else:
             raise SvdPatchError(f"derive: incorrect syntax for {rname}")
         rtag = parent.find(f"./register[name='{rname}']")
