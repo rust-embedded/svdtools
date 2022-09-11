@@ -530,14 +530,14 @@ class Device:
         if ptag is None:
             ptag = ET.SubElement(parent, "register")
             ET.SubElement(ptag, "name").text = pname
-            ET.SubElement(ptag, "addressOffset").text = base_address
+            ET.SubElement(ptag, "addressOffset").text = hex(base_address)
         else:
             for value in list(ptag):
                 if value.tag in ("name", "baseAddress", "interrupt", "description"):
                     continue
                 ptag.remove(value)
             if base_address:
-                ptag.find("baseAddress").text = base_address
+                ptag.find("baseAddress").text = hex(base_address)
             if description:
                 ptag.find("description").text = description
         for value in ptag:
@@ -862,14 +862,14 @@ class Peripheral:
         if rtag is None:
             rtag = ET.SubElement(parent, "register")
             ET.SubElement(rtag, "name").text = rname
-            ET.SubElement(rtag, "addressOffset").text = address_offset
+            ET.SubElement(rtag, "addressOffset").text = hex(address_offset)
         else:
             for value in list(rtag):
                 if value.tag in ("name", "addressOffset", "description"):
                     continue
                 rtag.remove(value)
             if address_offset:
-                rtag.find("addressOffset").text = address_offset
+                rtag.find("addressOffset").text = hex(address_offset)
             if description:
                 rtag.find("description").text = description
         for value in rtag:
