@@ -5,6 +5,11 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.7] 2022-09-18
+
+* Print svdtools version on error, update dependencies
+* Check `_delete`, `_strip`, etc. on array of strings
+
 ## [v0.2.6] 2022-08-21
 
 **Breaking changes**:

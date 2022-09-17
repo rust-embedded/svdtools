@@ -64,7 +64,7 @@ impl DeviceExt for Device {
 
     fn process(&mut self, device: &Hash, update_fields: bool) -> PatchResult {
         // Handle any deletions
-        for pspec in device.str_vec_iter("_delete") {
+        for pspec in device.str_vec_iter("_delete")? {
             self.delete_peripheral(pspec)
                 .with_context(|| format!("Deleting peripheral matched to `{pspec}`"))?;
         }
@@ -120,7 +120,7 @@ impl DeviceExt for Device {
         }
 
         // Handle field clearing
-        for pspec in device.str_vec_iter("_clear_fields") {
+        for pspec in device.str_vec_iter("_clear_fields")? {
             self.clear_fields(pspec).with_context(|| {
                 format!("Clearing contents of fields in peripherals matched to `{pspec}` ")
             })?;
