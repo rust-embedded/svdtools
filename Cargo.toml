@@ -1,6 +1,6 @@
 [package]
 name = "svdtools"
-version = "0.2.6"
+version = "0.2.7"
 repository = "https://github.com/stm32-rs/svdtools"
 description = "Tool for modifying bugs in CMSIS SVD"
 authors = [
@@ -24,17 +24,18 @@ include = ["/res", "/src", "/tests", "CHANGELOG-rust.md", "README.md", "LICENSE-
 edition = "2021"
 
 [dependencies]
-clap = { version = "3.2", features = ["derive"] }
+clap = { version = "3.2", features = ["derive", "cargo"] }
 serde = { version = "1.0", features = ["derive"] }
-quick-xml = { version = "0.18", features = ["serialize"] }
+quick-xml = { version = "0.25", features = ["serialize"] }
 svd-rs = { version = "0.14.0", features = ["serde", "derive-from"] }
 svd-parser = { version = "0.14.0", features = ["expand"] }
 svd-encoder = "0.14.1"
 yaml-rust = "0.4"
-serde_yaml = "0.8.23"
+# serde_yaml 0.9.x looks broken
+serde_yaml = "0.8.26"
 serde_json = { version = "1.0", features = ["preserve_order"] }
-anyhow = "1.0.43"
-thiserror = "1.0.30"
+anyhow = "1.0.65"
+thiserror = "1.0.35"
 linked-hash-map = "0.5"
 globset = "0.4.8"
 commands = "0.0.5"
@@ -42,4 +43,4 @@ env_logger = "0.9"
 log = { version = "~0.4", features = ["std"] }
 
 [dev-dependencies]
-tempfile = "3.1"
+tempfile = "3.3"

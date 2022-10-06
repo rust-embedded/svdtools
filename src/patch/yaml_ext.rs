@@ -1,5 +1,5 @@
 use super::iterators::OptIter;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use yaml_rust::{yaml::Hash, Yaml};
 
 /// Errors that can occur during building.
@@ -164,7 +164,7 @@ pub trait GetVal {
     fn get_hash(&self, k: &str) -> Result<Option<&Hash>>;
     fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a>;
     fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>>;
-    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<OverStringIter<'a>>;
+    fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>>;
 }
 
 impl GetVal for Hash {
@@ -220,7 +220,13 @@ impl GetVal for Hash {
                 .map(Some),
         }
     }
-    fn str_vec_iter<'a>(&'a self, k: &str) -> OptIter<OverStringIter<'a>> {
-        OptIter::new(self.get(&k.to_yaml()).map(|y| OverStringIter(y, None)))
+    fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>> {
+        Ok(OptIter::new(match self.get(&k.to_yaml()) {
+            None => None,
+            Some(y) if matches!(y, Yaml::String(_) | Yaml::Array(_)) => {
+                Some(OverStringIter(y, None))
+            }
+            _ => return Err(anyhow!("`{k}` requires string value or array of strings")),
+        }))
     }
 }

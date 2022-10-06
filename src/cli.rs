@@ -127,10 +127,16 @@ struct CliArgs {
 }
 
 pub fn run() {
+    use anyhow::Context;
+
     env_logger::init();
 
     let args = CliArgs::parse();
-    if let Err(e) = args.command.run() {
+    if let Err(e) = args
+        .command
+        .run()
+        .with_context(|| format!("by svdtools ({})", clap::crate_version!()))
+    {
         log::error!("{:?}", e);
 
         std::process::exit(1);

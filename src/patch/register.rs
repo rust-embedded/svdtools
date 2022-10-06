@@ -94,23 +94,23 @@ impl RegisterExt for Register {
             return Ok(());
         }
         // Handle deletions
-        for fspec in rmod.str_vec_iter("_delete") {
+        for fspec in rmod.str_vec_iter("_delete")? {
             self.delete_field(fspec)
                 .with_context(|| format!("Deleting fields matched to `{fspec}`"))?;
         }
 
         // Handle strips
-        for prefix in rmod.str_vec_iter("_strip") {
+        for prefix in rmod.str_vec_iter("_strip")? {
             self.strip_start(prefix)
                 .with_context(|| format!("Stripping prefix `{prefix}` from field names"))?;
         }
-        for suffix in rmod.str_vec_iter("_strip_end") {
+        for suffix in rmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from field names"))?;
         }
 
         // Handle field clearing
-        for fspec in rmod.str_vec_iter("_clear") {
+        for fspec in rmod.str_vec_iter("_clear")? {
             self.clear_field(fspec)
                 .with_context(|| format!("Clearing contents of fields matched to `{fspec}`"))?;
         }

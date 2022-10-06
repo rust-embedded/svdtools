@@ -98,7 +98,7 @@ impl PeripheralExt for Peripheral {
         // For derived peripherals, only process interrupts
         if self.derived_from.is_some() {
             if let Some(deletions) = pmod.get_hash("_delete").ok().flatten() {
-                for ispec in deletions.str_vec_iter("_interrupts") {
+                for ispec in deletions.str_vec_iter("_interrupts")? {
                     self.delete_interrupt(ispec)
                         .with_context(|| format!("Deleting interrupts matched to `{ispec}`"))?;
                 }
@@ -146,16 +146,27 @@ impl PeripheralExt for Peripheral {
                     }
                 }
                 Yaml::Hash(deletions) => {
-                    for rspec in deletions.str_vec_iter("_registers") {
+                    for rspec in deletions.str_vec_iter("_registers")? {
                         self.delete_register(rspec)
                             .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
-                    for ispec in deletions.str_vec_iter("_interrupts") {
+                    for ispec in deletions.str_vec_iter("_interrupts")? {
                         self.delete_interrupt(ispec)
                             .with_context(|| format!("Deleting interrupts matched to `{ispec}`"))?;
                     }
+                    for d in deletions.keys() {
+                        if !matches!(d, Yaml::String(s) if s == "_registers" || s =="_interrupts") {
+                            return Err(anyhow!(
+                                "`_delete` requires string value or array of strings"
+                            ));
+                        }
+                    }
                 }
-                _ => {}
+                _ => {
+                    return Err(anyhow!(
+                        "`_delete` requires string value or array of strings"
+                    ))
+                }
             }
         }
 
@@ -168,11 +179,11 @@ impl PeripheralExt for Peripheral {
         }
 
         // Handle strips
-        for prefix in pmod.str_vec_iter("_strip") {
+        for prefix in pmod.str_vec_iter("_strip")? {
             self.strip_start(prefix)
                 .with_context(|| format!("Stripping prefix `{prefix}` from register names"))?;
         }
-        for suffix in pmod.str_vec_iter("_strip_end") {
+        for suffix in pmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
         }
@@ -210,7 +221,7 @@ impl PeripheralExt for Peripheral {
         }
 
         // Handle field clearing
-        for rspec in pmod.str_vec_iter("_clear_fields") {
+        for rspec in pmod.str_vec_iter("_clear_fields")? {
             self.clear_fields(rspec).with_context(|| {
                 format!("Clearing contents of fields in registers matched to `{rspec}` ")
             })?;
