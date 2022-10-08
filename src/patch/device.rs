@@ -6,11 +6,11 @@ use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
 use super::iterators::{MatchIter, Matched};
-use super::modify_register_properties;
 use super::peripheral::PeripheralExt;
 use super::yaml_ext::{AsType, GetVal};
 use super::{abspath, matchname, PatchResult, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
+use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
 pub type PerMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Peripheral>>;
 
@@ -219,31 +219,37 @@ impl DeviceExt for Device {
 
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult {
         let mut modified = HashSet::new();
-        for ptag in self.iter_peripherals(pspec) {
-            modified.insert(ptag.name.clone());
+        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
+        if !ptags.is_empty() {
+            let peripheral_builder = make_peripheral(pmod, true)?;
+            let dim = make_dim_element(pmod)?;
+            for ptag in ptags {
+                modified.insert(ptag.name.clone());
 
-            ptag.modify_from(make_peripheral(pmod, true)?, VAL_LVL)?;
-            if let Some(ints) = pmod.get_hash("interrupts")? {
-                for (iname, val) in ints {
-                    let iname = iname.str()?;
-                    let int = make_interrupt(val.hash()?)?;
-                    for i in &mut ptag.interrupt {
-                        if i.name == iname {
-                            i.modify_from(int, VAL_LVL)?;
-                            break;
+                modify_dim_element(ptag, &dim)?;
+                ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
+                if let Some(ints) = pmod.get_hash("interrupts")? {
+                    for (iname, val) in ints {
+                        let iname = iname.str()?;
+                        let int = make_interrupt(val.hash()?)?;
+                        for i in &mut ptag.interrupt {
+                            if i.name == iname {
+                                i.modify_from(int, VAL_LVL)?;
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            if let Some(abmod) = pmod.get_hash("addressBlock").ok().flatten() {
-                let v = &mut ptag.address_block;
-                let ab = make_address_block(abmod)?;
-                match v.as_deref_mut() {
-                    Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
-                    _ => *v = Some(vec![ab.build(VAL_LVL)?]),
+                if let Some(abmod) = pmod.get_hash("addressBlock").ok().flatten() {
+                    let v = &mut ptag.address_block;
+                    let ab = make_address_block(abmod)?;
+                    match v.as_deref_mut() {
+                        Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
+                        _ => *v = Some(vec![ab.build(VAL_LVL)?]),
+                    }
+                } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
+                    ptag.address_block = Some(make_address_blocks(abmod)?);
                 }
-            } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
-                ptag.address_block = Some(make_address_blocks(abmod)?);
             }
         }
         // If this peripheral has derivations, update the derived
@@ -265,12 +271,16 @@ impl DeviceExt for Device {
             return Err(anyhow!("device already has a peripheral {pname}"));
         }
 
-        self.peripherals.push(
-            make_peripheral(padd, false)?
-                .name(pname.to_string())
-                .build(VAL_LVL)?
-                .single(),
-        );
+        let pnew = make_peripheral(padd, false)?
+            .name(pname.to_string())
+            .build(VAL_LVL)?;
+        let pnew = if let Some(dim) = make_dim_element(padd)? {
+            pnew.array(dim.build(VAL_LVL)?)
+        } else {
+            pnew.single()
+        };
+
+        self.peripherals.push(pnew);
         Ok(())
     }
 
