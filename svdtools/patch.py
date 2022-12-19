@@ -5,6 +5,10 @@ Copyright 2017-2019 Adam Greig.
 Licensed under the MIT and Apache 2.0 licenses. See LICENSE files for details.
 """
 
+from pathlib import Path
+from typing import Any
+from typing import Generator
+from typing import Union
 import copy
 import fnmatch
 import os.path
@@ -15,6 +19,8 @@ from fnmatch import fnmatchcase
 import lxml.etree as ET
 import yaml
 from braceexpand import braceexpand
+from lxml.etree import _Element as Element
+from lxml.etree import _ElementTree as ElementTree
 
 DEVICE_CHILDREN = [
     "vendor",
@@ -163,14 +169,10 @@ def make_enumerated_values(name, values, usage="read-write"):
         if vname.startswith("_"):
             continue
         if vname[0] in "0123456789":
-            raise ValueError(
-                f"enumeratedValue {name}.{vname}: can't start with a number"
-            )
+            raise ValueError(f"enumeratedValue {name}.{vname}: can't start with a number")
         value, description = values[vname]
         if not description:
-            raise ValueError(
-                f"enumeratedValue {name}: can't have empty description for value {value}"
-            )
+            raise ValueError(f"enumeratedValue {name}: can't have empty description for value {value}")
         el = ET.SubElement(ev, "enumeratedValue")
         ET.SubElement(el, "name").text = vname
         ET.SubElement(el, "description").text = description
@@ -374,6 +376,16 @@ def sort_recursive(tag):
             sort_recursive(child)
 
 
+def get_element_name(element: Union[Element, ElementTree], description: str) -> str:
+    assert isinstance(element, (Element, ElementTree))
+    assert isinstance(description, str)
+    nametag = element.find("name")
+    assert isinstance(nametag, Element), f"{description.capitalize()} must have name."
+    name = nametag.text
+    assert isinstance(name, str), f"{description.capitalize()} name must be string."
+    return name
+
+
 class SvdPatchError(ValueError):
     pass
 
@@ -395,6 +407,10 @@ class MissingPeripheralError(SvdPatchError):
 
 
 class UnknownTagError(SvdPatchError):
+    pass
+
+
+class MissingClusterError(SvdPatchError):
     pass
 
 
@@ -439,9 +455,7 @@ class Device:
                     # peripherals to reference the new name.
                     parent = self.device.find("peripherals")
                     old_name = ptag.find("name").text
-                    for derived in parent.findall(
-                        f"./peripheral[@derivedFrom='{old_name}']"
-                    ):
+                    for derived in parent.findall(f"./peripheral[@derivedFrom='{old_name}']"):
                         derived.set("derivedFrom", value)
                     ptag.find("name").text = value
                     continue
@@ -710,9 +724,7 @@ class Device:
                     for rname in rderive:
                         p.derive_register(rname, rderive[rname])
                 elif rname == "_clusters":
-                    raise NotImplementedError(
-                        f"deriving clusters not implemented yet: {rname}"
-                    )
+                    raise NotImplementedError(f"deriving clusters not implemented yet: {rname}")
                 else:
                     p.derive_register(rname, rderive)
             # Handle registers
@@ -728,6 +740,20 @@ class Device:
             for cname in peripheral.get("_cluster", {}):
                 cmod = peripheral["_cluster"][cname]
                 p.collect_in_cluster(cname, cmod)
+            # Handle registers inside clusters
+            clusters = peripheral.get("_clusters")
+            if isinstance(clusters, list):
+                raise Exception(f"Cluster specification must be a dictionary.")
+            elif isinstance(clusters, dict):
+                for cname in clusters.get("_add", {}):
+                    cadd = clusters["_add"][cname]
+                    p.add_cluster(cname, cadd)
+                for cspec in clusters:
+                    assert isinstance(cspec, str)
+                    if not cspec.startswith("_"):
+                        cluster = peripheral["_clusters"][cspec]
+                        p.process_cluster(cspec, cluster, update_fields)
+
         if pcount == 0:
             raise MissingPeripheralError(f"Could not find {pspec}")
 
@@ -737,12 +763,19 @@ class Peripheral:
 
     def __init__(self, ptag):
         self.ptag = ptag
+        self.name = get_element_name(self.ptag, "peripheral")
 
     def iter_registers(self, rspec):
         """
         Iterates over all registers that match rspec and live inside ptag.
+
+        Ignore `register`s owned by `cluster`s.
         """
         for rtag in self.ptag.iter("register"):
+            parent = rtag.getparent()
+            assert isinstance(parent, Element), "Register must have parent."
+            if parent.tag == "cluster":
+                continue
             name = rtag.find("name").text
             if matchname(name, rspec):
                 yield rtag
@@ -752,8 +785,10 @@ class Peripheral:
 
         Each element is a tuple of the matching register and the rspec substring
         that it matched.
+
+        Ignore `register`s owned by `cluster`s.
         """
-        for rtag in self.ptag.iter("register"):
+        for rtag in self.iter_registers("*"):
             name = rtag.find("name").text
             if matchname(name, rspec):
                 yield (rtag, matchsubspec(name, rspec))
@@ -778,11 +813,7 @@ class Peripheral:
         """Add iname given by iadd to ptag."""
         for itag in self.ptag.iter("interrupt"):
             if itag.find("name").text == iname:
-                raise SvdPatchError(
-                    "peripheral {} already has an interrupt {}".format(
-                        self.ptag.find("name").text, iname
-                    )
-                )
+                raise SvdPatchError("peripheral {} already has an interrupt {}".format(self.ptag.find("name").text, iname))
         inew = ET.SubElement(self.ptag, "interrupt")
         ET.SubElement(inew, "name").text = iname
         for key, val in iadd.items():
@@ -821,13 +852,9 @@ class Peripheral:
         parent = self.ptag.find("registers")
         if parent is None:
             parent = ET.SubElement(self.rtag, "registers")
-        for rtag in parent.iter("register"):
+        for rtag in self.iter_registers("*"):
             if rtag.find("name").text == rname:
-                raise SvdPatchError(
-                    "peripheral {} already has a register {}".format(
-                        self.ptag.find("name").text, rname
-                    )
-                )
+                raise SvdPatchError("peripheral {} already has a register {}".format(self.ptag.find("name").text, rname))
         rnew = ET.SubElement(parent, "register")
         ET.SubElement(rnew, "name").text = rname
         for (key, value) in radd.items():
@@ -883,26 +910,16 @@ class Peripheral:
         """Add rname given by deriving from rsource to ptag"""
         parent = self.ptag.find("registers")
         if not "_from" in rderive:
-            raise SvdPatchError(
-                f"derive: source register not given, please add a _from field to {rname}"
-            )
+            raise SvdPatchError(f"derive: source register not given, please add a _from field to {rname}")
         srcname = rderive["_from"]
         source = None
-        for rtag in parent.iter("register"):
+        for rtag in self.iter_registers("*"):
             if rtag.find("name").text == rname:
-                raise SvdPatchError(
-                    "peripheral {} already has a register {}".format(
-                        self.ptag.find("name").text, rname
-                    )
-                )
+                raise SvdPatchError("peripheral {} already has a register {}".format(self.ptag.find("name").text, rname))
             if rtag.find("name").text == srcname:
                 source = rtag
         if source is None:
-            raise SvdPatchError(
-                "peripheral {} does not have register {}".format(
-                    self.ptag.find("name").text, srcname
-                )
-            )
+            raise SvdPatchError("peripheral {} does not have register {}".format(self.ptag.find("name").text, srcname))
         rcopy = copy.deepcopy(source)
         rcopy.find("name").text = rname
         if rcopy.find("displayName") is not None:
@@ -911,9 +928,7 @@ class Peripheral:
             if key == "_from":
                 continue
             elif key == "fields":
-                raise NotImplementedError(
-                    "Modifying fields in derived register not implemented"
-                )
+                raise NotImplementedError("Modifying fields in derived register not implemented")
             else:
                 rcopy.find(key).text = str(value)
         parent.append(rcopy)
@@ -922,6 +937,25 @@ class Peripheral:
         """Delete registers matched by rspec inside ptag."""
         for rtag in list(self.iter_registers(rspec)):
             self.ptag.find("registers").remove(rtag)
+
+    def add_cluster(self, cname: str, cadd: OrderedDict[str, Any]) -> None:
+        """Add `cname` given by `cadd` to `ptag`."""
+        assert isinstance(cname, str)
+        assert isinstance(cadd, OrderedDict)
+        parent = self.ptag.find("registers")
+        if parent is None:
+            parent = ET.SubElement(self.ptag, "registers")
+        for ctag in parent.iter("cluster"):
+            if get_element_name(ctag, "cluster") == cname:
+                raise SvdPatchError(f"peripheral {self.name} already has cluster {cname}")
+        cnew = ET.SubElement(parent, "cluster")
+        ET.SubElement(cnew, "name").text = cname
+        for (key, value) in cadd.items():
+            # print(key, value)
+            if key in {"addressOffset"}:
+                ET.SubElement(cnew, key).text = str(value)
+            else:
+                Cluster(cnew).add_register(key, value)
 
     def modify_cluster(self, cspec, cmod):
         """Modify cspec inside ptag according to cmod."""
@@ -939,7 +973,11 @@ class Peripheral:
         beginning of the name by default.
         """
         regex = create_regex_from_pattern(substr, strip_end)
-        for rtag in self.ptag.iter("register"):
+        for rtag in self.iter_registers("*"):
+            parent = rtag.getparent()
+            assert isinstance(parent, Element), "Register must have parent."
+            if parent.tag == "cluster":
+                continue
             nametag = rtag.find("name")
             nametag.text = regex.sub("", nametag.text)
 
@@ -962,9 +1000,7 @@ class Peripheral:
             )
         dim = len(registers)
         if dim == 0:
-            raise SvdPatchError(
-                "{}: registers {} not found".format(self.ptag.findtext("name"), rspec)
-            )
+            raise SvdPatchError("{}: registers {} not found".format(self.ptag.findtext("name"), rspec))
         registers = sorted(registers, key=lambda r: r[2])
 
         if rmod.get("_start_from_zero"):
@@ -979,15 +1015,8 @@ class Peripheral:
         if dim > 1:
             dimIncrement = offsets[1] - offsets[0]
 
-        if not (
-            check_offsets(offsets, dimIncrement)
-            and check_bitmasks(bitmasks, bitmasks[0])
-        ):
-            raise SvdPatchError(
-                "{}: registers cannot be collected into {} array".format(
-                    self.ptag.findtext("name"), rspec
-                )
-            )
+        if not (check_offsets(offsets, dimIncrement) and check_bitmasks(bitmasks, bitmasks[0])):
+            raise SvdPatchError("{}: registers cannot be collected into {} array".format(self.ptag.findtext("name"), rspec))
         for rtag, _, _ in registers[1:]:
             self.ptag.find("registers").remove(rtag)
         rtag = registers[0][0]
@@ -1002,9 +1031,7 @@ class Peripheral:
                 rtag.find("description").text = desc
         elif dimIndex[0] == "0":
             desc = rtag.find("description")
-            desc.text = desc.text.replace(
-                nametag.text[li : len(nametag.text) - ri], "%s"
-            )
+            desc.text = desc.text.replace(nametag.text[li : len(nametag.text) - ri], "%s")
         nametag.text = name
         self.process_register(name, rmod)
         ET.SubElement(rtag, "dim").text = str(dim)
@@ -1042,28 +1069,16 @@ class Peripheral:
                 dimIncrement = 0
                 if dim > 1:
                     dimIncrement = offsets[1] - offsets[0]
-                if not (
-                    check_offsets(offsets, dimIncrement)
-                    and check_bitmasks(bitmasks, bitmasks[0])
-                ):
+                if not (check_offsets(offsets, dimIncrement) and check_bitmasks(bitmasks, bitmasks[0])):
                     check = False
                     break
             else:
-                if (
-                    (dim != len(registers))
-                    or (dimIndex != ",".join([r[1] for r in registers]))
-                    or (not check_offsets(offsets, dimIncrement))
-                    or (not check_bitmasks(bitmasks, bitmasks[0]))
-                ):
+                if (dim != len(registers)) or (dimIndex != ",".join([r[1] for r in registers])) or (not check_offsets(offsets, dimIncrement)) or (not check_bitmasks(bitmasks, bitmasks[0])):
                     check = False
                     break
             first = False
         if not check:
-            raise SvdPatchError(
-                "{}: registers cannot be collected into {} cluster".format(
-                    self.ptag.findtext("name"), cname
-                )
-            )
+            raise SvdPatchError("{}: registers cannot be collected into {} cluster".format(self.ptag.findtext("name"), cname))
         ctag = ET.SubElement(self.ptag.find("registers"), "cluster")
         addressOffset = min([registers[0][2] for _, registers in rdict.items()])
         ET.SubElement(ctag, "name").text = cname
@@ -1135,19 +1150,11 @@ class Peripheral:
                 r.add_field(fname, fadd)
             # Handle merges
             for fspec in register.get("_merge", []):
-                fmerge = (
-                    register["_merge"][fspec]
-                    if isinstance(register["_merge"], dict)
-                    else None
-                )
+                fmerge = register["_merge"][fspec] if isinstance(register["_merge"], dict) else None
                 r.merge_fields(fspec, fmerge)
             # Handle splits
             for fspec in register.get("_split", []):
-                fsplit = (
-                    register["_split"][fspec]
-                    if isinstance(register["_split"], dict)
-                    else {}
-                )
+                fsplit = register["_split"][fspec] if isinstance(register["_split"], dict) else {}
                 r.split_fields(fspec, fsplit)
             # Handle fields
             if update_fields:
@@ -1161,6 +1168,112 @@ class Peripheral:
                 r.collect_fields_in_array(fspec, fmod)
         if rcount == 0:
             raise MissingRegisterError(f"Could not find {pname}:{rspec}")
+
+    def process_cluster_tag(self, ctag: Element, cluster: OrderedDict[str, Any], update_fields: bool) -> None:
+        assert isinstance(ctag, Element)
+        assert isinstance(cluster, OrderedDict)
+        assert isinstance(update_fields, bool)
+        c = Cluster(ctag)
+        # Handle deletions
+        deletions = cluster.get("_delete", [])
+        if isinstance(deletions, list):
+            for rspec in deletions:
+                c.delete_register(rspec)
+        elif isinstance(deletions, dict):
+            for rspec in deletions:
+                c.delete_register(rspec)
+        # Handle strips
+        for prefix in cluster.get("_strip", []):
+            c.strip(prefix)
+        for suffix in cluster.get("_strip_end", []):
+            c.strip(suffix, strip_end=True)
+        # Handle modifications
+        for rspec in cluster.get("_modify", {}):
+            rmod = cluster["_modify"][rspec]
+            c.modify_register(rspec, rmod)
+        # Handle additions
+        for rname in cluster.get("_add", {}):
+            radd = cluster["_add"][rname]
+            c.add_register(rname, radd)
+
+    def process_cluster(self, cspec: str, cluster: OrderedDict[str, Any], update_fields: bool = True) -> None:
+        assert isinstance(cspec, str)
+        assert isinstance(cluster, OrderedDict)
+        assert isinstance(update_fields, bool)
+        # Find all clusters that match the spec
+        ccount = 0
+        for ctag in self.iter_clusters(cspec):
+            self.process_cluster_tag(ctag, cluster, update_fields)
+            ccount += 1
+        if ccount == 0:
+            raise MissingClusterError(f"Could not find {self.name}:{cspec}")
+
+
+class Cluster:
+    """Class collecting methods for processing `cluster` contents."""
+
+    def __init__(self, ctag: Element) -> None:
+        assert isinstance(ctag, Element)
+        self.ctag = ctag
+        self.name = get_element_name(self.ctag, "cluster")
+
+    def iter_registers(self, rspec: str) -> Generator[Element, None, None]:
+        """Iterate over all `cluster`s `register`s that match `rspec`."""
+        assert isinstance(rspec, str)
+        for rtag in self.ctag.iter("register"):
+            name = get_element_name(rtag, "register")
+            if matchname(name, rspec):
+                yield rtag
+
+    def add_register(self, rname: str, radd: OrderedDict[str, Any]) -> None:
+        assert isinstance(rname, str)
+        assert isinstance(radd, OrderedDict)
+        parent = self.ctag
+        for rtag in parent.iter("register"):
+            if get_element_name(rtag, "register") == rname:
+                raise SvdPatchError(f"cluster {self.name} already has a register {rname}")
+        rnew = ET.SubElement(parent, "register")
+        ET.SubElement(rnew, "name").text = rname
+        for (key, value) in radd.items():
+            if key == "fields":
+                ET.SubElement(rnew, "fields")
+                for fname in value:
+                    Register(rnew).add_field(fname, value[fname])
+            else:
+                ET.SubElement(rnew, key).text = str(value)
+        rnew.tail = "\n        "
+
+    def modify_register(self, rspec: str, rmod: OrderedDict[str, Any]) -> None:
+        assert isinstance(rspec, str)
+        assert isinstance(rmod, OrderedDict)
+        for rtag in self.iter_registers(rspec):
+            for (key, value) in rmod.items():
+                tag = rtag.find(key)
+                if value == "" and tag is not None:
+                    rtag.remove(tag)
+                elif value != "":
+                    if tag is None:
+                        tag = ET.SubElement(rtag, key)
+                    tag.text = str(value)
+
+    def delete_register(self, rspec: str) -> None:
+        assert isinstance(rspec, str)
+        for rtag in list(self.iter_registers(rspec)):
+            self.ctag.remove(rtag)
+
+    def strip(self, substr: str, strip_end: bool = False) -> None:
+        assert isinstance(substr, str)
+        assert isinstance(strip_end, bool)
+        regex = create_regex_from_pattern(substr, strip_end)
+        for rtag in self.ctag.iter("register"):
+            nametag = rtag.find("name")
+            assert isinstance(nametag, Element), "Register must have name."
+            assert isinstance(nametag.text, str)
+            nametag.text = regex.sub("", nametag.text)
+            dnametag = rtag.find("displayName")
+            if dnametag is not None:
+                assert isinstance(dnametag.text, str)
+                dnametag.text = regex.sub("", dnametag.text)
 
 
 def sorted_fields(fields):
@@ -1241,9 +1354,7 @@ class Register:
                         range_tag = make_write_constraint(value).find("range")
                         tag.append(range_tag)
                     else:
-                        raise SvdPatchError(
-                            "Unknown writeConstraint type {}".format(repr(value))
-                        )
+                        raise SvdPatchError("Unknown writeConstraint type {}".format(repr(value)))
                 else:
                     # For all other tags, just set the value
                     tag.text = str(value)
@@ -1255,11 +1366,7 @@ class Register:
             parent = ET.SubElement(self.rtag, "fields")
         for ftag in parent.iter("field"):
             if ftag.find("name").text == fname:
-                raise SvdPatchError(
-                    "register {} already has a field {}".format(
-                        self.rtag.find("name").text, fname
-                    )
-                )
+                raise SvdPatchError("register {} already has a field {}".format(self.rtag.find("name").text, fname))
         fnew = ET.SubElement(parent, "field")
         ET.SubElement(fnew, "name").text = fname
         for (key, value) in fadd.items():
@@ -1302,9 +1409,7 @@ class Register:
             name = os.path.commonprefix([f.find("name").text for f in fields])
         if len(fields) == 0:
             rname = self.rtag.find("name").text
-            raise RegisterMergeError(
-                f"Could not find any fields to merge {rname}.{fspec}"
-            )
+            raise RegisterMergeError(f"Could not find any fields to merge {rname}.{fspec}")
         parent = self.rtag.find("fields")
         desc = fields[0].find("description").text
         bitwidth = sum(get_field_offset_width(f)[1] for f in fields)
@@ -1323,14 +1428,10 @@ class Register:
         li, ri = spec_ind(fspec)
         for ftag in list(self.iter_fields(fspec)):
             fname = ftag.findtext("name")
-            fields.append(
-                [ftag, fname[li : len(fname) - ri], get_field_offset_width(ftag)[0]]
-            )
+            fields.append([ftag, fname[li : len(fname) - ri], get_field_offset_width(ftag)[0]])
         dim = len(fields)
         if dim == 0:
-            raise SvdPatchError(
-                "{}: fields {} not found".format(self.rtag.findtext("name"), fspec)
-            )
+            raise SvdPatchError("{}: fields {} not found".format(self.rtag.findtext("name"), fspec))
         fields = sorted(fields, key=lambda f: f[2])
 
         if fmod.get("_start_from_zero"):
@@ -1345,11 +1446,7 @@ class Register:
             dimIncrement = offsets[1] - offsets[0]
 
         if not check_offsets(offsets, dimIncrement):
-            raise SvdPatchError(
-                "{}: fields cannot be collected into {} array".format(
-                    self.rtag.findtext("name"), fspec
-                )
-            )
+            raise SvdPatchError("{}: fields cannot be collected into {} array".format(self.rtag.findtext("name"), fspec))
         for ftag, _, _ in fields[1:]:
             self.rtag.find("fields").remove(ftag)
         ftag = fields[0][0]
@@ -1364,9 +1461,7 @@ class Register:
                 ftag.find("description").text = desc
         elif dimIndex[0] == "0":
             desc = ftag.find("description")
-            desc.text = desc.text.replace(
-                nametag.text[li : len(nametag.text) - ri], "%s"
-            )
+            desc.text = desc.text.replace(nametag.text[li : len(nametag.text) - ri], "%s")
         nametag.text = name
         # self.process_field(name, fmod)
         ET.SubElement(ftag, "dim").text = str(dim)
@@ -1381,9 +1476,7 @@ class Register:
         fields = list(self.iter_fields(fspec))
         if len(fields) == 0:
             rname = self.rtag.find("name").text
-            raise RegisterMergeError(
-                f"Could not find any fields to split {rname}.{fspec}"
-            )
+            raise RegisterMergeError(f"Could not find any fields to split {rname}.{fspec}")
         parent = self.rtag.find("fields")
         if isinstance(fsplit, dict) and "name" in fsplit:
             name = fsplit["name"]
@@ -1451,9 +1544,7 @@ class Register:
                         if key in fmod:
                             mod = fmod[key]
                             if mod:
-                                self.process_field_enum(
-                                    pname, fspec, mod, usage="write"
-                                )
+                                self.process_field_enum(pname, fspec, mod, usage="write")
                             if mwv:
                                 self.set_field_modified_write_values(fspec, mwv)
                             break
@@ -1494,36 +1585,24 @@ class Register:
 
             if derived is None:
                 if enum is None:
-                    enum = make_enumerated_values(
-                        name.replace("%s", ""), field, usage=usage
-                    )
+                    enum = make_enumerated_values(name.replace("%s", ""), field, usage=usage)
                     enum_name = enum.find("name").text
                     enum_usage = enum.find("usage").text
 
                 for ev in ftag.iter("enumeratedValues"):
                     if len(ev) > 0:
                         ev_usage_tag = ev.find("usage")
-                        ev_usage = (
-                            ev_usage_tag.text
-                            if ev_usage_tag is not None
-                            else "read-write"
-                        )
+                        ev_usage = ev_usage_tag.text if ev_usage_tag is not None else "read-write"
                     else:
                         # This is a derived enumeratedValues => Try to find the
                         # original definition to extract its <usage>
                         derived_name = ev.attrib["derivedFrom"]
-                        derived_enums = self.rtag.findall(
-                            f"./fields/field/enumeratedValues/[name='{derived_name}']"
-                        )
+                        derived_enums = self.rtag.findall(f"./fields/field/enumeratedValues/[name='{derived_name}']")
 
                         if derived_enums == []:
-                            raise SvdPatchError(
-                                f"{pname}: field {name} derives enumeratedValues {derived_name} which could not be found"
-                            )
+                            raise SvdPatchError(f"{pname}: field {name} derives enumeratedValues {derived_name} which could not be found")
                         elif len(derived_enums) != 1:
-                            raise SvdPatchError(
-                                f"{pname}: field {name} derives enumeratedValues {derived_name} which was found multiple times"
-                            )
+                            raise SvdPatchError(f"{pname}: field {name} derives enumeratedValues {derived_name} which was found multiple times")
 
                         ev_usage = derived_enums[0].find("usage").text
 
@@ -1531,9 +1610,7 @@ class Register:
                         if replace_if_exists:
                             ftag.remove(ev)
                         else:
-                            raise SvdPatchError(
-                                f"{pname}: field {name} already has enumeratedValues for {ev_usage}"
-                            )
+                            raise SvdPatchError(f"{pname}: field {name} already has enumeratedValues for {ev_usage}")
                 ftag.append(enum)
                 derived = enum_name
             else:
@@ -1640,3 +1717,14 @@ def main(yaml_file):
 
     # SVD should now be updated, write it out
     svd.write(svdpath_out)
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("patch-file")
+    arguments = vars(parser.parse_args())
+    path = arguments["patch-file"]
+    path = Path(path).resolve()
+    main(path)
