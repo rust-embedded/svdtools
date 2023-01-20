@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* mmap: replace %s in field array
+
 ## [v0.2.7] 2022-09-18
 
 * Print svdtools version on error, update dependencies

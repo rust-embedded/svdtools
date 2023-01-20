@@ -86,6 +86,10 @@ fn derived_str(dname: &Option<String>) -> String {
     }
 }
 
+fn replace_idx(name: &str, idx: &str) -> String {
+    name.replace("[%s]", idx).replace("%s", idx)
+}
+
 fn get_registers(
     base_address: u64,
     registers: Option<&Vec<RegisterCluster>>,
@@ -116,8 +120,8 @@ fn get_registers(
                                 let addr = str_utils::format_address(
                                     first_addr + (i as u64) * (d.dim_increment as u64),
                                 );
-                                let rname = r.name.replace("%s", &idx);
-                                let description = description.replace("%s", &idx);
+                                let rname = replace_idx(&r.name, &idx);
+                                let description = replace_idx(&description, &idx);
                                 let text = format!(
                                     "{addr} B  REGISTER {rname}{derived}{access}: {description}"
                                 );
@@ -144,8 +148,8 @@ fn get_registers(
                             for (i, idx) in d.indexes().enumerate() {
                                 let caddr = first_addr + (i as u64) * (d.dim_increment as u64);
                                 let addr = str_utils::format_address(caddr);
-                                let cname = c.name.replace("%s", &idx);
-                                let description = description.replace("%s", &idx);
+                                let cname = replace_idx(&c.name, &idx);
+                                let description = replace_idx(&description, &idx);
                                 let text =
                                     format!("{addr} B  CLUSTER {cname}{derived}: {description}");
                                 mmap.push(text);
@@ -180,7 +184,8 @@ fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
                     for (i, idx) in d.indexes().enumerate() {
                         let bit_offset = f.bit_range.offset + (i as u32) * d.dim_increment;
                         let bit_width = f.bit_range.width;
-                        let fname = f.name.replace("%s", &idx);
+                        let fname = replace_idx(&f.name, &idx);
+                        let description = replace_idx(&description, &idx);
                         let text = format!(
                             "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{derived}{access}: {description}"
                         );
