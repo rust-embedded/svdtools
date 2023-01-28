@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* Bump python to 3.9 to fix CI
+
 ## [v0.1.25] 2022-09-04
 
 * Fix bug in deriving registers (#124)
