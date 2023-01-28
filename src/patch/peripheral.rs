@@ -7,7 +7,10 @@ use yaml_rust::{yaml::Hash, Yaml};
 use super::iterators::{MatchIter, Matched};
 use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
-use super::{check_offsets, matchname, matchsubspec, spec_ind, PatchResult, VAL_LVL};
+use super::{
+    check_offsets, make_dim_element, matchname, matchsubspec, modify_dim_element, spec_ind,
+    PatchResult, VAL_LVL,
+};
 use super::{make_cluster, make_interrupt, make_register};
 
 use svd::registercluster::{AllRegistersIterMut, ClusterIterMut};
@@ -328,10 +331,16 @@ impl PeripheralExt for Peripheral {
     }
 
     fn modify_register(&mut self, rspec: &str, rmod: &Hash) -> PatchResult {
-        for rtag in self.iter_registers(rspec) {
-            rtag.modify_from(make_register(rmod)?, VAL_LVL)?;
-            if let Some("") = rmod.get_str("access")? {
-                rtag.properties.access = None;
+        let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
+        if !rtags.is_empty() {
+            let register_builder = make_register(rmod)?;
+            let dim = make_dim_element(rmod)?;
+            for rtag in rtags {
+                modify_dim_element(rtag, &dim)?;
+                rtag.modify_from(register_builder.clone(), VAL_LVL)?;
+                if let Some("") = rmod.get_str("access")? {
+                    rtag.properties.access = None;
+                }
             }
         }
         Ok(())
@@ -346,12 +355,14 @@ impl PeripheralExt for Peripheral {
         }
         self.registers
             .get_or_insert_with(Default::default)
-            .push(RegisterCluster::Register(
-                make_register(radd)?
-                    .name(rname.into())
-                    .build(VAL_LVL)?
-                    .single(),
-            ));
+            .push(RegisterCluster::Register({
+                let reg = make_register(radd)?.name(rname.into()).build(VAL_LVL)?;
+                if let Some(dim) = make_dim_element(radd)? {
+                    reg.array(dim.build(VAL_LVL)?)
+                } else {
+                    reg.single()
+                }
+            }));
         Ok(())
     }
 

@@ -11,9 +11,11 @@ use svd_parser::svd::{
     PeripheralInfo, PeripheralInfoBuilder, RegisterCluster, RegisterInfo, RegisterInfoBuilder,
     RegisterProperties, Usage, ValidateLevel,
 };
+use svd_parser::SVDError::DimIndexParse;
+use svd_rs::{DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Ok, Result};
 pub type PatchResult = anyhow::Result<()>;
 
 mod device;
@@ -302,6 +304,55 @@ fn make_address_block(h: &Hash) -> Result<AddressBlockBuilder> {
         ab = ab.usage(usage)
     }
     Ok(ab)
+}
+
+fn make_dim_element(h: &Hash) -> Result<Option<DimElementBuilder>> {
+    let mut d = DimElement::builder()
+        .dim_index(if let Some(y) = h.get(&"dimIndex".to_yaml()) {
+            match y {
+                Yaml::String(text) => Some(DimElement::parse_indexes(text).ok_or(DimIndexParse)?),
+                Yaml::Array(a) => {
+                    let mut v = Vec::new();
+                    for s in a {
+                        v.push(s.as_str().ok_or(DimIndexParse)?.to_string());
+                    }
+                    Some(v)
+                }
+                _ => return Err(DimIndexParse).map_err(Into::into),
+            }
+        } else {
+            None
+        })
+        .dim_name(h.get_string("dimName")?)
+        // TODO
+        .dim_array_index(None);
+    if let Some(dim) = h.get_u32("dim")? {
+        d = d.dim(dim)
+    }
+    if let Some(dim_increment) = h.get_u32("dimIncrement")? {
+        d = d.dim_increment(dim_increment)
+    }
+    Ok(if d == DimElement::builder() {
+        None
+    } else {
+        Some(d)
+    })
+}
+
+fn modify_dim_element<T: Clone>(
+    tag: &mut MaybeArray<T>,
+    dim: &Option<DimElementBuilder>,
+) -> PatchResult {
+    if let Some(dim) = dim.as_ref() {
+        match tag {
+            MaybeArray::Array(_, array_info) => array_info.modify_from(dim.clone(), VAL_LVL)?,
+            MaybeArray::Single(info) => {
+                let array_info = dim.clone().build(VAL_LVL)?;
+                *tag = MaybeArray::Array(info.clone(), array_info);
+            }
+        }
+    }
+    Ok(())
 }
 
 fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {

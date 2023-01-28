@@ -7,7 +7,9 @@ use yaml_rust::{yaml::Hash, Yaml};
 
 use super::iterators::{MatchIter, Matched};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
-use super::{check_offsets, matchname, spec_ind, PatchResult, VAL_LVL};
+use super::{
+    check_offsets, make_dim_element, matchname, modify_dim_element, spec_ind, PatchResult, VAL_LVL,
+};
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
 pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Field>>;
@@ -215,35 +217,41 @@ impl RegisterExt for Register {
     }
 
     fn modify_field(&mut self, fspec: &str, fmod: &Hash) -> PatchResult {
-        for ftag in self.iter_fields(fspec) {
-            if let Some(value) = fmod
-                .get(&"_write_constraint".to_yaml())
-                .or_else(|| fmod.get(&"writeConstraint".to_yaml()))
-            {
-                let wc = match value {
-                    Yaml::String(s) if s == "none" => {
-                        // Completely remove the existing writeConstraint
-                        None
-                    }
-                    Yaml::String(s) if s == "enum" => {
-                        // Only allow enumerated values
-                        Some(WriteConstraint::UseEnumeratedValues(true))
-                    }
-                    Yaml::Array(a) => {
-                        // Allow a certain range
-                        Some(WriteConstraint::Range(WriteConstraintRange {
-                            min: a[0].i64()? as u64,
-                            max: a[1].i64()? as u64,
-                        }))
-                    }
-                    _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
-                };
-                ftag.write_constraint = wc;
-            }
-            // For all other tags, just set the value
-            ftag.modify_from(make_field(fmod)?, VAL_LVL)?;
-            if let Some("") = fmod.get_str("access")? {
-                ftag.access = None;
+        let ftags = self.iter_fields(fspec).collect::<Vec<_>>();
+        let field_builder = make_field(fmod)?;
+        let dim = make_dim_element(fmod)?;
+        if !ftags.is_empty() {
+            for ftag in ftags {
+                modify_dim_element(ftag, &dim)?;
+                if let Some(value) = fmod
+                    .get(&"_write_constraint".to_yaml())
+                    .or_else(|| fmod.get(&"writeConstraint".to_yaml()))
+                {
+                    let wc = match value {
+                        Yaml::String(s) if s == "none" => {
+                            // Completely remove the existing writeConstraint
+                            None
+                        }
+                        Yaml::String(s) if s == "enum" => {
+                            // Only allow enumerated values
+                            Some(WriteConstraint::UseEnumeratedValues(true))
+                        }
+                        Yaml::Array(a) => {
+                            // Allow a certain range
+                            Some(WriteConstraint::Range(WriteConstraintRange {
+                                min: a[0].i64()? as u64,
+                                max: a[1].i64()? as u64,
+                            }))
+                        }
+                        _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
+                    };
+                    ftag.write_constraint = wc;
+                }
+                // For all other tags, just set the value
+                ftag.modify_from(field_builder.clone(), VAL_LVL)?;
+                if let Some("") = fmod.get_str("access")? {
+                    ftag.access = None;
+                }
             }
         }
         Ok(())
@@ -256,11 +264,12 @@ impl RegisterExt for Register {
                 self.name
             ));
         }
-        // TODO: add field arrays
-        let fnew = make_field(fadd)?
-            .name(fname.into())
-            .build(VAL_LVL)?
-            .single();
+        let fnew = make_field(fadd)?.name(fname.into()).build(VAL_LVL)?;
+        let fnew = if let Some(dim) = make_dim_element(fadd)? {
+            fnew.array(dim.build(VAL_LVL)?)
+        } else {
+            fnew.single()
+        };
         self.fields.get_or_insert_with(Default::default).push(fnew);
         Ok(())
     }

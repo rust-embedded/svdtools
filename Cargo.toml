@@ -27,8 +27,8 @@ edition = "2021"
 clap = { version = "3.2", features = ["derive", "cargo"] }
 serde = { version = "1.0", features = ["derive"] }
 quick-xml = { version = "0.25", features = ["serialize"] }
-svd-rs = { version = "0.14.0", features = ["serde", "derive-from"] }
-svd-parser = { version = "0.14.0", features = ["expand"] }
+svd-rs = { version = "0.14.1", features = ["serde", "derive-from"] }
+svd-parser = { version = "0.14.1", features = ["expand"] }
 svd-encoder = "0.14.1"
 yaml-rust = "0.4"
 # serde_yaml 0.9.x looks broken
