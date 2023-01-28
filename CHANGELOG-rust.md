@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.2.8] 2022-01-28
+
+* patch: added possibility to modify dim elements (arrays)
 * mmap: replace %s in field array
 
 ## [v0.2.7] 2022-09-18
@@ -67,7 +70,10 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.8...HEAD
+[v0.2.8]: https://github.com/stm32-rs/svdtools/compare/v0.2.7...v0.2.8
+[v0.2.7]: https://github.com/stm32-rs/svdtools/compare/v0.2.6...v0.2.7
+[v0.2.6]: https://github.com/stm32-rs/svdtools/compare/v0.2.5...v0.2.6
 [v0.2.5]: https://github.com/stm32-rs/svdtools/compare/v0.2.4...v0.2.5
 [v0.2.4]: https://github.com/stm32-rs/svdtools/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/stm32-rs/svdtools/compare/v0.2.2...v0.2.3
