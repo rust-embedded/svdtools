@@ -42,5 +42,5 @@ fn print_interrupts(interrupt_list: &[InterruptWithPeriph]) {
 fn print_gaps(gaps: &[u32]) {
     let gaps: Vec<String> = gaps.iter().map(|g| g.to_string()).collect();
     let gaps_str = gaps.join(", ");
-    println!("Gaps: {}", gaps_str);
+    println!("Gaps: {gaps_str}");
 }

@@ -10,7 +10,7 @@ author-email = "adam@adamgreig.com"
 maintainer = "Nicolas Stalder"
 maintainer-email = "n@stalder.io"
 home-page = "https://github.com/stm32-rs/svdtools"
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 description-file = "README.md"
 requires = [
   "click ~= 8.0",
@@ -24,8 +24,7 @@ classifiers=[
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.9",
 ]
 
 [tool.flit.scripts]
