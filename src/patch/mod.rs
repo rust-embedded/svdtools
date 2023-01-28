@@ -128,7 +128,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                 if let Entry::Occupied(mut e) = parent.entry(key.clone()) {
                     match e.get_mut() {
                         el if el == val => {
-                            println!("In {:?}: dublicate rule {:?}, ignored", key, val);
+                            println!("In {key:?}: dublicate rule {val:?}, ignored");
                         }
                         Yaml::Array(a) => match val {
                             Yaml::Array(val) => {
@@ -138,7 +138,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                 if !a.contains(val) {
                                     a.push(val.clone());
                                 } else {
-                                    println!("In {:?}: dublicate rule {:?}, ignored", key, val);
+                                    println!("In {key:?}: dublicate rule {val:?}, ignored");
                                 }
                             }
                             _ => {}
@@ -153,14 +153,11 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                     a.insert(0, s.clone());
                                     e.insert(Yaml::Array(a));
                                 } else {
-                                    println!("In {:?}: dublicate rule {:?}, ignored", key, s);
+                                    println!("In {key:?}: dublicate rule {s:?}, ignored");
                                 }
                             }
                             s2 if matches!(s2, Yaml::String(_)) => {
-                                println!(
-                                    "In {:?}: conflicting rules {:?} and {:?}, ignored",
-                                    key, s, s2
-                                );
+                                println!("In {key:?}: conflicting rules {s:?} and {s2:?}, ignored");
                             }
                             _ => {}
                         },

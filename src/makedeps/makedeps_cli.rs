@@ -15,7 +15,7 @@ fn write_to_file(file: &mut File, string_to_write: &str) -> Result<()> {
 
 fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
     // Open a file in write-only mode
-    let mut file = File::create(&file_name)?;
+    let mut file = File::create(file_name)?;
 
     let file_name = format!("{}:", file_name.file_name().unwrap().to_str().unwrap());
     write_to_file(&mut file, &file_name)?;

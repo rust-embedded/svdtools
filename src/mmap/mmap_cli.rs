@@ -14,7 +14,7 @@ pub fn parse_device(svd_file: &Path) -> Result<()> {
             Err(e).with_context(|| format!("Parsing {path_str}"))
         }
         Ok(text) => {
-            println!("{}", text);
+            println!("{text}");
             Ok(())
         }
     }
