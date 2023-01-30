@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
 use super::iterators::{MatchIter, Matched};
-use super::peripheral::PeripheralExt;
+use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
 use super::{abspath, matchname, PatchResult, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
@@ -302,7 +302,7 @@ impl DeviceExt for Device {
                 make_peripheral(hash, true)?.derived_from(Some(pderive.into())),
             )
         } else {
-            return Err(anyhow!("derive: incorrect syntax for {}", pname));
+            return Err(anyhow!("derive: incorrect syntax for {pname}"));
         };
 
         if !pderive.contains('.') {
