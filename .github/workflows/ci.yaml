@@ -26,7 +26,7 @@ jobs:
           pip install .
       - name: Check
         run: |
-          black --check svdtools
+          black --check --diff svdtools
           isort --check-only svdtools
       - name: Test
         run: pytest svdtools
