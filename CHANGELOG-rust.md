@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * cluster add/modify
+* use `normpath` instead of std::fs::canonicalize
 
 ## [v0.2.8] 2022-01-28
 

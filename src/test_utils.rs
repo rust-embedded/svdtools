@@ -39,5 +39,14 @@ pub fn get_patcher(test_subdir: &Path) -> Result<(Device, Hash)> {
 
 /// Gets the absolute path of relpath from the point of view of frompath.
 fn abspath(frompath: &Path, relpath: &Path) -> PathBuf {
-    std::fs::canonicalize(frompath.parent().unwrap().join(relpath)).unwrap()
+    normpath::BasePath::new(frompath)
+        .unwrap()
+        .parent()
+        .unwrap()
+        .unwrap()
+        .join(relpath)
+        .canonicalize()
+        .unwrap()
+        .as_path()
+        .into()
 }
