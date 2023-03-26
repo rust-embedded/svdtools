@@ -408,7 +408,22 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
 fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
         .description(cadd.get_string("description")?)
-        .default_register_properties(get_register_properties(cadd)?);
+        .default_register_properties(get_register_properties(cadd)?)
+        .children(match cadd.get_hash("registers")? {
+            Some(h) => {
+                let mut ch = Vec::new();
+                for (rname, val) in h {
+                    ch.push(RegisterCluster::Register(
+                        make_register(val.hash()?)?
+                            .name(rname.str()?.into())
+                            .build(VAL_LVL)?
+                            .single(),
+                    ));
+                }
+                ch
+            }
+            _ => Vec::new(),
+        });
 
     if let Some(name) = cadd.get_str("name")? {
         cnew = cnew.name(name.into());

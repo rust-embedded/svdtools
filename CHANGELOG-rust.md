@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* cluster add/modify
+
 ## [v0.2.8] 2022-01-28
 
 * patch: added possibility to modify dim elements (arrays)

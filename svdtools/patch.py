@@ -433,7 +433,7 @@ class Device:
     def modify_peripheral(self, pspec, pmod):
         """Modify pspec inside device according to pmod."""
         for ptag in self.iter_peripherals(pspec):
-            for (key, value) in pmod.items():
+            for key, value in pmod.items():
                 if key == "name":
                     # If this peripheral has derivations, update the derived
                     # peripherals to reference the new name.
@@ -452,7 +452,7 @@ class Device:
 
                 if key == "addressBlock":
                     ab = ptag.find(key)
-                    for (ab_key, ab_value) in value.items():
+                    for ab_key, ab_value in value.items():
                         if ab.find(ab_key) is not None:
                             ab.remove(ab.find(ab_key))
                         ET.SubElement(ab, ab_key).text = str(ab_value)
@@ -461,7 +461,7 @@ class Device:
                         ptag.remove(ab)
                     for ab in value:
                         ab_el = ET.SubElement(ptag, "addressBlock")
-                        for (ab_key, ab_value) in ab.items():
+                        for ab_key, ab_value in ab.items():
                             ET.SubElement(ab_el, ab_key).text = str(ab_value)
                 else:
                     tag = ptag.find(key)
@@ -481,7 +481,7 @@ class Device:
         else:
             pnew = ET.SubElement(parent, "peripheral")
         ET.SubElement(pnew, "name").text = pname
-        for (key, value) in padd.items():
+        for key, value in padd.items():
             if key == "registers":
                 ET.SubElement(pnew, "registers")
                 for rname in value:
@@ -491,12 +491,12 @@ class Device:
                     Peripheral(pnew).add_interrupt(iname, value[iname])
             elif key == "addressBlock":
                 ab = ET.SubElement(pnew, "addressBlock")
-                for (ab_key, ab_value) in value.items():
+                for ab_key, ab_value in value.items():
                     ET.SubElement(ab, ab_key).text = str(ab_value)
             elif key == "addressBlocks":
                 for ab in value:
                     ab_el = ET.SubElement(ptag, "addressBlock")
-                    for (ab_key, ab_value) in ab.items():
+                    for ab_key, ab_value in ab.items():
                         ET.SubElement(ab_el, ab_key).text = str(ab_value)
             elif key != "derivedFrom":
                 ET.SubElement(pnew, key).text = str(value)
@@ -792,7 +792,7 @@ class Peripheral:
     def modify_interrupt(self, ispec, imod):
         """Modify ispec according to imod"""
         for itag in self.iter_interrupts(ispec):
-            for (key, value) in imod.items():
+            for key, value in imod.items():
                 tag = itag.find(key)
                 if value == "":
                     itag.remove(tag)
@@ -807,7 +807,7 @@ class Peripheral:
     def modify_register(self, rspec, rmod):
         """Modify rspec inside ptag according to rmod."""
         for rtag in self.iter_registers(rspec):
-            for (key, value) in rmod.items():
+            for key, value in rmod.items():
                 tag = rtag.find(key)
                 if value == "" and tag is not None:
                     rtag.remove(tag)
@@ -830,7 +830,7 @@ class Peripheral:
                 )
         rnew = ET.SubElement(parent, "register")
         ET.SubElement(rnew, "name").text = rname
-        for (key, value) in radd.items():
+        for key, value in radd.items():
             if key == "fields":
                 ET.SubElement(rnew, "fields")
                 for fname in value:
@@ -907,7 +907,7 @@ class Peripheral:
         rcopy.find("name").text = rname
         if rcopy.find("displayName") is not None:
             rcopy.remove(rcopy.find("displayName"))
-        for (key, value) in rderive.items():
+        for key, value in rderive.items():
             if key == "_from":
                 continue
             elif key == "fields":
@@ -926,7 +926,7 @@ class Peripheral:
     def modify_cluster(self, cspec, cmod):
         """Modify cspec inside ptag according to cmod."""
         for ctag in self.iter_clusters(cspec):
-            for (key, value) in cmod.items():
+            for key, value in cmod.items():
                 tag = ctag.find(key)
                 if value == "":
                     ctag.remove(tag)
@@ -1019,7 +1019,7 @@ class Peripheral:
         rspecs = [r for r in cmod if r != "description"]
         for rspec in rspecs:
             registers = []
-            for (rtag, match_rspec) in list(self.iter_registers_with_matches(rspec)):
+            for rtag, match_rspec in list(self.iter_registers_with_matches(rspec)):
                 rname = rtag.findtext("name")
                 li, ri = spec_ind(match_rspec)
                 registers.append(
@@ -1217,7 +1217,7 @@ class Register:
     def modify_field(self, fspec, fmod):
         """Modify fspec inside rtag according to fmod."""
         for ftag in self.iter_fields(fspec):
-            for (key, value) in fmod.items():
+            for key, value in fmod.items():
                 if key == "_write_constraint":
                     key = "writeConstraint"
 
@@ -1262,7 +1262,7 @@ class Register:
                 )
         fnew = ET.SubElement(parent, "field")
         ET.SubElement(fnew, "name").text = fname
-        for (key, value) in fadd.items():
+        for key, value in fadd.items():
             ET.SubElement(fnew, key).text = str(value)
         fnew.tail = "\n            "
 
