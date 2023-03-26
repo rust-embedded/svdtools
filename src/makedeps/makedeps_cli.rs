@@ -17,13 +17,15 @@ fn write_file(file_name: &Path, deps: Vec<PathBuf>) -> Result<()> {
     // Open a file in write-only mode
     let mut file = File::create(file_name)?;
 
-    let file_name = format!("{}:", file_name.file_name().unwrap().to_str().unwrap());
+    let file_name = format!("{}:", file_name.to_str().unwrap());
     write_to_file(&mut file, &file_name)?;
 
     for dep in deps {
         let dep_string = format!(" {}", dep.into_os_string().into_string().unwrap());
         write_to_file(&mut file, &dep_string)?;
     }
+
+    write_to_file(&mut file, "\n")?;
 
     Ok(())
 }
@@ -69,7 +71,8 @@ mod tests {
 
         let deps: String = fs::read_to_string(deps_file)?.parse()?;
         let exp_string = format!(
-            "test.d: {} {}",
+            "{}/test.d: {} {}\n",
+            out_dir.path().display(),
             test_dir.join(Path::new("sub-tests/inc1.yaml")).display(),
             test_dir.join(Path::new("sub-tests/inc2.yaml")).display()
         );
