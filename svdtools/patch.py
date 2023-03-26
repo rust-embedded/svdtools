@@ -774,14 +774,8 @@ class Peripheral:
     def iter_registers(self, rspec):
         """
         Iterates over all registers that match rspec and live inside ptag.
-
-        Ignore `register`s owned by `cluster`s.
         """
         for rtag in self.ptag.iter("register"):
-            parent = rtag.getparent()
-            assert isinstance(parent, Element), "Register must have parent."
-            if parent.tag == "cluster":
-                continue
             name = rtag.find("name").text
             if matchname(name, rspec):
                 yield rtag
@@ -791,8 +785,6 @@ class Peripheral:
 
         Each element is a tuple of the matching register and the rspec substring
         that it matched.
-
-        Ignore `register`s owned by `cluster`s.
         """
         for rtag in self.iter_registers("*"):
             name = rtag.find("name").text
@@ -1002,10 +994,6 @@ class Peripheral:
         """
         regex = create_regex_from_pattern(substr, strip_end)
         for rtag in self.iter_registers("*"):
-            parent = rtag.getparent()
-            assert isinstance(parent, Element), "Register must have parent."
-            if parent.tag == "cluster":
-                continue
             nametag = rtag.find("name")
             nametag.text = regex.sub("", nametag.text)
 
