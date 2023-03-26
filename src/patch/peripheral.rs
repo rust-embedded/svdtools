@@ -447,9 +447,9 @@ impl RegisterBlockExt for Peripheral {
     }
 
     fn add_cluster(&mut self, cname: &str, cadd: &Hash) -> PatchResult {
-        if self.all_registers().any(|c| c.name == cname) {
+        if self.clusters().any(|c| c.name == cname) {
             return Err(anyhow!(
-                "peripheral {} already has a register {cname}",
+                "peripheral {} already has a cluster {cname}",
                 self.name
             ));
         }
