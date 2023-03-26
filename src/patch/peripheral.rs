@@ -14,9 +14,9 @@ use super::{
 };
 use super::{make_cluster, make_interrupt, make_register};
 
-use svd::registercluster::{AllRegistersIterMut, ClusterIterMut};
+use svd::registercluster::{ClusterIterMut, RegisterIterMut};
 pub type ClusterMatchIterMut<'a, 'b> = MatchIter<'b, ClusterIterMut<'a>>;
-pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, AllRegistersIterMut<'a>>;
+pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, RegisterIterMut<'a>>;
 
 /// Collecting methods for processing peripheral contents
 pub trait PeripheralExt: InterruptExt + RegisterBlockExt {
@@ -403,7 +403,7 @@ impl InterruptExt for Peripheral {
 
 impl RegisterBlockExt for Peripheral {
     fn iter_registers<'a, 'b>(&'a mut self, spec: &'b str) -> RegMatchIterMut<'a, 'b> {
-        self.all_registers_mut().matched(spec)
+        self.registers_mut().matched(spec)
     }
 
     fn iter_clusters<'a, 'b>(&'a mut self, spec: &'b str) -> ClusterMatchIterMut<'a, 'b> {
@@ -515,7 +515,7 @@ impl RegisterBlockExt for Peripheral {
         })?;
 
         let mut source = self
-            .all_registers()
+            .registers()
             .find(|r| r.name == srcname)
             .ok_or_else(|| anyhow!("peripheral {} does not have register {srcname}", self.name))?
             .clone();
@@ -524,7 +524,7 @@ impl RegisterBlockExt for Peripheral {
             .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL)?;
-        if let Some(ptag) = self.all_registers_mut().find(|r| r.name == rname) {
+        if let Some(ptag) = self.registers_mut().find(|r| r.name == rname) {
             source.address_offset = ptag.address_offset;
             *ptag = source;
         } else {
@@ -574,7 +574,7 @@ impl RegisterBlockExt for Peripheral {
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
         let len = prefix.len();
         let glob = globset::Glob::new(&(prefix.to_string() + "*"))?.compile_matcher();
-        for rtag in self.all_registers_mut() {
+        for rtag in self.registers_mut() {
             if glob.is_match(&rtag.name) {
                 rtag.name.drain(..len);
             }
@@ -592,7 +592,7 @@ impl RegisterBlockExt for Peripheral {
         let glob = globset::Glob::new(&("*".to_string() + suffix))
             .unwrap()
             .compile_matcher();
-        for rtag in self.all_registers_mut() {
+        for rtag in self.registers_mut() {
             if glob.is_match(&rtag.name) {
                 let nlen = rtag.name.len();
                 rtag.name.truncate(nlen - len);
@@ -867,7 +867,7 @@ impl ClusterExt for Cluster {
 
 impl RegisterBlockExt for Cluster {
     fn iter_registers<'a, 'b>(&'a mut self, spec: &'b str) -> RegMatchIterMut<'a, 'b> {
-        self.all_registers_mut().matched(spec)
+        self.registers_mut().matched(spec)
     }
 
     fn iter_clusters<'a, 'b>(&'a mut self, spec: &'b str) -> ClusterMatchIterMut<'a, 'b> {
@@ -973,7 +973,7 @@ impl RegisterBlockExt for Cluster {
         })?;
 
         let mut source = self
-            .all_registers()
+            .registers()
             .find(|r| r.name == srcname)
             .ok_or_else(|| anyhow!("peripheral {} does not have register {srcname}", self.name,))?
             .clone();
@@ -982,7 +982,7 @@ impl RegisterBlockExt for Cluster {
             .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
         source.modify_from(fixes, VAL_LVL)?;
-        if let Some(ptag) = self.all_registers_mut().find(|r| r.name == rname) {
+        if let Some(ptag) = self.registers_mut().find(|r| r.name == rname) {
             source.address_offset = ptag.address_offset;
             *ptag = source;
         } else {
@@ -1023,7 +1023,7 @@ impl RegisterBlockExt for Cluster {
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
         let len = prefix.len();
         let glob = globset::Glob::new(&(prefix.to_string() + "*"))?.compile_matcher();
-        for rtag in self.all_registers_mut() {
+        for rtag in self.registers_mut() {
             if glob.is_match(&rtag.name) {
                 rtag.name.drain(..len);
             }
@@ -1041,7 +1041,7 @@ impl RegisterBlockExt for Cluster {
         let glob = globset::Glob::new(&("*".to_string() + suffix))
             .unwrap()
             .compile_matcher();
-        for rtag in self.all_registers_mut() {
+        for rtag in self.registers_mut() {
             if glob.is_match(&rtag.name) {
                 let nlen = rtag.name.len();
                 rtag.name.truncate(nlen - len);
