@@ -15,7 +15,7 @@ use svd_parser::SVDError::DimIndexParse;
 use svd_rs::{DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
-use anyhow::{anyhow, Context, Ok, Result};
+use anyhow::{anyhow, Context, Result};
 pub type PatchResult = anyhow::Result<()>;
 
 mod device;
@@ -72,7 +72,14 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
 
 /// Gets the absolute path of relpath from the point of view of frompath.
 fn abspath(frompath: &Path, relpath: &Path) -> Result<PathBuf, std::io::Error> {
-    std::fs::canonicalize(frompath.parent().unwrap().join(relpath))
+    normpath::BasePath::new(frompath)
+        .unwrap()
+        .parent()
+        .unwrap()
+        .unwrap()
+        .join(relpath)
+        .canonicalize()
+        .map(|b| b.as_path().into())
 }
 
 /// Recursively loads any included YAML files.
