@@ -332,15 +332,6 @@ impl PeripheralExt for Peripheral {
             }
         }
 
-        // Handle clusters
-        for (cspec, cluster) in pmod.hash_iter("_clusters") {
-            let cspec = cspec.str()?;
-            if !cspec.starts_with('_') {
-                self.process_cluster(cspec, cluster.hash()?, update_fields)
-                    .with_context(|| format!("According to `{cspec}`"))?;
-            }
-        }
-
         // Handle registers
         for (rspec, register) in pmod {
             let rspec = rspec.str()?;
@@ -362,6 +353,15 @@ impl PeripheralExt for Peripheral {
             let cname = cname.str()?;
             self.collect_in_cluster(cname, cmod.hash()?)
                 .with_context(|| format!("Collecting registers in cluster `{cname}`"))?;
+        }
+
+        // Handle clusters
+        for (cspec, cluster) in pmod.hash_iter("_clusters") {
+            let cspec = cspec.str()?;
+            if !cspec.starts_with('_') {
+                self.process_cluster(cspec, cluster.hash()?, update_fields)
+                    .with_context(|| format!("According to `{cspec}`"))?;
+            }
         }
 
         Ok(())
