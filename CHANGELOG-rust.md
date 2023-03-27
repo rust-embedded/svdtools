@@ -5,10 +5,12 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.0] 2023-03-27
+
 * cluster add/modify
 * use `normpath` instead of std::fs::canonicalize
 
-## [v0.2.8] 2022-01-28
+## [v0.2.8] 2023-01-28
 
 * patch: added possibility to modify dim elements (arrays)
 * mmap: replace %s in field array
@@ -73,7 +75,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/stm32-rs/svdtools/compare/v0.2.8...v0.3.0
 [v0.2.8]: https://github.com/stm32-rs/svdtools/compare/v0.2.7...v0.2.8
 [v0.2.7]: https://github.com/stm32-rs/svdtools/compare/v0.2.6...v0.2.7
 [v0.2.6]: https://github.com/stm32-rs/svdtools/compare/v0.2.5...v0.2.6
