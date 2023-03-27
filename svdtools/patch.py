@@ -11,10 +11,14 @@ import os.path
 import re
 from collections import OrderedDict
 from fnmatch import fnmatchcase
+from pathlib import Path
+from typing import Any, Generator, Union
 
 import lxml.etree as ET
 import yaml
 from braceexpand import braceexpand
+from lxml.etree import _Element as Element
+from lxml.etree import _ElementTree as ElementTree
 
 DEVICE_CHILDREN = [
     "vendor",
@@ -374,6 +378,16 @@ def sort_recursive(tag):
             sort_recursive(child)
 
 
+def get_element_name(element: Union[Element, ElementTree], description: str) -> str:
+    assert isinstance(element, (Element, ElementTree))
+    assert isinstance(description, str)
+    nametag = element.find("name")
+    assert isinstance(nametag, Element), f"{description.capitalize()} must have name."
+    name = nametag.text
+    assert isinstance(name, str), f"{description.capitalize()} name must be string."
+    return name
+
+
 class SvdPatchError(ValueError):
     pass
 
@@ -395,6 +409,10 @@ class MissingPeripheralError(SvdPatchError):
 
 
 class UnknownTagError(SvdPatchError):
+    pass
+
+
+class MissingClusterError(SvdPatchError):
     pass
 
 
@@ -701,6 +719,9 @@ class Device:
                 elif rname == "_interrupts":
                     for iname in radd:
                         p.add_interrupt(iname, radd[iname])
+                elif rname == "_clusters":
+                    for cname in radd:
+                        p.add_cluster(cname, radd[cname])
                 else:
                     p.add_register(rname, radd)
             # Handle derive
@@ -728,6 +749,17 @@ class Device:
             for cname in peripheral.get("_cluster", {}):
                 cmod = peripheral["_cluster"][cname]
                 p.collect_in_cluster(cname, cmod)
+            # Handle registers inside clusters
+            clusters = peripheral.get("_clusters")
+            if isinstance(clusters, list):
+                raise Exception(f"Cluster specification must be a dictionary.")
+            elif isinstance(clusters, dict):
+                for cspec in clusters:
+                    assert isinstance(cspec, str)
+                    if not cspec.startswith("_"):
+                        cluster = peripheral["_clusters"][cspec]
+                        p.process_cluster(cspec, cluster, update_fields)
+
         if pcount == 0:
             raise MissingPeripheralError(f"Could not find {pspec}")
 
@@ -737,12 +769,19 @@ class Peripheral:
 
     def __init__(self, ptag):
         self.ptag = ptag
+        self.name = get_element_name(self.ptag, "peripheral")
 
     def iter_registers(self, rspec):
         """
         Iterates over all registers that match rspec and live inside ptag.
+
+        Ignore `register`s owned by `cluster`s.
         """
         for rtag in self.ptag.iter("register"):
+            parent = rtag.getparent()
+            assert isinstance(parent, Element), "Register must have parent."
+            if parent.tag == "cluster":
+                continue
             name = rtag.find("name").text
             if matchname(name, rspec):
                 yield rtag
@@ -752,8 +791,10 @@ class Peripheral:
 
         Each element is a tuple of the matching register and the rspec substring
         that it matched.
+
+        Ignore `register`s owned by `cluster`s.
         """
-        for rtag in self.ptag.iter("register"):
+        for rtag in self.iter_registers("*"):
             name = rtag.find("name").text
             if matchname(name, rspec):
                 yield (rtag, matchsubspec(name, rspec))
@@ -821,7 +862,7 @@ class Peripheral:
         parent = self.ptag.find("registers")
         if parent is None:
             parent = ET.SubElement(self.rtag, "registers")
-        for rtag in parent.iter("register"):
+        for rtag in self.iter_registers("*"):
             if rtag.find("name").text == rname:
                 raise SvdPatchError(
                     "peripheral {} already has a register {}".format(
@@ -888,7 +929,7 @@ class Peripheral:
             )
         srcname = rderive["_from"]
         source = None
-        for rtag in parent.iter("register"):
+        for rtag in self.iter_registers("*"):
             if rtag.find("name").text == rname:
                 raise SvdPatchError(
                     "peripheral {} already has a register {}".format(
@@ -923,6 +964,27 @@ class Peripheral:
         for rtag in list(self.iter_registers(rspec)):
             self.ptag.find("registers").remove(rtag)
 
+    def add_cluster(self, cname: str, cadd: OrderedDict[str, Any]) -> None:
+        """Add `cname` given by `cadd` to `ptag`."""
+        assert isinstance(cname, str)
+        assert isinstance(cadd, OrderedDict)
+        parent = self.ptag.find("registers")
+        if parent is None:
+            parent = ET.SubElement(self.ptag, "registers")
+        for ctag in parent.iter("cluster"):
+            if get_element_name(ctag, "cluster") == cname:
+                raise SvdPatchError(
+                    f"peripheral {self.name} already has cluster {cname}"
+                )
+        cnew = ET.SubElement(parent, "cluster")
+        ET.SubElement(cnew, "name").text = cname
+        for (key, value) in cadd.items():
+            # print(key, value)
+            if key in {"addressOffset"}:
+                ET.SubElement(cnew, key).text = str(value)
+            else:
+                Cluster(cnew).add_register(key, value)
+
     def modify_cluster(self, cspec, cmod):
         """Modify cspec inside ptag according to cmod."""
         for ctag in self.iter_clusters(cspec):
@@ -939,7 +1001,11 @@ class Peripheral:
         beginning of the name by default.
         """
         regex = create_regex_from_pattern(substr, strip_end)
-        for rtag in self.ptag.iter("register"):
+        for rtag in self.iter_registers("*"):
+            parent = rtag.getparent()
+            assert isinstance(parent, Element), "Register must have parent."
+            if parent.tag == "cluster":
+                continue
             nametag = rtag.find("name")
             nametag.text = regex.sub("", nametag.text)
 
@@ -1161,6 +1227,118 @@ class Peripheral:
                 r.collect_fields_in_array(fspec, fmod)
         if rcount == 0:
             raise MissingRegisterError(f"Could not find {pname}:{rspec}")
+
+    def process_cluster_tag(
+        self, ctag: Element, cluster: OrderedDict[str, Any], update_fields: bool
+    ) -> None:
+        assert isinstance(ctag, Element)
+        assert isinstance(cluster, OrderedDict)
+        assert isinstance(update_fields, bool)
+        c = Cluster(ctag)
+        # Handle deletions
+        deletions = cluster.get("_delete", [])
+        if isinstance(deletions, list):
+            for rspec in deletions:
+                c.delete_register(rspec)
+        elif isinstance(deletions, dict):
+            for rspec in deletions:
+                c.delete_register(rspec)
+        # Handle strips
+        for prefix in cluster.get("_strip", []):
+            c.strip(prefix)
+        for suffix in cluster.get("_strip_end", []):
+            c.strip(suffix, strip_end=True)
+        # Handle modifications
+        for rspec in cluster.get("_modify", {}):
+            rmod = cluster["_modify"][rspec]
+            c.modify_register(rspec, rmod)
+        # Handle additions
+        for rname in cluster.get("_add", {}):
+            radd = cluster["_add"][rname]
+            c.add_register(rname, radd)
+
+    def process_cluster(
+        self, cspec: str, cluster: OrderedDict[str, Any], update_fields: bool = True
+    ) -> None:
+        assert isinstance(cspec, str)
+        assert isinstance(cluster, OrderedDict)
+        assert isinstance(update_fields, bool)
+        # Find all clusters that match the spec
+        ccount = 0
+        for ctag in self.iter_clusters(cspec):
+            self.process_cluster_tag(ctag, cluster, update_fields)
+            ccount += 1
+        if ccount == 0:
+            raise MissingClusterError(f"Could not find {self.name}:{cspec}")
+
+
+class Cluster:
+    """Class collecting methods for processing `cluster` contents."""
+
+    def __init__(self, ctag: Element) -> None:
+        assert isinstance(ctag, Element)
+        self.ctag = ctag
+        self.name = get_element_name(self.ctag, "cluster")
+
+    def iter_registers(self, rspec: str) -> Generator[Element, None, None]:
+        """Iterate over all `cluster`s `register`s that match `rspec`."""
+        assert isinstance(rspec, str)
+        for rtag in self.ctag.iter("register"):
+            name = get_element_name(rtag, "register")
+            if matchname(name, rspec):
+                yield rtag
+
+    def add_register(self, rname: str, radd: OrderedDict[str, Any]) -> None:
+        assert isinstance(rname, str)
+        assert isinstance(radd, OrderedDict)
+        parent = self.ctag
+        for rtag in parent.iter("register"):
+            if get_element_name(rtag, "register") == rname:
+                raise SvdPatchError(
+                    f"cluster {self.name} already has a register {rname}"
+                )
+        rnew = ET.SubElement(parent, "register")
+        ET.SubElement(rnew, "name").text = rname
+        for (key, value) in radd.items():
+            if key == "fields":
+                ET.SubElement(rnew, "fields")
+                for fname in value:
+                    Register(rnew).add_field(fname, value[fname])
+            else:
+                ET.SubElement(rnew, key).text = str(value)
+        rnew.tail = "\n        "
+
+    def modify_register(self, rspec: str, rmod: OrderedDict[str, Any]) -> None:
+        assert isinstance(rspec, str)
+        assert isinstance(rmod, OrderedDict)
+        for rtag in self.iter_registers(rspec):
+            for (key, value) in rmod.items():
+                tag = rtag.find(key)
+                if value == "" and tag is not None:
+                    rtag.remove(tag)
+                elif value != "":
+                    if tag is None:
+                        tag = ET.SubElement(rtag, key)
+                    tag.text = str(value)
+
+    def delete_register(self, rspec: str) -> None:
+        assert isinstance(rspec, str)
+        for rtag in list(self.iter_registers(rspec)):
+            self.ctag.remove(rtag)
+
+    def strip(self, substr: str, strip_end: bool = False) -> None:
+        assert isinstance(substr, str)
+        assert isinstance(strip_end, bool)
+        regex = create_regex_from_pattern(substr, strip_end)
+        for rtag in self.ctag.iter("register"):
+            nametag = rtag.find("name")
+            assert isinstance(nametag, Element), "Register must have name."
+            assert isinstance(nametag.text, str)
+            nametag.text = regex.sub("", nametag.text)
+            dnametag = rtag.find("displayName")
+            if dnametag is not None:
+                assert isinstance(dnametag.text, str)
+                dnametag.text = regex.sub("", dnametag.text)
 
 
 def sorted_fields(fields):
@@ -1640,3 +1818,14 @@ def main(yaml_file):
 
     # SVD should now be updated, write it out
     svd.write(svdpath_out)
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("patch-file")
+    arguments = vars(parser.parse_args())
+    path = arguments["patch-file"]
+    path = Path(path).resolve()
+    main(path)
