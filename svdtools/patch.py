@@ -978,7 +978,7 @@ class Peripheral:
                 )
         cnew = ET.SubElement(parent, "cluster")
         ET.SubElement(cnew, "name").text = cname
-        for (key, value) in cadd.items():
+        for key, value in cadd.items():
             # print(key, value)
             if key in {"addressOffset"}:
                 ET.SubElement(cnew, key).text = str(value)
@@ -1299,7 +1299,7 @@ class Cluster:
                 )
         rnew = ET.SubElement(parent, "register")
         ET.SubElement(rnew, "name").text = rname
-        for (key, value) in radd.items():
+        for key, value in radd.items():
             if key == "fields":
                 ET.SubElement(rnew, "fields")
                 for fname in value:
@@ -1312,7 +1312,7 @@ class Cluster:
         assert isinstance(rspec, str)
         assert isinstance(rmod, OrderedDict)
         for rtag in self.iter_registers(rspec):
-            for (key, value) in rmod.items():
+            for key, value in rmod.items():
                 tag = rtag.find(key)
                 if value == "" and tag is not None:
                     rtag.remove(tag)
