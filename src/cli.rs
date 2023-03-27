@@ -13,23 +13,19 @@ enum Command {
     /// Patches an SVD file as specified by a YAML file
     Patch {
         /// Path to input YAML file
-        #[clap(parse(from_os_str))]
         yaml_file: PathBuf,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
         /// Input yaml file
-        #[clap(parse(from_os_str))]
         yaml_file: PathBuf,
 
         /// Dependencies output file
-        #[clap(parse(from_os_str))]
         deps_file: PathBuf,
     },
     /// Print list of all interrupts described by an SVD file
     Interrupts {
         /// Path to input SVD file
-        #[clap(parse(from_os_str))]
         svd_file: PathBuf,
 
         /// Whether to print gaps in interrupt number sequence
@@ -39,17 +35,14 @@ enum Command {
     /// Generate text-based memory map of an SVD file.
     Mmap {
         /// Path to input SVD file
-        #[clap(parse(from_os_str))]
         svd_file: PathBuf,
     },
     /// Convert SVD representation between file formats
     Convert {
         /// Path to input file
-        #[clap(parse(from_os_str))]
         in_path: PathBuf,
 
         /// Path to output file
-        #[clap(parse(from_os_str))]
         out_path: PathBuf,
 
         /// Format of input file (XML, JSON or YAML)
@@ -77,7 +70,7 @@ enum Command {
         /// If not specified, the default format config will be used.
         ///
         /// Only used for SVD output format.
-        #[clap(long = "format-config", parse(from_os_str))]
+        #[clap(long)]
         format_config: Option<PathBuf>,
     },
 }
