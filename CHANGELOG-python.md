@@ -5,7 +5,10 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.1.26] 2023-03-28
+
 * Bump python to 3.9 to fix CI
+* Extended cluster supper (#134)
 
 ## [v0.1.25] 2022-09-04
 
@@ -168,7 +171,8 @@ This changelog tracks the Python `svdtools` project. See
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.25...HEAD
+[Unreleased]: https://github.com/stm32-rs/svdtools/compare/v0.1.26...HEAD
+[v0.1.26]: https://github.com/stm32-rs/svdtools/compare/v0.1.25...v0.1.26
 [v0.1.25]: https://github.com/stm32-rs/svdtools/compare/v0.1.24...v0.1.25
 [v0.1.24]: https://github.com/stm32-rs/svdtools/compare/v0.1.23...v0.1.24
 [v0.1.23]: https://github.com/stm32-rs/svdtools/compare/v0.1.22...v0.1.23
