@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* add field name in enumeratedValues derive path
+
 ## [v0.3.0] 2023-03-27
 
 * cluster add/modify

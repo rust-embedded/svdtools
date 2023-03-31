@@ -685,8 +685,8 @@ impl RegisterExt for Register {
             if offsets.is_empty() {
                 return Err(anyhow!("Could not find {pname}:{}.{fspec}", self.name));
             }
-            let (min_offset, name) = offsets.iter().min_by_key(|on| on.0).unwrap();
-            let name = make_ev_name(&name.replace("%s", ""), usage)?;
+            let (min_offset, fname) = offsets.iter().min_by_key(|on| on.0).unwrap();
+            let name = make_ev_name(&fname.replace("%s", ""), usage)?;
             for ftag in self.iter_fields(fspec) {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
                 let checked_usage = check_usage(access, usage)
@@ -702,7 +702,7 @@ impl RegisterExt for Register {
                 } else {
                     set_enum(
                         ftag,
-                        make_derived_enumerated_values(&name)?,
+                        make_derived_enumerated_values(&format!("{fname}.{name}"))?,
                         checked_usage,
                         true,
                         access,
