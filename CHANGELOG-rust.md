@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* update `svd-encoder`, `--format-config` and optional `out_path` for `patch`
 * add field name in enumeratedValues derive path
 
 ## [v0.3.0] 2023-03-27

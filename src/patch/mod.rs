@@ -26,9 +26,15 @@ mod register;
 mod yaml_ext;
 use yaml_ext::{AsType, GetVal, ToYaml};
 
+use crate::get_encoder_config;
+
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
 
-pub fn process_file(yaml_file: &Path) -> Result<()> {
+pub fn process_file(
+    yaml_file: &Path,
+    out_path: Option<&Path>,
+    format_config: Option<&Path>,
+) -> Result<()> {
     // Load the specified YAML root file
     let f = File::open(yaml_file)?;
     let mut contents = String::new();
@@ -45,8 +51,13 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
                 .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
     )?;
-    let mut svdpath_out = svdpath.clone();
-    svdpath_out.set_extension("svd.patched");
+    let svdpath_out = if let Some(out_path) = out_path {
+        out_path.to_owned()
+    } else {
+        let mut pth = svdpath.clone();
+        pth.set_extension("svd.patched");
+        pth
+    };
     let f = File::open(svdpath)?;
     let mut contents = String::new();
     (&f).read_to_string(&mut contents)?;
@@ -62,9 +73,10 @@ pub fn process_file(yaml_file: &Path) -> Result<()> {
         .with_context(|| format!("Processing device `{}`", svd.name))?;
 
     // SVD should now be updated, write it out
-    let svd_out = svd_encoder::encode(&svd)?;
+    let config = get_encoder_config(format_config)?;
+    let svd_out = svd_encoder::encode_with_config(&svd, &config)?;
 
-    let mut f = File::create(&svdpath_out)?;
+    let mut f = File::create(svdpath_out)?;
     f.write_all(svd_out.as_bytes())?;
 
     Ok(())

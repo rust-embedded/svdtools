@@ -14,6 +14,15 @@ enum Command {
     Patch {
         /// Path to input YAML file
         yaml_file: PathBuf,
+
+        /// Path to output file. By default it just adds `.patched` at the end
+        out_path: Option<PathBuf>,
+
+        /// Path to format config file
+        ///
+        /// If not specified, the default format config will be used.
+        #[clap(long)]
+        format_config: Option<PathBuf>,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
@@ -82,7 +91,13 @@ impl Command {
                 interrupts_cli::parse_device(svd_file, !no_gaps)?;
             }
             Self::Mmap { svd_file } => mmap_cli::parse_device(svd_file)?,
-            Self::Patch { yaml_file } => patch_cli::patch(yaml_file)?,
+            Self::Patch {
+                yaml_file,
+                out_path,
+                format_config,
+            } => {
+                patch_cli::patch(yaml_file, out_path.as_deref(), format_config.as_deref())?;
+            }
             Self::Makedeps {
                 yaml_file,
                 deps_file,
