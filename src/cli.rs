@@ -3,6 +3,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use svdtools::{
+    analyze::analyze_cli::{self, CompareConfig},
     convert::convert_cli,
     html::html_cli,
     html::htmlcompare_cli,
@@ -15,6 +16,23 @@ use svdtools::{
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
 enum Command {
+    /// Lints for SVD
+    Analyze {
+        /// Path to input file
+        in_path: PathBuf,
+
+        /// Format of input file (XML, JSON or YAML)
+        #[clap(long = "input-format")]
+        input_format: Option<convert_cli::InputFormat>,
+
+        /// Items are equal if descriptions the same
+        #[clap(long)]
+        compare_description: bool,
+
+        /// Compare fields
+        #[clap(long)]
+        with_fields: bool,
+    },
     /// Patches an SVD file as specified by a YAML file
     Patch {
         /// Path to input YAML file
@@ -121,6 +139,21 @@ enum Command {
 impl Command {
     pub fn run(&self) -> Result<()> {
         match self {
+            Self::Analyze {
+                in_path,
+                input_format,
+                compare_description,
+                with_fields,
+            } => {
+                analyze_cli::analyze_file(
+                    in_path,
+                    *input_format,
+                    &CompareConfig {
+                        compare_description: *compare_description,
+                        with_fields: *with_fields,
+                    },
+                )?;
+            }
             Self::Interrupts { svd_file, no_gaps } => {
                 interrupts_cli::parse_device(svd_file, !no_gaps)?;
             }
