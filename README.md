@@ -1,19 +1,16 @@
-[![PyPI][pypi-badge]][pypi-url] [![Travis][travis-badge]][travis-url]
+[![crates.io](https://img.shields.io/crates/d/svdtools.svg)](https://crates.io/crates/svdtools)
 
 # svdtools
 
-**svdtools** is a Python (Rust) package for modifying vendor-supplied, often buggy SVD
+**svdtools** is a set of tools for modifying vendor-supplied, often buggy SVD
 files. It can be imported as a library for use in other applications, or run
-directly via the included `svd`(`svdtools`) CLI utility.
+directly via the included `svdtools` CLI utility.
 
 A common use case is patching vendor-supplied SVD files, then applying
 [svd2rust](https://github.com/rust-embedded/svd2rust) to the resulting patched
 SVD.
 
-[pypi-badge]: https://img.shields.io/pypi/v/svdtools.svg
-[pypi-url]: https://pypi.org/project/svdtools/
-[travis-badge]: https://travis-ci.com/stm32-rs/svdtools.svg?branch=master
-[travis-url]: https://travis-ci.com/stm32-rs/svdtools
+This project is developed and maintained by the [Tools team][team].
 
 ## Getting Started with Python version
 
@@ -400,3 +397,12 @@ This avoids bikeshedding over formatting issues :)
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall
 be dual licensed as above, without any additional terms or conditions.
+
+## Code of Conduct
+
+Contribution to this crate is organized under the terms of the [Rust Code of
+Conduct][CoC], the maintainer of this crate, the [Tools team][team], promises
+to intervene to uphold that code of conduct.
+
+[CoC]: CODE_OF_CONDUCT.md
+[team]: https://github.com/rust-embedded/wg#the-tools-team
