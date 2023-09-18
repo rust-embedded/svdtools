@@ -35,11 +35,11 @@ fn html_page(title: &str, table: &str) -> String {
     let title = format!("<title>{title}</title>");
     let header = format!("<h1>{title}</h1>");
     let out = [
-        r##"
+        r#"
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">"##,
+    <meta charset="UTF-8">"#,
         &title,
         r##"</head>
 <style>
@@ -176,7 +176,7 @@ fn who_has_what_register_fields(
             }
         }
     }
-    return fields;
+    fields
 }
 
 fn html_table_fields(parts: &[Part], fields: &BTreeMap<(u32, u32, String), Vec<String>>) -> String {
