@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ device.name }} Peripheral Coverage</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+<style>
+.peripheral {
+  border-radius: 3px;
+  border: solid 1px #eee;
+  margin-bottom: 5px;
+}
+.register {
+  border-radius: 3px;
+  border: solid 1px #eee;
+  margin-bottom: 3px;
+}
+.field {
+  border-radius: 3px;
+  border: solid 1px #eee;
+  margin-bottom: 3px;
+}
+.registers,
+.register-map {
+  display: none;
+}
+.bitfield td, .bitfield th {
+  text-align: center;
+}
+.vertical {
+  padding: 5px 0 !important;
+  vertical-align: middle !important;
+  text-align: center;
+  text-align: -webkit-center;
+}
+.vertical div {
+  writing-mode: vertical-lr;
+}
+.doccol {
+  color: rgb(92, 184, 92);
+}
+.headerlink {
+  font-size: 50%;
+}
+.fields {
+  display: none;
+}
+nav.menu {
+  line-height: 2
+}
+nav.menu a {
+  display: block-inline;
+  border-radius: 5px;
+  border: solid 1px #ccc;
+  padding: 3pt;
+}
+.bitfield td.separated {
+  background-color:#eee;
+}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-inverse">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="index.html">stm32-rs Device Coverage</a>
+    </div>
+    <div class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li class="active"><a href="#">{{ device.name }} Peripheral Coverage</a></li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="#" id="show-all-registers">Show All Registers</a></li>
+        <li><a href="#" id="hide-all-registers">Hide All Registers</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm-12">
+      <div>
+        Overall: {{ device.fields_documented }}/{{ device.fields_total }}
+        fields covered
+      </div>
+      <div class="progress">
+        
+        <div class="progress-bar progress-bar-success" style="width: {{ device.progress }}%">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-1"></div>
+    <div class="col-sm-9">
+    </div>
+  </div>
+  <nav class="menu">
+    {% for peripheral in device.peripherals %}
+      <a href="#{{ peripheral.name }}">{{ peripheral.name }}</a>
+    {% endfor %}
+  </nav>
+  {% for peripheral in device.peripherals %}{% assign pname = peripheral.name %}
+  <div class="row">
+    <div class="col-sm-12 peripheral">
+      <h3>
+        <a name="{{ pname }}"></a>
+        {{ pname }}
+        <a class="headerlink" href="#{{ pname }}">
+          <span class="glyphicon glyphicon-link"></span>
+        </a>
+      </h3>
+      <p>{{ peripheral.base }}: {{ peripheral.description }}</p>
+      <div class="progress">
+        
+        <div class="progress-bar progress-bar-success" style="width: {{ peripheral.progress }}%"></div>
+      </div>
+      <p>
+        <em>
+          {{ peripheral.fields_documented }}/{{peripheral.fields_total }}
+          fields covered.
+        </em>
+        <a class="toggle-registers" href="#">Toggle Registers</a>
+      </p>
+      <p><a class="toggle-register-map" href="#">Show register map</a></p>
+      <div class="register-map" id="{{ pname }}-register-map">
+        <table class="table table-bordered register-map-table">
+          <tbody><tr>
+            <th>Offset</th>
+            <th>Name</th>
+            {% for i in (0..31) reversed %}
+            <th class="vertical"><div>{{ i }}</div></th>
+            {% endfor %}
+          </tr>
+          {% for register in peripheral.registers %}
+            <tr>
+              <td>{{ register.offset }}{% if register.size != 32 %} ({{ register.size }}-bit){% endif %}</td>
+              <td>{{ register.name }}</td>
+              {% for row in register.table %}{% if row %}
+                {% for field in row.fields %}
+                  {% unless field.name %}
+                    {% for _ in (1..field.width) %}
+                    <td{% if field.separated %} class="separated"{% endif %}></td>
+                    {% endfor %}
+                  {% endunless %}
+                  {% if field.name %}
+                    <td colspan="{{ field.width }}" class="vertical{% if field.separated %} separated{% endif %}">
+                      <div><a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">{{ field.name }}</a></div>
+                    </td>
+                  {% endif %}
+                {% endfor %}
+              {% else %}{% for _ in (1..16) %}<td></td>{% endfor %}{% endif %}{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody></table>
+      </div>
+      <div class="container registers" id="{{ pname }}-registers">
+        {% for register in peripheral.registers %}
+        <div class="row">
+          <div class="col-sm-11 register">
+            <h4>
+              <a name="{{ pname }}:{{ register.name }}"></a>
+              {{ register.name }}
+              <a class="headerlink" href="#{{ pname }}:{{ register.name }}">
+                <span class="glyphicon glyphicon-link"></span>
+              </a>
+            </h4>
+            <p>{{ register.description }}</p>
+            <p>Offset: {{ register.offset }}, size: {{ register.size }}, reset: {{ register.resetValue }}, access: {{ register.access }}</p>
+            <div class="progress">
+              
+              <div class="progress-bar progress-bar-success" style="width: {{ register.progress }}%"></div>
+            </div>
+            <p>
+              <em>
+                {{ register.fields_documented}}/{{ register.fields_total }}
+                fields covered.
+              </em>
+            </p>
+            <div class="container bitfield">
+              <div class="row">
+                <div class="col-sm-10">
+                  <table class="table table-striped table-bordered bitfield">
+                    <tbody>{% for row in register.table %}{% if row %}
+                    <tr>
+                      {% for header in row.headers %}
+                      <th>{{ header }}</th>
+                      {% endfor %}
+                    </tr>
+                    <tr>
+                      {% for field in row.fields %}
+                      <td colspan="{{ field.width }}"{% if field.separated %} class="separated"{% endif %}>
+                        {% if field.name %}
+                        <a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
+                        {% if field.doc %}
+                        <span class="doccol">
+                        {% else %}
+                        <span>
+                        {% endif %}
+                        {{ field.name }}</span></a>
+                        <br>
+                        {{ field.access }}
+                        {% endif %}
+                      </td>
+                      {% endfor %}
+                    </tr>
+                    {% endif %}{% endfor %}
+                  </tbody></table>
+                  <a href="#" class="toggle-fields">Toggle Fields</a>
+                </div>
+              </div>
+            </div>
+            <div class="container fields" id="{{ pname }}-{{ register.name }}-fields">
+              {% for field in register.fields %}
+              <div class="row">
+                <div class="col-sm-10">
+                  <h4>
+                    <a name="{{ pname }}:{{ register.name }}:{{ field.name }}">
+                    </a>
+                    {{ field.name }}
+                    <a class="headerlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
+                      <span class="glyphicon glyphicon-link"></span>
+                    </a>
+                  </h4>
+                  <p>
+                    {% if field.width > 1 %}
+                      Bits {{ field.offset }}-{{ field.msb }}:
+                    {% else %}
+                      Bit {{ field.offset }}:
+                    {% endif %}
+                    {{ field.description }}.</p>
+                  {% if field.doc %}
+                  <p>{{ field.doc }}</p>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+<script>
+  $('.toggle-registers').click(function(e) {
+    $(this).parent().siblings(".registers").toggle();
+    e.preventDefault();
+  });
+  $('.toggle-register-map').click(function(e) {
+    $(this).parent().siblings(".register-map").toggle();
+    e.preventDefault();
+  });
+  $('#show-all-registers').click(function(e) {
+    $('.registers').show();
+    e.preventDefault();
+  });
+  $('#hide-all-registers').click(function(e) {
+    $('.registers').hide();
+    e.preventDefault();
+  });
+  $('.fieldlink').click(function(e) {
+    $(this).parents(".container").first().siblings(".fields").show();
+  });
+  $('.toggle-fields').click(function(e) {
+    $(this).parents(".container").first().siblings(".fields").toggle();
+    e.preventDefault();
+  });
+  if(window.location.hash && window.location.hash.includes(":")) {
+    var hash = window.location.hash;
+    var parts = hash.substr(1).split(":");
+    var peripheral = parts[0];
+    var register = parts[1];
+    $('#' + peripheral + '-registers').show(0, function() {
+      if(parts.length == 3) {
+        $('#' + peripheral + '-' + register + '-fields').show(0, function() {
+          window.location.hash = hash;
+        });
+      } else {
+        window.location.hash = hash;
+      }
+    });
+  }
+  $(function () {
+    $('[data-toggle="popover"]').popover()
+  })
+</script>
+
+</body>

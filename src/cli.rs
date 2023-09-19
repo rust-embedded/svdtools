@@ -3,8 +3,8 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use svdtools::{
-    convert::convert_cli, interrupts::interrupts_cli, makedeps::makedeps_cli, mmap::mmap_cli,
-    patch::patch_cli,
+    convert::convert_cli, html::html_cli, html::htmlcompare_cli, interrupts::interrupts_cli,
+    makedeps::makedeps_cli, mmap::mmap_cli, patch::patch_cli,
 };
 
 #[derive(Parser, Debug)]
@@ -82,6 +82,23 @@ enum Command {
         #[clap(long)]
         format_config: Option<PathBuf>,
     },
+    /// Generates webpage with tables of existing peripherals
+    Htmlcompare {
+        /// Path to write HTML files to
+        htmldir: PathBuf,
+
+        /// Input SVD XML files
+        svdfiles: Vec<PathBuf>,
+    },
+    /// Generates a webpage for a given SVD file containing details on every
+    /// peripheral and register and their level of coverage.
+    Html {
+        /// Path to write HTML files to
+        htmldir: PathBuf,
+
+        /// Path to patched SVD files
+        svdfiles: Vec<PathBuf>,
+    },
 }
 
 impl Command {
@@ -123,6 +140,12 @@ impl Command {
                 },
                 format_config.as_ref().map(|p| p.as_path()),
             )?,
+            Self::Htmlcompare { htmldir, svdfiles } => {
+                htmlcompare_cli::htmlcompare(htmldir, svdfiles)?;
+            }
+            Self::Html { htmldir, svdfiles } => {
+                html_cli::svd2html(htmldir, svdfiles)?;
+            }
         }
         Ok(())
     }
