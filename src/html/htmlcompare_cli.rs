@@ -17,7 +17,8 @@ fn parse(in_path: &Path) -> Result<Part> {
     let mut input = String::new();
     File::open(in_path)?.read_to_string(&mut input)?;
 
-    let device = svd_parser::parse_with_config(&input, &Config::default().expand(true))?;
+    let device =
+        svd_parser::parse_with_config(&input, &Config::default().expand(true).ignore_enums(true))?;
     let name = in_path
         .file_stem()
         .unwrap()
