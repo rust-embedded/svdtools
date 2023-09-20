@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.1] 2023-09-19
+
+* add `svdtools html` and `svdtools htmlcompare` tools from `stm32-rs`
 * update `svd-encoder`, `--format-config` and optional `out_path` for `patch`
 * add field name in enumeratedValues derive path
 
