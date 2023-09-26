@@ -396,6 +396,7 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName")?)
         .description(radd.get_string("description")?)
+        .derived_from(radd.get_string("derivedFrom")?)
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
         .properties(get_register_properties(radd)?)
