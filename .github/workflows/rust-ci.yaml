@@ -16,10 +16,7 @@ jobs:
       RUSTFLAGS: "-D warnings"
       RUSTDOCFLAGS: "-D warnings"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v4
       - run: cargo build
       - run: cargo doc
 
@@ -29,10 +26,7 @@ jobs:
       RUSTFLAGS: "-D warnings"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v4
       - run: cargo test
 
   test_convert:
@@ -41,10 +35,7 @@ jobs:
       RUSTFLAGS: "-D warnings"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v4
       - run: |
           cargo run --release -- convert res/example1/stm32l4x2.svd stm32l4x2.yaml
           cargo run --release -- convert res/example1/stm32l4x2.svd stm32l4x2.json
@@ -55,24 +46,14 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-      # not using clippy-check due to this issue:
-      # https://github.com/actions-rs/clippy-check/issues/2
+      - uses: actions/checkout@v4
       - run: cargo clippy -- --deny warnings
 
   format:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
+      - uses: actions/checkout@v4
       - run: cargo fmt -- --check
   check:
     name: Check
@@ -83,14 +64,7 @@ jobs:
           - stm32
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          components: rustfmt
+        uses: actions/checkout@v4
       - name: Install svdtools
         run: |
           cargo install svdtools --path .
