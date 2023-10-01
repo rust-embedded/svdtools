@@ -377,6 +377,7 @@ fn modify_dim_element<T: Clone>(
 fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
         .description(fadd.get_string("description")?)
+        .derived_from(fadd.get_string("derivedFrom")?)
         .access(fadd.get_str("access")?.and_then(Access::parse_str));
 
     if let Some(name) = fadd.get_str("name")? {
@@ -396,6 +397,7 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName")?)
         .description(radd.get_string("description")?)
+        .derived_from(radd.get_string("derivedFrom")?)
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
         .properties(get_register_properties(radd)?)
@@ -427,6 +429,7 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
 fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
         .description(cadd.get_string("description")?)
+        .derived_from(cadd.get_string("derivedFrom")?)
         .default_register_properties(get_register_properties(cadd)?)
         .children(match cadd.get_hash("registers")? {
             Some(h) => {
@@ -469,6 +472,7 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
         .display_name(padd.get_string("displayName")?)
         .version(padd.get_string("version")?)
         .description(padd.get_string("description")?)
+        .derived_from(padd.get_string("derivedFrom")?)
         .group_name(padd.get_string("groupName")?)
         .interrupt(if !modify {
             match padd.get_hash("interrupts")? {
