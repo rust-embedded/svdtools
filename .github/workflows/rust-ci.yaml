@@ -5,10 +5,20 @@ env:
 
 on:
   push:
-    branches: [ staging, trying, master ]
+    branches: master
   pull_request:
+  merge_group:
 
 jobs:
+  rust-ci:
+    name: Rust-CI
+    runs-on: ubuntu-latest
+    needs: [build, test, test_convert, clippy, format, check]
+    if: always()
+    steps:
+      - name: Done
+        run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+
   build:
     name: Build
     runs-on: ubuntu-latest
