@@ -5,10 +5,20 @@ env:
 
 on:
   push:
-    branches: [ staging, trying, master ]
+    branches: master
   pull_request:
+  merge_group:
 
 jobs:
+  python-ci:
+    name: Python-CI
+    runs-on: ubuntu-latest
+    needs: [test, check]
+    if: always()
+    steps:
+      - name: Done
+        run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+
   test:
     name: Test
     runs-on: ubuntu-latest
