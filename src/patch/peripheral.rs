@@ -1120,7 +1120,6 @@ fn collect_in_array(
     let mut registers = Vec::new();
     let mut place = usize::MAX;
     let mut i = 0;
-    let (li, ri) = spec_ind(rspec);
     while i < regs.len() {
         match &regs[i] {
             RegisterCluster::Register(Register::Single(r)) if matchname(&r.name, rspec) => {
@@ -1136,6 +1135,7 @@ fn collect_in_array(
         return Err(anyhow!("{path}: registers {rspec} not found"));
     }
     registers.sort_by_key(|r| r.address_offset);
+    let (li, ri) = spec_ind(rspec);
     let dim = registers.len();
     let dim_index = if rmod.contains_key(&"_start_from_zero".to_yaml()) {
         (0..dim).map(|v| v.to_string()).collect::<Vec<_>>()

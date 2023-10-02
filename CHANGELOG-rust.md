@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Fast fix for #161
+
 ## [v0.3.2] 2023-10-01
 
 * `_modify` `derivedFrom` for peripherals, clusters, registers and fields

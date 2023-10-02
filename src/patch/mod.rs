@@ -570,6 +570,7 @@ fn make_cpu(cmod: &Hash) -> Result<CpuBuilder> {
 
 /// Find left and right indices of enumeration token in specification string
 fn spec_ind(spec: &str) -> (usize, usize) {
+    let spec = spec.split(',').next().unwrap_or(spec);
     let li = spec
         .bytes()
         .position(|b| b == b'*')
