@@ -194,6 +194,9 @@ def spec_ind(spec):
     """
     Find left and right indices of enumeration token in specification string.
     """
+    comma = spec.find(",")
+    if comma > -1:
+        spec = spec[:comma]
     li1 = spec.find("*")
     li2 = spec.find("?")
     li3 = spec.find("[")
