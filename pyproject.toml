@@ -9,7 +9,7 @@ author = "Adam Greig"
 author-email = "adam@adamgreig.com"
 maintainer = "Nicolas Stalder"
 maintainer-email = "n@stalder.io"
-home-page = "https://github.com/stm32-rs/svdtools"
+home-page = "https://github.com/rust-embedded/svdtools"
 requires-python = ">=3.9"
 description-file = "README.md"
 requires = [
