@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
     Access, BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues,
-    ReadAction, Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
+    ReadAction, Register, RegisterInfo, Usage, ValidateLevel, WriteConstraint,
+    WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -720,6 +721,7 @@ impl RegisterExt for Register {
                 min: fmod[0].i64()? as u64,
                 max: fmod[1].i64()? as u64,
             }));
+            ftag.validate(ValidateLevel::Weak)?;
             set_any = true;
         }
         if !set_any {
