@@ -373,7 +373,11 @@ impl RegisterExt for Register {
                 return Err(anyhow!("{}: fields {fspec} not found", self.name));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
-            let (li, ri) = spec_ind(fspec);
+            let Some((li, ri)) = spec_ind(fspec) else {
+                return Err(anyhow!(
+                    "`{fspec}` contains no tokens or contains more than one token"
+                ));
+            };
             let dim = fields.len();
             let dim_index = if fmod.contains_key(&"_start_from_zero".to_yaml()) {
                 (0..dim).map(|v| v.to_string()).collect::<Vec<_>>()

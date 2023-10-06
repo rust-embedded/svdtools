@@ -1135,7 +1135,11 @@ fn collect_in_array(
         return Err(anyhow!("{path}: registers {rspec} not found"));
     }
     registers.sort_by_key(|r| r.address_offset);
-    let (li, ri) = spec_ind(rspec);
+    let Some((li, ri)) = spec_ind(rspec) else {
+        return Err(anyhow!(
+            "`{rspec}` contains no tokens or contains more than one token"
+        ));
+    };
     let dim = registers.len();
     let dim_index = if rmod.contains_key(&"_start_from_zero".to_yaml()) {
         (0..dim).map(|v| v.to_string()).collect::<Vec<_>>()
@@ -1241,10 +1245,18 @@ fn collect_in_cluster(
                 .iter()
                 .map(|r| {
                     let match_rspec = matchsubspec(&r.name, rspec).unwrap();
-                    let (li, ri) = spec_ind(match_rspec);
-                    r.name[li..r.name.len() - ri].to_string()
+                    let Some((li, ri)) = spec_ind(match_rspec) else {
+                        return Err(anyhow!(
+                            "`{match_rspec}` contains no tokens or contains more than one token"
+                        ));
+                    };
+                    Ok(r.name[li..r.name.len() - ri].to_string())
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>();
+            let new_dim_index = match new_dim_index {
+                Ok(v) => v,
+                Err(e) => return Err(e),
+            };
             if first {
                 dim = registers.len();
                 dim_index = new_dim_index;
@@ -1316,7 +1328,11 @@ fn collect_in_cluster(
             reg.name = if let Some(name) = rmod.get_str("name")? {
                 name.into()
             } else {
-                let (li, ri) = spec_ind(&rspec);
+                let Some((li, ri)) = spec_ind(&rspec) else {
+                    return Err(anyhow!(
+                        "`{rspec}` contains no tokens or contains more than one token"
+                    ));
+                };
                 format!("{}{}", &rspec[..li], &rspec[rspec.len() - ri..])
             };
             if let Some(desc) = rmod.get_str("description")? {

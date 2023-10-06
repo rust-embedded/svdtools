@@ -569,22 +569,37 @@ fn make_cpu(cmod: &Hash) -> Result<CpuBuilder> {
 }
 
 /// Find left and right indices of enumeration token in specification string
-fn spec_ind(spec: &str) -> (usize, usize) {
+///
+/// # Examples
+///
+/// ```ignore
+/// let cases = [
+///     ("RELOAD?", (6, 0)),
+///     ("TMR[1-57]_MUX", (3, 4)),
+///     ("DT[1-3]?", (2, 0)),
+///     ("GPIO[ABCDE]", (4, 0)),
+///     ("CSPT[1][7-9],CSPT[2][0-5]", (4, 0)),
+/// ];
+/// for (spec, (li, ri)) in cases {
+///     assert_eq!(spec_ind(spec), Some((li, ri)));
+/// }
+/// ```
+///
+fn spec_ind(spec: &str) -> Option<(usize, usize)> {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
     let spec = spec.split(',').next().unwrap_or(spec);
-    let li = spec
-        .bytes()
-        .position(|b| b == b'*')
-        .or_else(|| spec.bytes().position(|b| b == b'?'))
-        .or_else(|| spec.bytes().position(|b| b == b'['))
-        .unwrap();
-    let ri = spec
-        .bytes()
-        .rev()
-        .position(|b| b == b'*')
-        .or_else(|| spec.bytes().rev().position(|b| b == b'?'))
-        .or_else(|| spec.bytes().rev().position(|b| b == b']'))
-        .unwrap();
-    (li, ri)
+    static RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^\w*((?:[\?*]|\[\d+(?:-\d+)?\]|\[[a-zA-Z]+(?:-[a-zA-Z]+)?\])+)\w*$").unwrap()
+    });
+    let Some(caps) = RE.captures(spec) else {
+        return None;
+    };
+    let spec = caps.get(0).unwrap();
+    let token = caps.get(1).unwrap();
+    let li = token.start();
+    let ri = spec.end() - token.end();
+    Some((li, ri))
 }
 
 fn check_offsets(offsets: &[u32], dim_increment: u32) -> bool {
