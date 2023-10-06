@@ -171,11 +171,15 @@ nav.menu a {
               </a>
             </h4>
             <p>{{ register.description }}</p>
-            <p>Offset: {{ register.offset }}, size: {{ register.size }}, reset: {{ register.resetValue }}, access: {{ register.access }}</p>
+            <p>
+              Offset: {{ register.offset }}, size: {{ register.size }}, reset: {{ register.resetValue }}, access: {{ register.access 
+              }}{% if register.writeConstraint.range %}, allowed values: {{ register.writeConstraint.range.minimum }}-{{ register.writeConstraint.range.maximum }}{% endif %}
+            </p>
             <div class="progress">
               
               <div class="progress-bar progress-bar-success" style="width: {{ register.progress }}%"></div>
             </div>
+            {% if register.fields_total > 0 %}
             <p>
               <em>
                 {{ register.fields_documented}}/{{ register.fields_total }}
@@ -215,6 +219,7 @@ nav.menu a {
                 </div>
               </div>
             </div>
+            {% endif %}
             <div class="container fields" id="{{ pname }}-{{ register.name }}-fields">
               {% for field in register.fields %}
               <div class="row">
