@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context};
 use svd_parser::svd::{
     self, Cluster, ClusterInfo, DimElement, Interrupt, Peripheral, Register, RegisterCluster,
-    RegisterInfo, WriteConstraint, WriteConstraintRange,
+    RegisterInfo,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -417,30 +417,6 @@ impl RegisterBlockExt for Peripheral {
             let dim = make_dim_element(rmod)?;
             for rtag in rtags {
                 modify_dim_element(rtag, &dim)?;
-                if let Some(value) = rmod
-                    .get(&"_write_constraint".to_yaml())
-                    .or_else(|| rmod.get(&"writeConstraint".to_yaml()))
-                {
-                    let wc = match value {
-                        Yaml::String(s) if s == "none" => {
-                            // Completely remove the existing writeConstraint
-                            None
-                        }
-                        Yaml::String(s) if s == "enum" => {
-                            // Only allow enumerated values
-                            Some(WriteConstraint::UseEnumeratedValues(true))
-                        }
-                        Yaml::Array(a) => {
-                            // Allow a certain range
-                            Some(WriteConstraint::Range(WriteConstraintRange {
-                                min: a[0].i64()? as u64,
-                                max: a[1].i64()? as u64,
-                            }))
-                        }
-                        _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
-                    };
-                    rtag.write_constraint = wc;
-                }
                 rtag.modify_from(register_builder.clone(), VAL_LVL)?;
                 if let Some("") = rmod.get_str("access")? {
                     rtag.properties.access = None;
@@ -905,30 +881,6 @@ impl RegisterBlockExt for Cluster {
             let dim = make_dim_element(rmod)?;
             for rtag in rtags {
                 modify_dim_element(rtag, &dim)?;
-                if let Some(value) = rmod
-                    .get(&"_write_constraint".to_yaml())
-                    .or_else(|| rmod.get(&"writeConstraint".to_yaml()))
-                {
-                    let wc = match value {
-                        Yaml::String(s) if s == "none" => {
-                            // Completely remove the existing writeConstraint
-                            None
-                        }
-                        Yaml::String(s) if s == "enum" => {
-                            // Only allow enumerated values
-                            Some(WriteConstraint::UseEnumeratedValues(true))
-                        }
-                        Yaml::Array(a) => {
-                            // Allow a certain range
-                            Some(WriteConstraint::Range(WriteConstraintRange {
-                                min: a[0].i64()? as u64,
-                                max: a[1].i64()? as u64,
-                            }))
-                        }
-                        _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
-                    };
-                    rtag.write_constraint = wc;
-                }
                 rtag.modify_from(register_builder.clone(), VAL_LVL)?;
                 if let Some("") = rmod.get_str("access")? {
                     rtag.properties.access = None;
