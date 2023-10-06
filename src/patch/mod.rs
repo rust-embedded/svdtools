@@ -9,7 +9,7 @@ use svd_parser::svd::{
     AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, Cpu, CpuBuilder, Endian, EnumeratedValue,
     EnumeratedValues, EnumeratedValuesBuilder, FieldInfo, FieldInfoBuilder, Interrupt,
     PeripheralInfo, PeripheralInfoBuilder, RegisterCluster, RegisterInfo, RegisterInfoBuilder,
-    RegisterProperties, Usage, ValidateLevel,
+    RegisterProperties, Usage, ValidateLevel, WriteConstraint, WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
 use svd_rs::{DimElement, DimElementBuilder, MaybeArray};
@@ -423,6 +423,32 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     if let Some(address_offset) = radd.get_i64("addressOffset")? {
         rnew = rnew.address_offset(address_offset as u32);
     }
+
+    if let Some(write_constraint) = radd
+        .get(&"_write_constraint".to_yaml())
+        .or_else(|| radd.get(&"writeConstraint".to_yaml()))
+    {
+        let wc = match write_constraint {
+            Yaml::String(s) if s == "none" => {
+                // Completely remove the existing writeConstraint
+                None
+            }
+            Yaml::String(s) if s == "enum" => {
+                // Only allow enumerated values
+                Some(WriteConstraint::UseEnumeratedValues(true))
+            }
+            Yaml::Array(a) => {
+                // Allow a certain range
+                Some(WriteConstraint::Range(WriteConstraintRange {
+                    min: a[0].i64()? as u64,
+                    max: a[1].i64()? as u64,
+                }))
+            }
+            _ => return Err(anyhow!("Unknown writeConstraint type {write_constraint:?}")),
+        };
+        rnew = rnew.write_constraint(wc);
+    }
+
     Ok(rnew)
 }
 

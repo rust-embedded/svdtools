@@ -351,6 +351,7 @@ fn parse_register(
         "description": rtag.description.as_deref().map(sanitize),
         "resetValue": format!("0x{:08X}", rtag.properties.reset_value.unwrap_or_default()),
         "access": raccs,
+        "writeConstraint": rtag.write_constraint,
         "fields": fields,
         "table": table,
         "fields_total": register_fields_total,
