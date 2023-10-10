@@ -643,7 +643,13 @@ impl RegisterBlockExt for Peripheral {
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
-            Err(anyhow!("Could not find `{pname}:{rspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{rspec}. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -659,7 +665,13 @@ impl RegisterBlockExt for Peripheral {
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
-            Err(anyhow!("Could not find `{pname}:{cspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{cspec}. Present clusters: {}.`",
+                self.clusters()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -1088,7 +1100,14 @@ impl RegisterBlockExt for Cluster {
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
-            Err(anyhow!("Could not find `{pname}:{rspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{}:{rspec}. Present registers: {}.`",
+                self.name,
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -1104,7 +1123,14 @@ impl RegisterBlockExt for Cluster {
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
-            Err(anyhow!("Could not find `{pname}:{cspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{}:{cspec}. Present clusters: {}.`",
+                self.name,
+                self.clusters()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }

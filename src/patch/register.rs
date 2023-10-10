@@ -321,8 +321,12 @@ impl RegisterExt for Register {
 
         if names.is_empty() {
             return Err(anyhow!(
-                "Could not find any fields to merge {}.{key}",
-                self.name
+                "Could not find any fields to merge {}:{key}. Present fields: {}.`",
+                self.name,
+                self.fields()
+                    .map(|f| f.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ));
         }
         let mut bitwidth = 0;
@@ -430,15 +434,19 @@ impl RegisterExt for Register {
         let (new_fields, name) = match (it.next(), it.next()) {
             (None, _) => {
                 return Err(anyhow!(
-                    "Could not find any fields to split {}.{fspec}",
-                    self.name
-                ))
+                    "Could not find any fields to split {}:{fspec}. Present fields: {}.`",
+                    self.name,
+                    self.fields()
+                        .map(|f| f.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
             }
             (Some(_), Some(_)) => {
                 return Err(anyhow!(
-                    "Only one field can be spitted at time {}.{fspec}",
+                    "Only one field can be splitted at time {}:{fspec}",
                     self.name
-                ))
+                ));
             }
             (Some(first), None) => {
                 let name = if let Some(n) = fsplit.get_str("name")? {
@@ -687,7 +695,14 @@ impl RegisterExt for Register {
                 .map(|f| (f.bit_range.offset, f.name.to_string()))
                 .collect::<Vec<_>>();
             if offsets.is_empty() {
-                return Err(anyhow!("Could not find {pname}:{}.{fspec}", self.name));
+                return Err(anyhow!(
+                    "Could not find field {pname}:{}:{fspec}. Present fields: {}.`",
+                    self.name,
+                    self.fields()
+                        .map(|f| f.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
             }
             let (min_offset, fname) = offsets.iter().min_by_key(|on| on.0).unwrap();
             let name = make_ev_name(&fname.replace("%s", ""), usage)?;
@@ -727,7 +742,14 @@ impl RegisterExt for Register {
             set_any = true;
         }
         if !set_any {
-            return Err(anyhow!("Could not find {pname}:{}.{fspec}", self.name));
+            return Err(anyhow!(
+                "Could not find field {pname}:{}:{fspec}. Present fields: {}.`",
+                self.name,
+                self.fields()
+                    .map(|f| f.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
         Ok(())
     }
