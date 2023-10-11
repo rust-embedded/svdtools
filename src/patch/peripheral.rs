@@ -484,8 +484,15 @@ impl RegisterBlockExt for Peripheral {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
         };
 
-        self.get_register(rderive)
-            .ok_or_else(|| anyhow!("register {rderive} not found"))?;
+        self.get_register(rderive).ok_or_else(|| {
+            anyhow!(
+                "register {rderive} not found. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?;
 
         match self.get_mut_register(rname) {
             Some(register) => register.modify_from(info, VAL_LVL)?,
@@ -956,8 +963,15 @@ impl RegisterBlockExt for Cluster {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
         };
 
-        self.get_register(rderive)
-            .ok_or_else(|| anyhow!("register {rderive} not found"))?;
+        self.get_register(rderive).ok_or_else(|| {
+            anyhow!(
+                "register {rderive} not found. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?;
 
         match self.get_mut_register(rname) {
             Some(register) => register.modify_from(info, VAL_LVL)?,
@@ -1158,7 +1172,16 @@ fn collect_in_array(
         }
     }
     if registers.is_empty() {
-        return Err(anyhow!("{path}: registers {rspec} not found"));
+        return Err(anyhow!(
+            "{path}: registers {rspec} not found. Present registers: {}.`",
+            regs.iter()
+                .filter_map(|rc| match rc {
+                    RegisterCluster::Register(r) => Some(r.name.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
     }
     registers.sort_by_key(|r| r.address_offset);
     let Some((li, ri)) = spec_ind(rspec) else {
@@ -1255,7 +1278,16 @@ fn collect_in_cluster(
             }
         }
         if registers.is_empty() {
-            return Err(anyhow!("{path}: registers {rspec} not found"));
+            return Err(anyhow!(
+                "{path}: registers {rspec} not found. Present registers: {}.`",
+                regs.iter()
+                    .filter_map(|rc| match rc {
+                        RegisterCluster::Register(r) => Some(r.name.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
         if single {
             if registers.len() > 1 {

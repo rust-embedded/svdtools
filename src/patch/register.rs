@@ -374,7 +374,14 @@ impl RegisterExt for Register {
                 }
             }
             if fields.is_empty() {
-                return Err(anyhow!("{}: fields {fspec} not found", self.name));
+                return Err(anyhow!(
+                    "{}: fields {fspec} not found. Present fields: {}.`",
+                    self.name,
+                    self.fields()
+                        .map(|f| f.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
             let Some((li, ri)) = spec_ind(fspec) else {
