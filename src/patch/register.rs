@@ -405,7 +405,7 @@ impl RegisterExt for Register {
             let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
             if !check_offsets(&offsets, dim_increment) {
                 return Err(anyhow!(
-                    "{}: registers cannot be collected into {fspec} array",
+                    "{}: fields cannot be collected into {fspec} array. Different bitOffset increments",
                     self.name
                 ));
             }
