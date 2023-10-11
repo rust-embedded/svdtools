@@ -387,7 +387,14 @@ impl DeviceExt for Device {
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
         if pcount == 0 {
-            Err(anyhow!("Could not find `{pspec}`"))
+            Err(anyhow!(
+                "Could not find `{pspec}. Present peripherals: {}.`",
+                self.peripherals
+                    .iter()
+                    .map(|p| p.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }

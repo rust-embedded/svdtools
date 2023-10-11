@@ -484,8 +484,15 @@ impl RegisterBlockExt for Peripheral {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
         };
 
-        self.get_register(rderive)
-            .ok_or_else(|| anyhow!("register {rderive} not found"))?;
+        self.get_register(rderive).ok_or_else(|| {
+            anyhow!(
+                "register {rderive} not found. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?;
 
         match self.get_mut_register(rname) {
             Some(register) => register.modify_from(info, VAL_LVL)?,
@@ -643,7 +650,13 @@ impl RegisterBlockExt for Peripheral {
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
-            Err(anyhow!("Could not find `{pname}:{rspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{rspec}. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -659,7 +672,13 @@ impl RegisterBlockExt for Peripheral {
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
-            Err(anyhow!("Could not find `{pname}:{cspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{cspec}. Present clusters: {}.`",
+                self.clusters()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -944,8 +963,15 @@ impl RegisterBlockExt for Cluster {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
         };
 
-        self.get_register(rderive)
-            .ok_or_else(|| anyhow!("register {rderive} not found"))?;
+        self.get_register(rderive).ok_or_else(|| {
+            anyhow!(
+                "register {rderive} not found. Present registers: {}.`",
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?;
 
         match self.get_mut_register(rname) {
             Some(register) => register.modify_from(info, VAL_LVL)?,
@@ -1088,7 +1114,14 @@ impl RegisterBlockExt for Cluster {
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
-            Err(anyhow!("Could not find `{pname}:{rspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{}:{rspec}. Present registers: {}.`",
+                self.name,
+                self.registers()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -1104,7 +1137,14 @@ impl RegisterBlockExt for Cluster {
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
-            Err(anyhow!("Could not find `{pname}:{cspec}`"))
+            Err(anyhow!(
+                "Could not find `{pname}:{}:{cspec}. Present clusters: {}.`",
+                self.name,
+                self.clusters()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
         } else {
             Ok(())
         }
@@ -1132,7 +1172,16 @@ fn collect_in_array(
         }
     }
     if registers.is_empty() {
-        return Err(anyhow!("{path}: registers {rspec} not found"));
+        return Err(anyhow!(
+            "{path}: registers {rspec} not found. Present registers: {}.`",
+            regs.iter()
+                .filter_map(|rc| match rc {
+                    RegisterCluster::Register(r) => Some(r.name.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
     }
     registers.sort_by_key(|r| r.address_offset);
     let Some((li, ri)) = spec_ind(rspec) else {
@@ -1153,14 +1202,20 @@ fn collect_in_array(
         .iter()
         .map(|r| r.address_offset)
         .collect::<Vec<_>>();
+    let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
+    if !check_offsets(&offsets, dim_increment) {
+        return Err(anyhow!(
+            "{}: registers cannot be collected into {rspec} array. Different addressOffset increments",
+            path
+        ));
+    }
     let bitmasks = registers
         .iter()
         .map(RegisterInfo::get_bitmask)
         .collect::<Vec<_>>();
-    let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
-    if !(check_offsets(&offsets, dim_increment) && bitmasks.iter().all(|&m| m == bitmasks[0])) {
+    if !bitmasks.iter().all(|&m| m == bitmasks[0]) {
         return Err(anyhow!(
-            "{}: registers cannot be collected into {rspec} array",
+            "{}: registers cannot be collected into {rspec} array. Different bit masks",
             path
         ));
     }
@@ -1199,8 +1254,7 @@ fn collect_in_cluster(
     cmod: &Hash,
 ) -> PatchResult {
     let mut rdict = linked_hash_map::LinkedHashMap::new();
-    let mut first = true;
-    let mut check = true;
+    let mut first = None;
     let mut dim = 0;
     let mut dim_index = Vec::new();
     let mut dim_increment = 0;
@@ -1229,7 +1283,16 @@ fn collect_in_cluster(
             }
         }
         if registers.is_empty() {
-            return Err(anyhow!("{path}: registers {rspec} not found"));
+            return Err(anyhow!(
+                "{path}: registers {rspec} not found. Present registers: {}.`",
+                regs.iter()
+                    .filter_map(|rc| match rc {
+                        RegisterCluster::Register(r) => Some(r.name.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
         if single {
             if registers.len() > 1 {
@@ -1253,14 +1316,22 @@ fn collect_in_cluster(
                     Ok(r.name[li..r.name.len() - ri].to_string())
                 })
                 .collect::<Result<Vec<_>, _>>();
-            let new_dim_index = match new_dim_index {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            };
-            if first {
+            let new_dim_index = new_dim_index?;
+            if let Some(rspec1) = first.as_ref() {
+                let len = registers.len();
+                if dim != len {
+                    return Err(anyhow!(
+                        "{path}: registers cannot be collected into {cname} cluster. Different number of registers {rspec} ({len}) and {rspec1} ({dim})"
+                    ));
+                }
+                if dim_index != new_dim_index {
+                    return Err(anyhow!(
+                        "{path}: registers cannot be collected into {cname} cluster. {rspec} and {rspec1} have different indeces"
+                    ));
+                }
+            } else {
                 dim = registers.len();
                 dim_index = new_dim_index;
-                dim_increment = 0;
                 offsets = registers
                     .iter()
                     .map(|r| r.address_offset)
@@ -1268,28 +1339,20 @@ fn collect_in_cluster(
                 if dim > 1 {
                     dim_increment = offsets[1] - offsets[0];
                 }
-                if !(check_offsets(&offsets, dim_increment)
-                    && bitmasks.iter().all(|&m| m == bitmasks[0]))
-                {
-                    check = false;
-                    break;
-                }
-            } else if (dim != registers.len())
-                || (dim_index != new_dim_index)
-                || (!check_offsets(&offsets, dim_increment))
-                || (!bitmasks.iter().all(|&m| m == bitmasks[0]))
-            {
-                check = false;
-                break;
+                first = Some(rspec.clone());
+            }
+            if !check_offsets(&offsets, dim_increment) {
+                return Err(anyhow!(
+                    "{path}: registers cannot be collected into {cname} cluster. Different addressOffset increments in {rspec} registers"
+                ));
+            }
+            if !bitmasks.iter().all(|&m| m == bitmasks[0]) {
+                return Err(anyhow!(
+                    "{path}: registers cannot be collected into {cname} cluster. Different bit masks in {rspec} registers"
+                ));
             }
         }
         rdict.insert(rspec.to_string(), registers);
-        first = false;
-    }
-    if !check {
-        return Err(anyhow!(
-            "{path}: registers cannot be collected into {cname} cluster"
-        ));
     }
     let address_offset = rdict
         .values()

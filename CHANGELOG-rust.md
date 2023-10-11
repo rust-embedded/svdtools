@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Improve "Could not find errors"
+
 ## [v0.3.3] 2023-10-02
 
 * Fast fix for #161
