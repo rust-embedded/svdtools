@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Improve "Could not find errors"
+* use register size as dimIncrement for 1-element arrays
 
 ## [v0.3.3] 2023-10-02
 

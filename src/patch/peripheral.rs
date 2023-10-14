@@ -1202,7 +1202,15 @@ fn collect_in_array(
         .iter()
         .map(|r| r.address_offset)
         .collect::<Vec<_>>();
-    let dim_increment = if dim > 1 { offsets[1] - offsets[0] } else { 0 };
+    let dim_increment = if dim > 1 {
+        offsets[1] - offsets[0]
+    } else {
+        registers[0]
+            .properties
+            .size
+            .map(|s| s / 8)
+            .unwrap_or_default()
+    };
     if !check_offsets(&offsets, dim_increment) {
         return Err(anyhow!(
             "{}: registers cannot be collected into {rspec} array. Different addressOffset increments",
