@@ -728,7 +728,7 @@ impl RegisterExt for Register {
                 } else {
                     set_enum(
                         ftag,
-                        make_derived_enumerated_values(&format!("{fname}.{name}"))?,
+                        make_derived_enumerated_values(&name)?,
                         checked_usage,
                         true,
                         access,
