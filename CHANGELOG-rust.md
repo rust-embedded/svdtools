@@ -5,9 +5,13 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.4] 2023-10-14
+
 * Revert #145
 * Improve "Could not find errors"
 * use register size as dimIncrement for 1-element arrays
+* Replace spec indices search with regex
+* modify writeConstraint for register
 
 ## [v0.3.3] 2023-10-02
 
@@ -94,7 +98,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.4...HEAD
+[v0.3.4]: https://github.com/rust-embedded/svdtools/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/rust-embedded/svdtools/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/rust-embedded/svdtools/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/rust-embedded/svdtools/compare/v0.3.0...v0.3.1
