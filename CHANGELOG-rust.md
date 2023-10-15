@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Add `--enum_derive` flag
+
 ## [v0.3.6] 2023-11-01
 
 * Fix #184

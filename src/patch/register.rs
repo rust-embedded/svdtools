@@ -6,11 +6,13 @@ use svd_parser::svd::{
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
+use crate::patch::EnumAutoDerive;
+
 use super::iterators::{MatchIter, Matched};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
     check_offsets, common_description, make_dim_element, matchname, modify_dim_element, spec_ind,
-    PatchResult, VAL_LVL,
+    Config, PatchResult, VAL_LVL,
 };
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
@@ -36,7 +38,7 @@ impl RegisterInfoExt for RegisterInfo {
 /// Collecting methods for processing register contents
 pub trait RegisterExt {
     /// Work through a register, handling all fields
-    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) -> PatchResult;
+    fn process(&mut self, rmod: &Hash, pname: &str, config: &Config) -> PatchResult;
 
     /// Add fname given by fadd to rtag
     fn add_field(&mut self, fname: &str, fadd: &Hash) -> PatchResult;
@@ -51,7 +53,13 @@ pub trait RegisterExt {
     fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
 
     /// Work through a field, handling either an enum or a range
-    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult;
+    fn process_field(
+        &mut self,
+        pname: &str,
+        fspec: &str,
+        fmod: &Yaml,
+        config: &Config,
+    ) -> PatchResult;
 
     /// Add an enumeratedValues given by field to all fspec in rtag
     fn process_field_enum(
@@ -60,6 +68,7 @@ pub trait RegisterExt {
         fspec: &str,
         fmod: &Hash,
         usage: Option<Usage>,
+        config: &Config,
     ) -> PatchResult;
 
     /// Set readAction for field
@@ -93,7 +102,7 @@ pub trait RegisterExt {
 }
 
 impl RegisterExt for Register {
-    fn process(&mut self, rmod: &Hash, pname: &str, update_fields: bool) -> PatchResult {
+    fn process(&mut self, rmod: &Hash, pname: &str, config: &Config) -> PatchResult {
         if self.derived_from.is_some() {
             return Ok(());
         }
@@ -171,11 +180,11 @@ impl RegisterExt for Register {
         }
 
         // Handle fields
-        if update_fields {
+        if config.update_fields {
             for (fspec, field) in rmod {
                 let fspec = fspec.str()?;
                 if !fspec.starts_with('_') {
-                    self.process_field(pname, fspec, field)
+                    self.process_field(pname, fspec, field, config)
                         .with_context(|| format!("Processing field matched to `{fspec}`"))?;
                 }
             }
@@ -488,7 +497,13 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn process_field(&mut self, pname: &str, fspec: &str, fmod: &Yaml) -> PatchResult {
+    fn process_field(
+        &mut self,
+        pname: &str,
+        fspec: &str,
+        fmod: &Yaml,
+        config: &Config,
+    ) -> PatchResult {
         const READ_KEYS: [&str; 5] = ["_read", "_RM", "_RS", "_RC", "_RME"];
         const READ_VALS: [Option<ReadAction>; 5] = [
             None,
@@ -521,15 +536,21 @@ impl RegisterExt for Register {
                     .iter()
                     .any(|key| fmod.contains_key(&key.to_yaml()));
                 if !is_read && !is_write {
-                    self.process_field_enum(pname, fspec, fmod, None)
+                    self.process_field_enum(pname, fspec, fmod, None, config)
                         .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
                         for (key, action) in READ_KEYS.into_iter().zip(READ_VALS.into_iter()) {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
-                                    self.process_field_enum(pname, fspec, fmod, Some(Usage::Read))
-                                        .with_context(|| "Adding read-only enumeratedValues")?;
+                                    self.process_field_enum(
+                                        pname,
+                                        fspec,
+                                        fmod,
+                                        Some(Usage::Read),
+                                        config,
+                                    )
+                                    .with_context(|| "Adding read-only enumeratedValues")?;
                                 }
                                 if let Some(action) = action {
                                     self.set_field_read_action(fspec, action);
@@ -542,8 +563,14 @@ impl RegisterExt for Register {
                         for (key, mwv) in WRITE_KEYS.into_iter().zip(WRITE_VALS.into_iter()) {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
-                                    self.process_field_enum(pname, fspec, fmod, Some(Usage::Write))
-                                        .with_context(|| "Adding write-only enumeratedValues")?;
+                                    self.process_field_enum(
+                                        pname,
+                                        fspec,
+                                        fmod,
+                                        Some(Usage::Write),
+                                        config,
+                                    )
+                                    .with_context(|| "Adding write-only enumeratedValues")?;
                                 }
                                 if let Some(mwv) = mwv {
                                     self.set_field_modified_write_values(fspec, mwv);
@@ -584,6 +611,7 @@ impl RegisterExt for Register {
         fspec: &str,
         mut fmod: &Hash,
         usage: Option<Usage>,
+        config: &Config,
     ) -> PatchResult {
         fn set_enum(
             f: &mut FieldInfo,
@@ -714,14 +742,20 @@ impl RegisterExt for Register {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
                 let checked_usage = check_usage(access, usage)
                     .with_context(|| format!("In field {}", ftag.name))?;
-                if ftag.bit_range.offset == *min_offset {
-                    let evs = make_ev_array(fmod)?
-                        .name(Some(name.clone()))
-                        // TODO: uncomment when python version reaches same functionality
-                        //.usage(make_usage(access, checked_usage))
-                        .usage(Some(checked_usage))
-                        .build(VAL_LVL)?;
+                if config.enum_derive == EnumAutoDerive::None
+                    || ftag.bit_range.offset == *min_offset
+                {
+                    let mut evs = make_ev_array(fmod)?.usage(make_usage(access, checked_usage));
+                    if ftag.bit_range.offset == *min_offset {
+                        evs = evs.name(Some(name.clone()));
+                    }
+                    let evs = evs.build(VAL_LVL)?;
                     set_enum(ftag, evs, checked_usage, replace_if_exists, access)?;
+                } else if config.enum_derive == EnumAutoDerive::Field {
+                    ftag.modify_from(
+                        FieldInfo::builder().derived_from(Some(fname.into())),
+                        VAL_LVL,
+                    )?;
                 } else {
                     set_enum(
                         ftag,

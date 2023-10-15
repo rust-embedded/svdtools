@@ -31,9 +31,35 @@ use crate::get_encoder_config;
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
 
 #[non_exhaustive]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub show_patch_on_error: bool,
+    pub enum_derive: EnumAutoDerive,
+    pub update_fields: bool,
+}
+
+/// Derive level when several identical enumerationValues added in a field
+#[derive(clap::ValueEnum)]
+#[value(rename_all = "lower")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EnumAutoDerive {
+    #[default]
+    /// Derive enumeratedValues
+    Enum,
+    /// Derive fields
+    Field,
+    /// Make a copy
+    None,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            show_patch_on_error: false,
+            enum_derive: Default::default(),
+            update_fields: true,
+        }
+    }
 }
 
 pub fn process_file(
@@ -76,7 +102,7 @@ pub fn process_file(
     yaml_includes(root)?;
 
     // Process device
-    svd.process(root, true).with_context(|| {
+    svd.process(root, config).with_context(|| {
         let name = &svd.name;
         let mut out_str = String::new();
         let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);

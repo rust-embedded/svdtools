@@ -11,7 +11,7 @@ use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
     check_offsets, common_description, make_dim_element, matchname, matchsubspec,
-    modify_dim_element, spec_ind, PatchResult, VAL_LVL,
+    modify_dim_element, spec_ind, Config, PatchResult, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
 
@@ -22,13 +22,13 @@ pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, RegisterIterMut<'a>>;
 /// Collecting methods for processing peripheral contents
 pub trait PeripheralExt: InterruptExt + RegisterBlockExt {
     /// Work through a peripheral, handling all registers
-    fn process(&mut self, peripheral: &Hash, update_fields: bool) -> PatchResult;
+    fn process(&mut self, peripheral: &Hash, config: &Config) -> PatchResult;
 }
 
 /// Collecting methods for processing cluster contents
 pub trait ClusterExt: RegisterBlockExt {
     /// Work through a cluster, handling all registers
-    fn process(&mut self, peripheral: &Hash, pname: &str, update_fields: bool) -> PatchResult;
+    fn process(&mut self, peripheral: &Hash, pname: &str, config: &Config) -> PatchResult;
 }
 
 /// Collecting methods for processing peripheral interrupt contents
@@ -89,15 +89,10 @@ pub trait RegisterBlockExt {
     /// Modify cspec inside ptag according to cmod
     fn modify_cluster(&mut self, cspec: &str, cmod: &Hash) -> PatchResult;
     /// Work through a register, handling all fields
-    fn process_register(
-        &mut self,
-        rspec: &str,
-        register: &Hash,
-        update_fields: bool,
-    ) -> PatchResult;
+    fn process_register(&mut self, rspec: &str, register: &Hash, config: &Config) -> PatchResult;
 
     /// Work through a cluster, handling all contents
-    fn process_cluster(&mut self, cspec: &str, cluster: &Hash, update_fields: bool) -> PatchResult;
+    fn process_cluster(&mut self, cspec: &str, cluster: &Hash, config: &Config) -> PatchResult;
 
     /// Delete substring from the beginning of register names inside ptag
     fn strip_start(&mut self, prefix: &str) -> PatchResult;
@@ -106,17 +101,17 @@ pub trait RegisterBlockExt {
     fn strip_end(&mut self, suffix: &str) -> PatchResult;
 
     /// Collect same registers in peripheral into register array
-    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash) -> PatchResult;
+    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult;
 
     /// Collect registers in peripheral into clusters
-    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash) -> PatchResult;
+    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult;
 
     /// Clear contents of all fields inside registers matched by rspec
     fn clear_fields(&mut self, rspec: &str) -> PatchResult;
 }
 
 impl PeripheralExt for Peripheral {
-    fn process(&mut self, pmod: &Hash, update_fields: bool) -> PatchResult {
+    fn process(&mut self, pmod: &Hash, config: &Config) -> PatchResult {
         // For derived peripherals, only process interrupts
         if self.derived_from.is_some() {
             if let Some(deletions) = pmod.get_hash("_delete").ok().flatten() {
@@ -337,7 +332,7 @@ impl PeripheralExt for Peripheral {
         for (rspec, register) in pmod {
             let rspec = rspec.str()?;
             if !rspec.starts_with('_') {
-                self.process_register(rspec, register.hash()?, update_fields)
+                self.process_register(rspec, register.hash()?, config)
                     .with_context(|| format!("According to `{rspec}`"))?;
             }
         }
@@ -345,14 +340,14 @@ impl PeripheralExt for Peripheral {
         // Collect registers in arrays
         for (rspec, rmod) in pmod.hash_iter("_array") {
             let rspec = rspec.str()?;
-            self.collect_in_array(rspec, rmod.hash()?)
+            self.collect_in_array(rspec, rmod.hash()?, config)
                 .with_context(|| format!("Collecting registers matched to `{rspec}` in array"))?;
         }
 
         // Collect registers in clusters
         for (cname, cmod) in pmod.hash_iter("_cluster") {
             let cname = cname.str()?;
-            self.collect_in_cluster(cname, cmod.hash()?)
+            self.collect_in_cluster(cname, cmod.hash()?, config)
                 .with_context(|| format!("Collecting registers in cluster `{cname}`"))?;
         }
 
@@ -360,7 +355,7 @@ impl PeripheralExt for Peripheral {
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
             if !cspec.starts_with('_') {
-                self.process_cluster(cspec, cluster.hash()?, update_fields)
+                self.process_cluster(cspec, cluster.hash()?, config)
                     .with_context(|| format!("According to `{cspec}`"))?;
             }
         }
@@ -610,18 +605,18 @@ impl RegisterBlockExt for Peripheral {
         Ok(())
     }
 
-    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash) -> PatchResult {
+    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         if let Some(regs) = self.registers.as_mut() {
-            collect_in_array(regs, &pname, rspec, rmod)?;
+            collect_in_array(regs, &pname, rspec, rmod, config)?;
         }
         Ok(())
     }
 
-    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash) -> PatchResult {
+    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         if let Some(regs) = self.registers.as_mut() {
-            collect_in_cluster(regs, &pname, cname, cmod)?;
+            collect_in_cluster(regs, &pname, cname, cmod, config)?;
         }
         Ok(())
     }
@@ -636,13 +631,13 @@ impl RegisterBlockExt for Peripheral {
         Ok(())
     }
 
-    fn process_register(&mut self, rspec: &str, rmod: &Hash, update_fields: bool) -> PatchResult {
+    fn process_register(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
         // Find all registers that match the spec
         let mut rcount = 0;
         let pname = self.name.clone();
         for rtag in self.iter_registers(rspec) {
             rcount += 1;
-            rtag.process(rmod, &pname, update_fields)
+            rtag.process(rmod, &pname, config)
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
@@ -655,13 +650,13 @@ impl RegisterBlockExt for Peripheral {
         }
     }
 
-    fn process_cluster(&mut self, cspec: &str, cmod: &Hash, update_fields: bool) -> PatchResult {
+    fn process_cluster(&mut self, cspec: &str, cmod: &Hash, config: &Config) -> PatchResult {
         // Find all clusters that match the spec
         let mut ccount = 0;
         let pname = self.name.clone();
         for ctag in self.iter_clusters(cspec) {
             ccount += 1;
-            ctag.process(cmod, &pname, update_fields)
+            ctag.process(cmod, &pname, config)
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
@@ -676,7 +671,7 @@ impl RegisterBlockExt for Peripheral {
 }
 
 impl ClusterExt for Cluster {
-    fn process(&mut self, pmod: &Hash, _pname: &str, update_fields: bool) -> PatchResult {
+    fn process(&mut self, pmod: &Hash, _pname: &str, config: &Config) -> PatchResult {
         // Handle deletions
         if let Some(deletions) = pmod.get(&"_delete".to_yaml()) {
             match deletions {
@@ -842,7 +837,7 @@ impl ClusterExt for Cluster {
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
             if !cspec.starts_with('_') {
-                self.process_cluster(cspec, cluster.hash()?, update_fields)
+                self.process_cluster(cspec, cluster.hash()?, config)
                     .with_context(|| format!("According to `{cspec}`"))?;
             }
         }
@@ -851,7 +846,7 @@ impl ClusterExt for Cluster {
         for (rspec, register) in pmod {
             let rspec = rspec.str()?;
             if !rspec.starts_with('_') {
-                self.process_register(rspec, register.hash()?, update_fields)
+                self.process_register(rspec, register.hash()?, config)
                     .with_context(|| format!("According to `{rspec}`"))?;
             }
         }
@@ -859,14 +854,14 @@ impl ClusterExt for Cluster {
         // Collect registers in arrays
         for (rspec, rmod) in pmod.hash_iter("_array") {
             let rspec = rspec.str()?;
-            self.collect_in_array(rspec, rmod.hash()?)
+            self.collect_in_array(rspec, rmod.hash()?, config)
                 .with_context(|| format!("Collecting registers matched to `{rspec}` in array"))?;
         }
 
         // Collect registers in clusters
         for (cname, cmod) in pmod.hash_iter("_cluster") {
             let cname = cname.str()?;
-            self.collect_in_cluster(cname, cmod.hash()?)
+            self.collect_in_cluster(cname, cmod.hash()?, config)
                 .with_context(|| format!("Collecting registers in cluster `{cname}`"))?;
         }
 
@@ -1069,16 +1064,16 @@ impl RegisterBlockExt for Cluster {
         Ok(())
     }
 
-    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash) -> PatchResult {
+    fn collect_in_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         let regs = &mut self.children;
-        collect_in_array(regs, &pname, rspec, rmod)
+        collect_in_array(regs, &pname, rspec, rmod, config)
     }
 
-    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash) -> PatchResult {
+    fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         let regs = &mut self.children;
-        collect_in_cluster(regs, &pname, cname, cmod)
+        collect_in_cluster(regs, &pname, cname, cmod, config)
     }
 
     fn clear_fields(&mut self, rspec: &str) -> PatchResult {
@@ -1091,13 +1086,13 @@ impl RegisterBlockExt for Cluster {
         Ok(())
     }
 
-    fn process_register(&mut self, rspec: &str, rmod: &Hash, update_fields: bool) -> PatchResult {
+    fn process_register(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
         // Find all registers that match the spec
         let mut rcount = 0;
         let pname = self.name.clone();
         for rtag in self.iter_registers(rspec) {
             rcount += 1;
-            rtag.process(rmod, &pname, update_fields)
+            rtag.process(rmod, &pname, config)
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
         if rcount == 0 {
@@ -1111,13 +1106,13 @@ impl RegisterBlockExt for Cluster {
         }
     }
 
-    fn process_cluster(&mut self, cspec: &str, cmod: &Hash, update_fields: bool) -> PatchResult {
+    fn process_cluster(&mut self, cspec: &str, cmod: &Hash, config: &Config) -> PatchResult {
         // Find all clusters that match the spec
         let mut ccount = 0;
         let pname = self.name.clone();
         for ctag in self.iter_clusters(cspec) {
             ccount += 1;
-            ctag.process(cmod, &pname, update_fields)
+            ctag.process(cmod, &pname, config)
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
         if ccount == 0 {
@@ -1137,6 +1132,7 @@ fn collect_in_array(
     path: &str,
     rspec: &str,
     rmod: &Hash,
+    config: &Config,
 ) -> PatchResult {
     let mut registers = Vec::new();
     let mut place = usize::MAX;
@@ -1251,7 +1247,9 @@ fn collect_in_array(
             .dim_index(Some(dim_index))
             .build(VAL_LVL)?,
     );
-    reg.process(rmod, path, true)
+    let mut config = config.clone();
+    config.update_fields = true;
+    reg.process(rmod, path, &config)
         .with_context(|| format!("Processing register `{}`", reg.name))?;
     regs.insert(place, RegisterCluster::Register(reg));
     Ok(())
@@ -1262,6 +1260,7 @@ fn collect_in_cluster(
     path: &str,
     cname: &str,
     cmod: &Hash,
+    config: &Config,
 ) -> PatchResult {
     let mut rdict = linked_hash_map::LinkedHashMap::new();
     let mut first = None;
@@ -1377,11 +1376,13 @@ fn collect_in_cluster(
             format!("Cluster {cname}, containing {}", rspecs.join(", "))
         }))
         .address_offset(address_offset);
+    let mut config = config.clone();
+    config.update_fields = true;
     let cluster = if single {
         for (rspec, mut registers) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0).single();
             let rmod = cmod.get_hash(rspec.as_str())?.unwrap();
-            reg.process(rmod, path, true)
+            reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             if let Some(name) = rmod.get_str("name")? {
                 reg.name = name.into();
@@ -1395,7 +1396,7 @@ fn collect_in_cluster(
         for (rspec, mut registers) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0).single();
             let rmod = cmod.get_hash(rspec.as_str())?.unwrap();
-            reg.process(rmod, path, true)
+            reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             reg.name = if let Some(name) = rmod.get_str("name")? {
                 name.into()

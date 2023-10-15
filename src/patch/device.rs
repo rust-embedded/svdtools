@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, PatchResult, VAL_LVL};
+use super::{abspath, matchname, Config, PatchResult, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -21,7 +21,7 @@ pub trait DeviceExt {
     fn iter_peripherals<'a, 'b>(&'a mut self, spec: &'b str) -> PerMatchIterMut<'a, 'b>;
 
     /// Work through a device, handling all peripherals
-    fn process(&mut self, device: &Hash, update_fields: bool) -> PatchResult;
+    fn process(&mut self, device: &Hash, config: &Config) -> PatchResult;
 
     /// Delete registers matched by rspec inside ptag
     fn delete_peripheral(&mut self, pspec: &str) -> PatchResult;
@@ -54,7 +54,7 @@ pub trait DeviceExt {
         &mut self,
         pspec: &str,
         peripheral: &Hash,
-        update_fields: bool,
+        config: &Config,
     ) -> PatchResult;
 }
 
@@ -63,7 +63,7 @@ impl DeviceExt for Device {
         self.peripherals.iter_mut().matched(spec)
     }
 
-    fn process(&mut self, device: &Hash, update_fields: bool) -> PatchResult {
+    fn process(&mut self, device: &Hash, config: &Config) -> PatchResult {
         // Handle any deletions
         for pspec in device.str_vec_iter("_delete")? {
             self.delete_peripheral(pspec)
@@ -154,7 +154,7 @@ impl DeviceExt for Device {
             let periphspec = periphspec.str()?;
             if !periphspec.starts_with('_') {
                 //val["_path"] = device["_path"]; // TODO: check
-                self.process_peripheral(periphspec, val.hash()?, update_fields)
+                self.process_peripheral(periphspec, val.hash()?, config)
                     .with_context(|| format!("According to `{periphspec}`"))?;
             }
         }
@@ -414,13 +414,13 @@ impl DeviceExt for Device {
         &mut self,
         pspec: &str,
         peripheral: &Hash,
-        update_fields: bool,
+        config: &Config,
     ) -> PatchResult {
         // Find all peripherals that match the spec
         let mut pcount = 0;
         for ptag in self.iter_peripherals(pspec) {
             pcount += 1;
-            ptag.process(peripheral, update_fields)
+            ptag.process(peripheral, config)
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
         if pcount == 0 {
@@ -444,7 +444,7 @@ mod tests {
     fn add_peripherals() {
         let (mut device, yaml) = test_utils::get_patcher(Path::new("add")).unwrap();
         assert_eq!(device.peripherals.len(), 1);
-        device.process(&yaml, true).unwrap();
+        device.process(&yaml, &Default::default()).unwrap();
         assert_eq!(device.peripherals.len(), 2);
         let periph1 = &device.peripherals[0];
         assert_eq!(periph1.name, "DAC1");
@@ -456,7 +456,7 @@ mod tests {
     fn delete_peripherals() {
         let (mut device, yaml) = test_utils::get_patcher(Path::new("delete")).unwrap();
         assert_eq!(device.peripherals.len(), 3);
-        device.process(&yaml, true).unwrap();
+        device.process(&yaml, &Default::default()).unwrap();
         assert_eq!(device.peripherals.len(), 1);
         let remaining_periph = &device.peripherals[0];
         assert_eq!(remaining_periph.name, "DAC2");
@@ -470,7 +470,7 @@ mod tests {
         let dac2 = device.get_peripheral("DAC2").unwrap();
         assert_ne!(dac1.registers, dac2.registers);
 
-        device.process(&yaml, true).unwrap();
+        device.process(&yaml, &Default::default()).unwrap();
         assert_eq!(device.peripherals.len(), 3);
 
         let dac1 = device.get_peripheral("DAC1").unwrap();
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!(dac1.name, "DAC1");
         assert_eq!(dac1.description, None);
 
-        device.process(&yaml, true).unwrap();
+        device.process(&yaml, &Default::default()).unwrap();
 
         // check device final config
         assert_eq!(&device.version, "1.7");
