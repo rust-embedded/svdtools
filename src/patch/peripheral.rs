@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use itertools::Itertools;
 use svd_parser::svd::{
     self, Cluster, ClusterInfo, DimElement, Interrupt, Peripheral, Register, RegisterCluster,
     RegisterInfo,
@@ -487,10 +488,7 @@ impl RegisterBlockExt for Peripheral {
         self.get_register(rderive).ok_or_else(|| {
             anyhow!(
                 "register {rderive} not found. Present registers: {}.`",
-                self.registers()
-                    .map(|r| r.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.registers().map(|r| r.name.as_str()).join(", ")
             )
         })?;
 
@@ -652,10 +650,7 @@ impl RegisterBlockExt for Peripheral {
         if rcount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{rspec}. Present registers: {}.`",
-                self.registers()
-                    .map(|r| r.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.registers().map(|r| r.name.as_str()).join(", ")
             ))
         } else {
             Ok(())
@@ -674,10 +669,7 @@ impl RegisterBlockExt for Peripheral {
         if ccount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{cspec}. Present clusters: {}.`",
-                self.clusters()
-                    .map(|c| c.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.clusters().map(|c| c.name.as_str()).join(", ")
             ))
         } else {
             Ok(())
@@ -966,10 +958,7 @@ impl RegisterBlockExt for Cluster {
         self.get_register(rderive).ok_or_else(|| {
             anyhow!(
                 "register {rderive} not found. Present registers: {}.`",
-                self.registers()
-                    .map(|r| r.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.registers().map(|r| r.name.as_str()).join(", ")
             )
         })?;
 
@@ -1117,10 +1106,7 @@ impl RegisterBlockExt for Cluster {
             Err(anyhow!(
                 "Could not find `{pname}:{}:{rspec}. Present registers: {}.`",
                 self.name,
-                self.registers()
-                    .map(|r| r.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.registers().map(|r| r.name.as_str()).join(", ")
             ))
         } else {
             Ok(())
@@ -1140,10 +1126,7 @@ impl RegisterBlockExt for Cluster {
             Err(anyhow!(
                 "Could not find `{pname}:{}:{cspec}. Present clusters: {}.`",
                 self.name,
-                self.clusters()
-                    .map(|c| c.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.clusters().map(|c| c.name.as_str()).join(", ")
             ))
         } else {
             Ok(())
@@ -1179,7 +1162,6 @@ fn collect_in_array(
                     RegisterCluster::Register(r) => Some(r.name.as_str()),
                     _ => None,
                 })
-                .collect::<Vec<_>>()
                 .join(", ")
         ));
     }
@@ -1298,7 +1280,6 @@ fn collect_in_cluster(
                         RegisterCluster::Register(r) => Some(r.name.as_str()),
                         _ => None,
                     })
-                    .collect::<Vec<_>>()
                     .join(", ")
             ));
         }
@@ -1347,7 +1328,7 @@ fn collect_in_cluster(
                 if dim > 1 {
                     dim_increment = offsets[1] - offsets[0];
                 }
-                first = Some(rspec.clone());
+                first = Some(rspec);
             }
             if !check_offsets(&offsets, dim_increment) {
                 return Err(anyhow!(

@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use itertools::Itertools;
 use svd_parser::svd::{
     Access, BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues,
     ReadAction, Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
@@ -323,10 +324,7 @@ impl RegisterExt for Register {
             return Err(anyhow!(
                 "Could not find any fields to merge {}:{key}. Present fields: {}.`",
                 self.name,
-                self.fields()
-                    .map(|f| f.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.fields().map(|f| f.name.as_str()).join(", ")
             ));
         }
         let mut bitwidth = 0;
@@ -377,10 +375,7 @@ impl RegisterExt for Register {
                 return Err(anyhow!(
                     "{}: fields {fspec} not found. Present fields: {}.`",
                     self.name,
-                    self.fields()
-                        .map(|f| f.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    self.fields().map(|f| f.name.as_str()).join(", ")
                 ));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
@@ -443,10 +438,7 @@ impl RegisterExt for Register {
                 return Err(anyhow!(
                     "Could not find any fields to split {}:{fspec}. Present fields: {}.`",
                     self.name,
-                    self.fields()
-                        .map(|f| f.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    self.fields().map(|f| f.name.as_str()).join(", ")
                 ));
             }
             (Some(_), Some(_)) => {
@@ -697,21 +689,22 @@ impl RegisterExt for Register {
                 set_enum(ftag, evs.clone(), orig_usage, true, access)?;
             }
         } else {
-            let offsets = self
-                .iter_fields(fspec)
-                .map(|f| (f.bit_range.offset, f.name.to_string()))
-                .collect::<Vec<_>>();
+            let mut offsets: Vec<_> = Vec::new();
+            for (i, f) in self.fields().enumerate() {
+                if matchname(&f.name, fspec) {
+                    offsets.push((f.bit_range.offset, f.name.to_string(), i));
+                }
+            }
             if offsets.is_empty() {
                 return Err(anyhow!(
                     "Could not find field {pname}:{}:{fspec}. Present fields: {}.`",
                     self.name,
-                    self.fields()
-                        .map(|f| f.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    self.fields().map(|f| f.name.as_str()).join(", ")
                 ));
             }
-            let (min_offset, fname) = offsets.iter().min_by_key(|on| on.0).unwrap();
+            let (min_offset, fname, min_offset_pos) =
+                offsets.iter().min_by_key(|&on| on.0).unwrap();
+            let min_pos = offsets.iter().map(|on| on.2).min().unwrap();
             let name = make_ev_name(&fname.replace("%s", ""), usage)?;
             for ftag in self.iter_fields(fspec) {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
@@ -735,6 +728,13 @@ impl RegisterExt for Register {
                     )?;
                 }
             }
+            // Move field with derived enums before other
+            if let Some(fields) = self.fields.as_mut() {
+                if *min_offset_pos != min_pos {
+                    let f = fields.remove(*min_offset_pos);
+                    fields.insert(min_pos, f);
+                }
+            }
         }
         Ok(())
     }
@@ -752,10 +752,7 @@ impl RegisterExt for Register {
             return Err(anyhow!(
                 "Could not find field {pname}:{}:{fspec}. Present fields: {}.`",
                 self.name,
-                self.fields()
-                    .map(|f| f.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.fields().map(|f| f.name.as_str()).join(", ")
             ));
         }
         Ok(())

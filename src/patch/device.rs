@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use itertools::Itertools;
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -389,11 +390,7 @@ impl DeviceExt for Device {
         if pcount == 0 {
             Err(anyhow!(
                 "Could not find `{pspec}. Present peripherals: {}.`",
-                self.peripherals
-                    .iter()
-                    .map(|p| p.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.peripherals.iter().map(|p| p.name.as_str()).join(", ")
             ))
         } else {
             Ok(())
