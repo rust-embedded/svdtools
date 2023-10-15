@@ -656,10 +656,7 @@ impl RegisterExt for Register {
             // This is a derived enumeratedValues => Try to find the
             // original definition to extract its <usage>
             let mut derived_enums = self
-                .fields
-                .as_ref()
-                .unwrap()
-                .iter()
+                .fields()
                 .flat_map(|f| f.enumerated_values.iter())
                 .filter(|e| e.name.as_deref() == Some(d));
             let orig_usage = match (derived_enums.next(), derived_enums.next()) {

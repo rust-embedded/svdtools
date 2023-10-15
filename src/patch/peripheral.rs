@@ -533,10 +533,8 @@ impl RegisterBlockExt for Peripheral {
             source.address_offset = ptag.address_offset;
             *ptag = source;
         } else {
-            self.registers
-                .as_mut()
-                .unwrap()
-                .push(RegisterCluster::Register(source))
+            let registers = self.registers.get_or_insert_with(Vec::new);
+            registers.push(RegisterCluster::Register(source));
         }
         Ok(())
     }
