@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context};
+use itertools::Itertools;
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -305,32 +306,60 @@ impl DeviceExt for Device {
             return Err(anyhow!("derive: incorrect syntax for {pname}"));
         };
 
-        if !pderive.contains('.') {
-            self.get_peripheral(pderive)
-                .ok_or_else(|| anyhow!("peripheral {pderive} not found"))?;
-        }
+        let derived_pos = if !pderive.contains('.') {
+            let Some((i, _)) = self
+                .peripherals
+                .iter()
+                .enumerate()
+                .find(|(_, f)| f.name == pderive)
+            else {
+                return Err(anyhow!("peripheral {pderive} not found"));
+            };
+            Some(i)
+        } else {
+            None
+        };
 
-        match self.get_mut_peripheral(pname) {
-            Some(peripheral) => peripheral.modify_from(info, VAL_LVL)?,
+        let mut min_pos = self.peripherals.len();
+        match self
+            .peripherals
+            .iter_mut()
+            .enumerate()
+            .find(|(_, f)| f.name == pname)
+        {
+            Some((i, peripheral)) => {
+                min_pos = i;
+                peripheral.modify_from(info, VAL_LVL)?;
+            }
             None => {
                 let peripheral = info.name(pname.into()).build(VAL_LVL)?.single();
                 self.peripherals.push(peripheral);
             }
         }
 
-        for p in self
-            .peripherals
-            .iter_mut()
-            .filter(|p| p.derived_from.as_deref() == Some(pname))
-        {
-            p.derived_from = Some(pderive.into());
+        for (i, p) in self.peripherals.iter_mut().enumerate() {
+            if p.derived_from.as_deref() == Some(pname) {
+                if i < min_pos {
+                    min_pos = i;
+                }
+                p.derived_from = Some(pderive.into());
+            }
+        }
+        if let Some(derived_pos) = derived_pos {
+            if derived_pos > min_pos {
+                let p = self.peripherals.remove(derived_pos);
+                self.peripherals.insert(min_pos, p);
+            }
         }
         Ok(())
     }
 
     fn rebase_peripheral(&mut self, pnew: &str, pold: &str) -> PatchResult {
-        let old = self
-            .get_mut_peripheral(pold)
+        let (mut min_pos, old) = self
+            .peripherals
+            .iter_mut()
+            .enumerate()
+            .find(|(_, f)| f.name == pold)
             .ok_or_else(|| anyhow!("peripheral {pold} not found"))?;
         let mut d = std::mem::replace(
             old,
@@ -346,19 +375,27 @@ impl DeviceExt for Device {
                 .build(VAL_LVL)?
                 .single(),
         );
-        let new = self
-            .get_mut_peripheral(pnew)
+        let (new_pos, new) = self
+            .peripherals
+            .iter_mut()
+            .enumerate()
+            .find(|(_, f)| f.name == pnew)
             .ok_or_else(|| anyhow!("peripheral {pnew} not found"))?;
         d.name = new.name.clone();
         d.base_address = new.base_address;
         d.interrupt = new.interrupt.clone();
         *new = d;
-        for p in self
-            .peripherals
-            .iter_mut()
-            .filter(|p| p.derived_from.as_deref() == Some(pold))
-        {
-            p.derived_from = Some(pnew.into());
+        for (i, p) in self.peripherals.iter_mut().enumerate() {
+            if p.derived_from.as_deref() == Some(pold) {
+                if i < min_pos {
+                    min_pos = i;
+                }
+                p.derived_from = Some(pnew.into());
+            }
+        }
+        if new_pos > min_pos {
+            let p = self.peripherals.remove(new_pos);
+            self.peripherals.insert(min_pos, p);
         }
         Ok(())
     }
@@ -389,11 +426,7 @@ impl DeviceExt for Device {
         if pcount == 0 {
             Err(anyhow!(
                 "Could not find `{pspec}. Present peripherals: {}.`",
-                self.peripherals
-                    .iter()
-                    .map(|p| p.name.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                self.peripherals.iter().map(|p| p.name.as_str()).join(", ")
             ))
         } else {
             Ok(())

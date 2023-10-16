@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Move field with derived enums before other
+
 ## [v0.3.4] 2023-10-14
 
 * Revert #145
