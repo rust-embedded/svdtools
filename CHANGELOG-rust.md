@@ -10,6 +10,7 @@ This changelog tracks the Rust `svdtools` project. See
 * Add `--enum_derive` flag
 * Strip `alternateRegister` too
 * Add `modifiedWriteValues` and `readAction` field patch (#156)
+* Ignore rule if starts with "?~" and no matched instances
 * Fix #144
 * Flag to check for errors after patching
 

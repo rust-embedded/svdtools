@@ -11,7 +11,7 @@ use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
     check_offsets, common_description, make_dim_element, matchname, matchsubspec,
-    modify_dim_element, spec_ind, Config, PatchResult, VAL_LVL,
+    modify_dim_element, spec_ind, Config, PatchResult, Spec, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
 
@@ -407,6 +407,7 @@ impl RegisterBlockExt for Peripheral {
     }
 
     fn modify_register(&mut self, rspec: &str, rmod: &Hash) -> PatchResult {
+        // TODO: empty error
         let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
         if !rtags.is_empty() {
             let register_builder = make_register(rmod)?;
@@ -557,6 +558,7 @@ impl RegisterBlockExt for Peripheral {
     }
 
     fn modify_cluster(&mut self, cspec: &str, cmod: &Hash) -> PatchResult {
+        // TODO: empty error
         let ctags = self.iter_clusters(cspec).collect::<Vec<_>>();
         if !ctags.is_empty() {
             let cluster_builder = make_cluster(cmod)?;
@@ -646,12 +648,13 @@ impl RegisterBlockExt for Peripheral {
         // Find all registers that match the spec
         let mut rcount = 0;
         let pname = self.name.clone();
+        let (rspec, ignore) = rspec.spec();
         for rtag in self.iter_registers(rspec) {
             rcount += 1;
             rtag.process(rmod, &pname, config)
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
-        if rcount == 0 {
+        if !ignore && rcount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{rspec}. Present registers: {}.`",
                 self.registers().map(|r| r.name.as_str()).join(", ")
@@ -665,12 +668,13 @@ impl RegisterBlockExt for Peripheral {
         // Find all clusters that match the spec
         let mut ccount = 0;
         let pname = self.name.clone();
+        let (cspec, ignore) = cspec.spec();
         for ctag in self.iter_clusters(cspec) {
             ccount += 1;
             ctag.process(cmod, &pname, config)
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
-        if ccount == 0 {
+        if !ignore && ccount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{cspec}. Present clusters: {}.`",
                 self.clusters().map(|c| c.name.as_str()).join(", ")
@@ -1112,12 +1116,13 @@ impl RegisterBlockExt for Cluster {
         // Find all registers that match the spec
         let mut rcount = 0;
         let pname = self.name.clone();
+        let (rspec, ignore) = rspec.spec();
         for rtag in self.iter_registers(rspec) {
             rcount += 1;
             rtag.process(rmod, &pname, config)
                 .with_context(|| format!("Processing register `{}`", rtag.name))?;
         }
-        if rcount == 0 {
+        if !ignore && rcount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{}:{rspec}. Present registers: {}.`",
                 self.name,
@@ -1132,12 +1137,13 @@ impl RegisterBlockExt for Cluster {
         // Find all clusters that match the spec
         let mut ccount = 0;
         let pname = self.name.clone();
+        let (cspec, ignore) = cspec.spec();
         for ctag in self.iter_clusters(cspec) {
             ccount += 1;
             ctag.process(cmod, &pname, config)
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
         }
-        if ccount == 0 {
+        if !ignore && ccount == 0 {
             Err(anyhow!(
                 "Could not find `{pname}:{}:{cspec}. Present clusters: {}.`",
                 self.name,
@@ -1159,6 +1165,7 @@ fn collect_in_array(
     let mut registers = Vec::new();
     let mut place = usize::MAX;
     let mut i = 0;
+    let (rspec, ignore) = rspec.spec();
     while i < regs.len() {
         match &regs[i] {
             RegisterCluster::Register(Register::Single(r)) if matchname(&r.name, rspec) => {
@@ -1171,6 +1178,9 @@ fn collect_in_array(
         }
     }
     if registers.is_empty() {
+        if ignore {
+            return Ok(());
+        }
         return Err(anyhow!(
             "{path}: registers {rspec} not found. Present registers: {}.`",
             regs.iter()
@@ -1299,9 +1309,9 @@ fn collect_in_cluster(
         if rspec == "description" {
             continue;
         }
-        rspecs.push(rspec.to_string());
         let mut registers = Vec::new();
         let mut i = 0;
+        let (rspec, ignore) = rspec.spec();
         while i < regs.len() {
             match &regs[i] {
                 RegisterCluster::Register(Register::Single(r)) if matchname(&r.name, rspec) => {
@@ -1314,6 +1324,9 @@ fn collect_in_cluster(
             }
         }
         if registers.is_empty() {
+            if ignore {
+                continue;
+            }
             return Err(anyhow!(
                 "{path}: registers {rspec} not found. Present registers: {}.`",
                 regs.iter()
@@ -1324,6 +1337,7 @@ fn collect_in_cluster(
                     .join(", ")
             ));
         }
+        rspecs.push(rspec.to_string());
         if single {
             if registers.len() > 1 {
                 return Err(anyhow!("{path}: more than one registers {rspec} found"));
@@ -1383,6 +1397,11 @@ fn collect_in_cluster(
             }
         }
         rdict.insert(rspec.to_string(), registers);
+    }
+    if rdict.is_empty() {
+        return Err(anyhow!(
+            "{path}: registers cannot be collected into {cname} cluster. No matches found"
+        ));
     }
     let address_offset = rdict
         .values()

@@ -351,7 +351,18 @@ _rebase:
             _strip_end:
                 - "_POSTFIX_"
 
-
+# You can list glob-like rules separated by commas to cover more periperals or registers at time.
+# If rule is optional (peripheral may be missing in some devices) add `?~` in the header.
+# Don't abuse it. First test not optional rule.
+"?~TIM[18],TIM20":
+  CR2:
+    # Fields also support collecting in arrays
+    _array:
+      OIS?:
+        description: Output Idle state (OC%s output)
+      # Optional rules are supported here too
+      "?~OIS?N":
+        description: Output Idle state (OC%sN output)
 ```
 
 ### Name Matching

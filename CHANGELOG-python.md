@@ -8,6 +8,7 @@ This changelog tracks the Python `svdtools` project. See
 * Support `_include` in peripherals in `device.yaml`
 * `-1` for default enum value
 * Strip `alternateRegister` too
+* Ignore rule if starts with "?~" and no matched instances
 
 ## [v0.1.26] 2023-03-28
 

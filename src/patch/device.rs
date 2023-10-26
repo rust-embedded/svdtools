@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, Config, PatchResult, VAL_LVL};
+use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -418,12 +418,13 @@ impl DeviceExt for Device {
     ) -> PatchResult {
         // Find all peripherals that match the spec
         let mut pcount = 0;
+        let (pspec, ignore) = pspec.spec();
         for ptag in self.iter_peripherals(pspec) {
             pcount += 1;
             ptag.process(peripheral, config)
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
-        if pcount == 0 {
+        if !ignore && pcount == 0 {
             Err(anyhow!(
                 "Could not find `{pspec}. Present peripherals: {}.`",
                 self.peripherals.iter().map(|p| p.name.as_str()).join(", ")
