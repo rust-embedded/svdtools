@@ -1217,11 +1217,18 @@ fn collect_in_array(
         if desc != "_original" {
             rinfo.description = Some(desc.into());
         }
-    } else if dim_index[0] == "0" {
-        if let Some(desc) = rinfo.description.as_mut() {
-            *desc = desc.replace('0', "%s");
-        }
+    } else if let Some(desc) = rinfo.description.as_mut() {
+        *desc = desc.replace(&dim_index[0], "%s");
     }
+
+    if let Some(dname) = rmod.get_str("displayName")? {
+        if dname != "_original" {
+            rinfo.display_name = Some(dname.into());
+        }
+    } else if let Some(dname) = rinfo.display_name.as_mut() {
+        *dname = dname.replace(&dim_index[0], "%s");
+    }
+
     let mut reg = rinfo.array(
         DimElement::builder()
             .dim(dim as u32)
