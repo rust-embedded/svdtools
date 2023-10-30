@@ -1,5 +1,10 @@
 _svd: stm32l4x2.svd
 
+LCD:
+  RAM_COM6:
+    _array:
+      S?? : {}
+
 # SVD incorrectly labels APB1ENR1 bit 18 as USART1EN instead of USART3EN.
 # SVD incorrectly labels APB1ENR1 bit 26 as USBF instead of USBFSEN.
 RCC:

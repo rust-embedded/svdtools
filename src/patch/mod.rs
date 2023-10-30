@@ -637,3 +637,46 @@ fn check_offsets(offsets: &[u32], dim_increment: u32) -> bool {
     }
     true
 }
+
+/// Tries to get common description (or displayNames) for register/field array with "%s" in index position.
+/// Returns `None` if incoming descriptions have more then 1 difference
+fn common_description(descs: &[Option<&str>], dim_index: &[String]) -> Option<Option<String>> {
+    if let Some(desc0) = descs[0] {
+        let idx0 = &dim_index[0];
+        if desc0.contains(idx0) {
+            for (i1, _) in desc0.match_indices(idx0) {
+                let (s1, sx) = desc0.split_at(i1);
+                let (_, s2) = sx.split_at(idx0.len());
+                let dsc = Some(format!("{s1}%s{s2}"));
+                let mut same = true;
+                for (d, idx) in descs.iter().zip(dim_index).skip(1) {
+                    if d != &dsc
+                        .as_ref()
+                        .map(|desc| desc.replacen("%s", idx, 1))
+                        .as_deref()
+                    {
+                        same = false;
+                        break;
+                    }
+                }
+                if same {
+                    return Some(dsc);
+                }
+            }
+        }
+    }
+    // If descriptions are identical, do not change.
+    let desc0 = &descs[0];
+    let mut same = true;
+    for d in descs.iter().skip(1) {
+        if d != desc0 {
+            same = false;
+            break;
+        }
+    }
+    if same {
+        Some(desc0.map(Into::into))
+    } else {
+        None
+    }
+}

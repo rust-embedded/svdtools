@@ -10,8 +10,8 @@ use super::iterators::{MatchIter, Matched};
 use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
-    check_offsets, make_dim_element, matchname, matchsubspec, modify_dim_element, spec_ind,
-    PatchResult, VAL_LVL,
+    check_offsets, common_description, make_dim_element, matchname, matchsubspec,
+    modify_dim_element, spec_ind, PatchResult, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
 
@@ -1207,21 +1207,43 @@ fn collect_in_array(
             path
         ));
     }
-    let mut rinfo = registers.swap_remove(0);
-    rinfo.name = if let Some(name) = rmod.get_str("name")? {
+
+    registers[0].name = if let Some(name) = rmod.get_str("name")? {
         name.into()
     } else {
         format!("{}%s{}", &rspec[..li], &rspec[rspec.len() - ri..])
     };
+
     if let Some(desc) = rmod.get_str("description")? {
         if desc != "_original" {
-            rinfo.description = Some(desc.into());
+            registers[0].description = Some(desc.into());
         }
-    } else if dim_index[0] == "0" {
-        if let Some(desc) = rinfo.description.as_mut() {
-            *desc = desc.replace('0', "%s");
-        }
+    } else {
+        let descs: Vec<_> = registers.iter().map(|r| r.description.as_deref()).collect();
+        registers[0].description = common_description(&descs, &dim_index).ok_or_else(|| {
+            anyhow!(
+                "{}: registers cannot be collected into {rspec} array. Please, specify description",
+                path
+            )
+        })?;
     }
+    if let Some(dname) = rmod.get_str("displayName")? {
+        if dname != "_original" {
+            registers[0].display_name = Some(dname.into());
+        }
+    } else {
+        let names: Vec<_> = registers
+            .iter()
+            .map(|r| r.display_name.as_deref())
+            .collect();
+        registers[0].display_name = common_description(&names, &dim_index).ok_or_else(|| {
+            anyhow!(
+                "{}: registers cannot be collected into {rspec} array. Please, specify displayName",
+                path
+            )
+        })?;
+    }
+    let rinfo = registers.swap_remove(0);
     let mut reg = rinfo.array(
         DimElement::builder()
             .dim(dim as u32)

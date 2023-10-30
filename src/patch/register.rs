@@ -9,7 +9,8 @@ use yaml_rust::{yaml::Hash, Yaml};
 use super::iterators::{MatchIter, Matched};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
-    check_offsets, make_dim_element, matchname, modify_dim_element, spec_ind, PatchResult, VAL_LVL,
+    check_offsets, common_description, make_dim_element, matchname, modify_dim_element, spec_ind,
+    PatchResult, VAL_LVL,
 };
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
@@ -404,21 +405,27 @@ impl RegisterExt for Register {
                     self.name
                 ));
             }
-            let mut finfo = fields.swap_remove(0);
-            if let Some(name) = fmod.get_str("name")? {
-                finfo.name = name.into();
+            fields[0].name = if let Some(name) = fmod.get_str("name")? {
+                name.into()
             } else {
-                finfo.name = format!("{}%s{}", &fspec[..li], &fspec[fspec.len() - ri..]);
-            }
+                format!("{}%s{}", &fspec[..li], &fspec[fspec.len() - ri..])
+            };
             if let Some(desc) = fmod.get_str("description")? {
                 if desc != "_original" {
-                    finfo.description = Some(desc.into());
+                    fields[0].description = Some(desc.into());
                 }
-            } else if dim_index[0] == "0" {
-                if let Some(desc) = finfo.description.as_mut() {
-                    *desc = desc.replace('0', "%s");
+            } else {
+                let descs: Vec<_> = fields.iter().map(|r| r.description.as_deref()).collect();
+                if let Some(desc) = common_description(&descs, &dim_index) {
+                    fields[0].description = desc;
+                } else {
+                    return Err(anyhow!(
+                        "{}: fields cannot be collected into {fspec} array. Please, specify description",
+                        self.name
+                    ));
                 }
             }
+            let finfo = fields.swap_remove(0);
             let field = finfo.array(
                 DimElement::builder()
                     .dim(dim as u32)

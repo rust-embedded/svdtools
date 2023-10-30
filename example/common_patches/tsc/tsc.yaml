@@ -4,5 +4,5 @@ TSC:
   IOHCR:
     _array:
       G1_IO?: {}
-    G2_IO*:
-      _derivedFrom: "G1_IO1"
+    #G2_IO*:
+    #  _derivedFrom: "G1_IO1"
