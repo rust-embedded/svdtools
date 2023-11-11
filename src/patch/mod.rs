@@ -221,11 +221,11 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
     for (key, val) in child.iter() {
         match key {
             Yaml::String(key) if key == "_path" || key == "_include" => continue,
-            key if parent.contains_key(key) => {
+            Yaml::String(k) if parent.contains_key(key) && k.starts_with('_') => {
                 if let Entry::Occupied(mut e) = parent.entry(key.clone()) {
                     match e.get_mut() {
                         el if el == val => {
-                            println!("In {key:?}: dublicate rule {val:?}, ignored");
+                            println!("In {k}: dublicate rule {val:?}, ignored");
                         }
                         Yaml::Array(a) => match val {
                             Yaml::Array(val) => {
@@ -235,7 +235,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                 if !a.contains(val) {
                                     a.push(val.clone());
                                 } else {
-                                    println!("In {key:?}: dublicate rule {val:?}, ignored");
+                                    println!("In {k}: dublicate rule {val:?}, ignored");
                                 }
                             }
                             _ => {}
@@ -250,15 +250,42 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                     a.insert(0, s.clone());
                                     e.insert(Yaml::Array(a));
                                 } else {
-                                    println!("In {key:?}: dublicate rule {s:?}, ignored");
+                                    println!("In {k}: dublicate rule {s:?}, ignored");
                                 }
                             }
                             s2 if matches!(s2, Yaml::String(_)) => {
-                                println!("In {key:?}: conflicting rules {s:?} and {s2:?}, ignored");
+                                println!("In {k}: conflicting rules {s:?} and {s2:?}, ignored");
                             }
                             _ => {}
                         },
                         _ => {}
+                    }
+                }
+            }
+            Yaml::String(_) if parent.contains_key(key) => {
+                let mut i = 0;
+                loop {
+                    let key = Yaml::Array(vec![key.clone(), Yaml::Integer(i)]);
+                    if !parent.contains_key(&key) {
+                        parent.insert(key, val.clone());
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            Yaml::Array(a)
+                if parent.contains_key(key)
+                    && matches!(a.as_slice(), [Yaml::String(_), Yaml::Integer(_)]) =>
+            {
+                if let [k @ Yaml::String(_), Yaml::Integer(_)] = a.as_slice() {
+                    let mut i = 0;
+                    loop {
+                        let key = Yaml::Array(vec![k.clone(), Yaml::Integer(i)]);
+                        if !parent.contains_key(&key) {
+                            parent.insert(key, val.clone());
+                            break;
+                        }
+                        i += 1;
                     }
                 }
             }
