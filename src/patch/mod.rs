@@ -267,34 +267,34 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
                 ));
             }
             let vd = vd.vec()?;
-            let value = vd[0].i64()? as u64;
             let description = vd.get(1).and_then(Yaml::as_str).ok_or_else(|| {
-                anyhow!("enumeratedValue can't have empty description for value {value}")
+                anyhow!("enumeratedValue can't have empty description for value {vname}")
             })?;
+            let value = vd[0].i64()?;
+            let def = value == -1;
+            let value = value as u64;
+            let ev = EnumeratedValue::builder()
+                .name(vname.into())
+                .value(Some(value))
+                .description(Some(description.into()));
+            let ev = (if def {
+                ev.is_default(Some(true))
+            } else {
+                ev.value(Some(value))
+            })
+            .build(VAL_LVL)?;
             use std::collections::btree_map::Entry;
             match h.entry(value) {
                 Entry::Occupied(_) => {
                     return Err(anyhow!("enumeratedValue can't have duplicate values"));
                 }
                 Entry::Vacant(e) => {
-                    e.insert((vname.to_string(), description.to_string()));
+                    e.insert(ev);
                 }
             }
         }
     }
-    Ok(EnumeratedValues::builder().values({
-        let mut evs = Vec::new();
-        for (value, vd) in h.into_iter() {
-            evs.push(
-                EnumeratedValue::builder()
-                    .name(vd.0)
-                    .value(Some(value))
-                    .description(Some(vd.1))
-                    .build(VAL_LVL)?,
-            );
-        }
-        evs
-    }))
+    Ok(EnumeratedValues::builder().values(h.into_values().collect()))
 }
 
 /// Returns an enumeratedValues Element which is derivedFrom name

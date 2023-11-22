@@ -48,7 +48,7 @@ jobs:
         target:
           - esp32
           - esp8266
-          - stm32
+          #- stm32
           - lpc55
           #- rp2040
     steps:

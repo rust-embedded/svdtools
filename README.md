@@ -309,6 +309,10 @@ _rebase:
             # By giving the field a dictionary we construct an enumerateValues
             VARIANT: [VALUE, DESCRIPTION]
             VARIANT: [VALUE, DESCRIPTION]
+            # Use `-1` for "default" variant which will be consider
+            # for all other values that are not listed explicitly
+            # usually datasheet marks them `0b0xxx`, `0b1x`, etc.
+            VARIANT: [-1, DESCRIPTION]
 
         FIELD:
             # If a field already has enumerateValues, drop them and
