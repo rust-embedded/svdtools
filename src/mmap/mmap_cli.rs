@@ -2,7 +2,8 @@ use crate::common::svd_reader;
 use crate::common::{str_utils, svd_utils};
 use anyhow::{Context, Result};
 use std::{fs::File, io::Read, path::Path};
-use svd_parser::svd::{Cluster, Field, Peripheral, Register, RegisterCluster, RegisterInfo};
+use svd::PeripheralInfo;
+use svd_parser::svd::{self, Cluster, Field, Peripheral, Register, RegisterCluster, RegisterInfo};
 
 /// Output sorted text of every peripheral, register, field, and interrupt
 /// in the device, such that automated diffing is possible.
@@ -29,10 +30,22 @@ fn to_text(peripherals: &[Peripheral]) -> String {
     let mut mmap: Vec<String> = vec![];
 
     for p in peripherals {
-        get_peripheral(p, &mut mmap);
-        get_interrupts(p, &mut mmap);
-        let registers = get_periph_registers(p, peripherals);
-        get_registers(p.base_address, registers.as_ref(), "", &mut mmap);
+        match p {
+            Peripheral::Single(p) => {
+                get_peripheral(p, &mut mmap);
+                get_interrupts(p, &mut mmap);
+                let registers = get_periph_registers(p, peripherals);
+                get_registers(p.base_address, registers.as_ref(), "", &mut mmap);
+            }
+            Peripheral::Array(p, d) => {
+                for pi in svd::peripheral::expand(p, d) {
+                    get_peripheral(&pi, &mut mmap);
+                    get_interrupts(&pi, &mut mmap);
+                    let registers = get_periph_registers(&pi, peripherals);
+                    get_registers(pi.base_address, registers.as_ref(), "", &mut mmap);
+                }
+            }
+        }
     }
 
     mmap.sort();
@@ -40,7 +53,7 @@ fn to_text(peripherals: &[Peripheral]) -> String {
 }
 
 fn get_periph_registers<'a>(
-    peripheral: &'a Peripheral,
+    peripheral: &'a PeripheralInfo,
     peripheral_list: &'a [Peripheral],
 ) -> &'a Option<Vec<RegisterCluster>> {
     match &peripheral.derived_from {
@@ -58,7 +71,7 @@ fn get_periph_registers<'a>(
     }
 }
 
-fn get_peripheral(peripheral: &Peripheral, mmap: &mut Vec<String>) {
+fn get_peripheral(peripheral: &PeripheralInfo, mmap: &mut Vec<String>) {
     let text = format!(
         "{} A PERIPHERAL {}",
         str_utils::format_address(peripheral.base_address),
@@ -67,7 +80,7 @@ fn get_peripheral(peripheral: &Peripheral, mmap: &mut Vec<String>) {
     mmap.push(text);
 }
 
-fn get_interrupts(peripheral: &Peripheral, mmap: &mut Vec<String>) {
+fn get_interrupts(peripheral: &PeripheralInfo, mmap: &mut Vec<String>) {
     for i in &peripheral.interrupt {
         let description = str_utils::get_description(&i.description);
         let text = format!(
@@ -86,10 +99,6 @@ fn derived_str(dname: &Option<String>) -> String {
     }
 }
 
-fn replace_idx(name: &str, idx: &str) -> String {
-    name.replace("[%s]", idx).replace("%s", idx)
-}
-
 fn get_registers(
     base_address: u64,
     registers: Option<&Vec<RegisterCluster>>,
@@ -100,14 +109,14 @@ fn get_registers(
         for r in registers {
             match &r {
                 RegisterCluster::Register(r) => {
-                    let description = str_utils::get_description(&r.description);
                     let access = svd_utils::access_with_brace(r.properties.access);
-                    let first_addr = base_address + r.address_offset as u64;
+                    let derived = derived_str(&r.derived_from);
                     match r {
                         Register::Single(r) => {
-                            let addr = str_utils::format_address(first_addr);
+                            let addr =
+                                str_utils::format_address(base_address + r.address_offset as u64);
                             let rname = r.name.to_string() + suffix;
-                            let derived = derived_str(&r.derived_from);
+                            let description = str_utils::get_description(&r.description);
                             let text = format!(
                                 "{addr} B  REGISTER {rname}{derived}{access}: {description}"
                             );
@@ -115,41 +124,39 @@ fn get_registers(
                             get_fields(r, &addr, mmap);
                         }
                         Register::Array(r, d) => {
-                            let derived = derived_str(&r.derived_from);
-                            for (i, idx) in d.indexes().enumerate() {
+                            for ri in svd::register::expand(r, d) {
                                 let addr = str_utils::format_address(
-                                    first_addr + (i as u64) * (d.dim_increment as u64),
+                                    base_address + ri.address_offset as u64,
                                 );
-                                let rname = replace_idx(&r.name, &idx);
-                                let description = replace_idx(&description, &idx);
+                                let rname = &ri.name;
+                                let description = str_utils::get_description(&ri.description);
                                 let text = format!(
                                     "{addr} B  REGISTER {rname}{derived}{access}: {description}"
                                 );
                                 mmap.push(text);
-                                get_fields(r, &addr, mmap);
+                                get_fields(&ri, &addr, mmap);
                             }
                         }
                     }
                 }
                 RegisterCluster::Cluster(c) => {
-                    let description = str_utils::get_description(&c.description);
-                    let first_addr = base_address + c.address_offset as u64;
+                    let derived = derived_str(&c.derived_from);
                     match c {
                         Cluster::Single(c) => {
-                            let addr = str_utils::format_address(first_addr);
+                            let caddr = base_address + c.address_offset as u64;
+                            let addr = str_utils::format_address(caddr);
                             let cname = &c.name;
-                            let derived = derived_str(&c.derived_from);
+                            let description = str_utils::get_description(&c.description);
                             let text = format!("{addr} B  CLUSTER {cname}{derived}: {description}");
                             mmap.push(text);
-                            get_registers(first_addr, Some(&c.children), "", mmap);
+                            get_registers(caddr, Some(&c.children), "", mmap);
                         }
                         Cluster::Array(c, d) => {
-                            let derived = derived_str(&c.derived_from);
-                            for (i, idx) in d.indexes().enumerate() {
-                                let caddr = first_addr + (i as u64) * (d.dim_increment as u64);
+                            for (ci, idx) in svd::cluster::expand(c, d).zip(d.indexes()) {
+                                let caddr = base_address + ci.address_offset as u64;
                                 let addr = str_utils::format_address(caddr);
-                                let cname = replace_idx(&c.name, &idx);
-                                let description = replace_idx(&description, &idx);
+                                let cname = &ci.name;
+                                let description = str_utils::get_description(&ci.description);
                                 let text =
                                     format!("{addr} B  CLUSTER {cname}{derived}: {description}");
                                 mmap.push(text);
@@ -166,26 +173,25 @@ fn get_registers(
 fn get_fields(register: &RegisterInfo, addr: &str, mmap: &mut Vec<String>) {
     if let Some(fields) = &register.fields {
         for f in fields {
-            let description = str_utils::get_description(&f.description);
+            let derived = derived_str(&f.derived_from);
             let access = svd_utils::access_with_brace(f.access);
             match f {
                 Field::Single(f) => {
-                    let bit_offset = f.bit_range.offset;
-                    let bit_width = f.bit_range.width;
+                    let bit_offset = f.bit_offset();
+                    let bit_width = f.bit_width();
                     let fname = &f.name;
-                    let derived = derived_str(&f.derived_from);
+                    let description = str_utils::get_description(&f.description);
                     let text = format!(
                         "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{derived}{access}: {description}"
                     );
                     mmap.push(text);
                 }
                 Field::Array(f, d) => {
-                    let derived = derived_str(&f.derived_from);
-                    for (i, idx) in d.indexes().enumerate() {
-                        let bit_offset = f.bit_range.offset + (i as u32) * d.dim_increment;
-                        let bit_width = f.bit_range.width;
-                        let fname = replace_idx(&f.name, &idx);
-                        let description = replace_idx(&description, &idx);
+                    for fi in svd::field::expand(f, d) {
+                        let bit_offset = fi.bit_offset();
+                        let bit_width = fi.bit_width();
+                        let fname = &fi.name;
+                        let description = str_utils::get_description(&fi.description);
                         let text = format!(
                             "{addr} C   FIELD {bit_offset:02}w{bit_width:02} {fname}{derived}{access}: {description}"
                         );
