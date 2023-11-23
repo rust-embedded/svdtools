@@ -178,7 +178,10 @@ def make_enumerated_values(name, values, usage="read-write"):
         el = ET.SubElement(ev, "enumeratedValue")
         ET.SubElement(el, "name").text = vname
         ET.SubElement(el, "description").text = description
-        ET.SubElement(el, "value").text = str(value)
+        if value == -1:
+            ET.SubElement(el, "isDefault").text = "true"
+        else:
+            ET.SubElement(el, "value").text = str(value)
     ev.tail = "\n            "
     return ev
 

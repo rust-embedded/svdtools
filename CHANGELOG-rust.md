@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Move field with derived enums before other
+* `-1` for default enum value
 
 ## [v0.3.4] 2023-10-14
 

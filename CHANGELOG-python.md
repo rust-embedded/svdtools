@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* `-1` for default enum value
+
 ## [v0.1.26] 2023-03-28
 
 * Bump python to 3.9 to fix CI
