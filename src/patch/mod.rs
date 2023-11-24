@@ -337,7 +337,7 @@ fn make_dim_element(h: &Hash) -> Result<Option<DimElementBuilder>> {
                     }
                     Some(v)
                 }
-                _ => return Err(DimIndexParse).map_err(Into::into),
+                _ => return Err(DimIndexParse.into()),
             }
         } else {
             None
@@ -652,7 +652,7 @@ fn common_description(descs: &[Option<&str>], dim_index: &[String]) -> Option<Op
                 for (d, idx) in descs.iter().zip(dim_index).skip(1) {
                     if d != &dsc
                         .as_ref()
-                        .map(|desc| desc.replacen("%s", idx, 1))
+                        .map(|dsc| dsc.replacen("%s", idx, 1))
                         .as_deref()
                     {
                         same = false;
@@ -668,15 +668,11 @@ fn common_description(descs: &[Option<&str>], dim_index: &[String]) -> Option<Op
     // If descriptions are identical, do not change.
     let desc0 = &descs[0];
     let mut same = true;
-    for d in descs.iter().skip(1) {
+    for d in &descs[1..] {
         if d != desc0 {
             same = false;
             break;
         }
     }
-    if same {
-        Some(desc0.map(Into::into))
-    } else {
-        None
-    }
+    same.then(|| desc0.map(Into::into))
 }

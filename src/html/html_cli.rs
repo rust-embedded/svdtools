@@ -245,7 +245,7 @@ fn parse_register(
         filling |= bit_mask;
 
         let faccs = ftag.access.map(Access::as_str).unwrap_or(raccs);
-        let enums = ftag.enumerated_values.get(0);
+        let enums = ftag.enumerated_values.first();
         let wc = &ftag.write_constraint;
         let mut fdoc = None;
         if enums.is_some() || wc.is_some() || faccs == "read-only" {
