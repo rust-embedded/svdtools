@@ -9,6 +9,7 @@ This changelog tracks the Rust `svdtools` project. See
 * `-1` for default enum value
 * Update `displayName` during collect, improve searching common `description`
 * mmaps: peripheral arrays, bump `svd` crates
+* patch: flag enables print patches on error
 
 ## [v0.3.4] 2023-10-14
 

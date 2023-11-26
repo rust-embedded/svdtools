@@ -30,10 +30,17 @@ use crate::get_encoder_config;
 
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
 
+#[non_exhaustive]
+#[derive(Clone, Debug, Default)]
+pub struct Config {
+    pub show_patch_on_error: bool,
+}
+
 pub fn process_file(
     yaml_file: &Path,
     out_path: Option<&Path>,
     format_config: Option<&Path>,
+    config: &Config,
 ) -> Result<()> {
     // Load the specified YAML root file
     let f = File::open(yaml_file)?;
@@ -61,16 +68,25 @@ pub fn process_file(
     let f = File::open(svdpath)?;
     let mut contents = String::new();
     (&f).read_to_string(&mut contents)?;
-    let mut config = svd_parser::Config::default();
-    config.validate_level = ValidateLevel::Disabled;
-    let mut svd = svd_parser::parse_with_config(&contents, &config)?;
+    let mut parser_config = svd_parser::Config::default();
+    parser_config.validate_level = ValidateLevel::Disabled;
+    let mut svd = svd_parser::parse_with_config(&contents, &parser_config)?;
 
     // Load all included YAML files
     yaml_includes(root)?;
 
     // Process device
-    svd.process(root, true)
-        .with_context(|| format!("Processing device `{}`", svd.name))?;
+    svd.process(root, true).with_context(|| {
+        let name = &svd.name;
+        let mut out_str = String::new();
+        let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);
+        emitter.dump(&Yaml::Hash(root.clone())).unwrap();
+        if config.show_patch_on_error {
+            format!("Processing device `{name}`. Patches looks like:\n{out_str}")
+        } else {
+            format!("Processing device `{name}`")
+        }
+    })?;
 
     // SVD should now be updated, write it out
     let config = get_encoder_config(format_config)?;
