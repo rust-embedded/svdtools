@@ -4,5 +4,8 @@ TSC:
   IOHCR:
     _array:
       G1_IO?: {}
-    #G2_IO*:
-    #  _derivedFrom: "G1_IO1"
+    G1_IO*:
+      Disabled: [0, "Gx_IOy Schmitt trigger hysteresis disabled"]
+      Enabled: [1, "Gx_IOy Schmitt trigger hysteresis enabled"]
+    G2_IO*:
+      _derivedFrom: "G1_IO1"
