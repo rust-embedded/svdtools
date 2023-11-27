@@ -89,7 +89,7 @@ pub trait RegisterExt {
     fn split_fields(&mut self, fspec: &str, fsplit: &Hash) -> PatchResult;
 
     /// Collect same fields in peripheral into register array
-    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash) -> PatchResult;
+    fn collect_fields_in_array(&mut self, pname: &str, fspec: &str, fmod: &Hash) -> PatchResult;
 }
 
 impl RegisterExt for Register {
@@ -184,7 +184,7 @@ impl RegisterExt for Register {
         // Handle field arrays
         for (fspec, fmod) in rmod.hash_iter("_array") {
             let fspec = fspec.str()?;
-            self.collect_fields_in_array(fspec, fmod.hash()?)
+            self.collect_fields_in_array(pname, fspec, fmod.hash()?)
                 .with_context(|| format!("Collecting fields matched to `{fspec}` in array"))?;
         }
 
@@ -356,7 +356,7 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn collect_fields_in_array(&mut self, fspec: &str, fmod: &Hash) -> PatchResult {
+    fn collect_fields_in_array(&mut self, pname: &str, fspec: &str, fmod: &Hash) -> PatchResult {
         if let Some(fs) = self.fields.as_mut() {
             let mut fields = Vec::new();
             let mut place = usize::MAX;
@@ -433,8 +433,9 @@ impl RegisterExt for Register {
                     .dim_index(Some(dim_index))
                     .build(VAL_LVL)?,
             );
-            //field.process(fmod, &self.name, true);
+            let fname = field.name.clone();
             fs.insert(place, field);
+            self.process_field(pname, &fname, &Yaml::Hash(fmod.clone()))?;
         }
         Ok(())
     }
