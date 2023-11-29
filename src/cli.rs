@@ -24,7 +24,7 @@ enum Command {
         #[clap(long)]
         format_config: Option<PathBuf>,
 
-        /// When patch error is occured print formatted yaml with all rules included
+        /// When a patch error happens print formatted yaml with all rules included
         #[clap(long)]
         show_patch_on_error: bool,
     },
