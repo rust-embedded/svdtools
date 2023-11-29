@@ -23,6 +23,10 @@ enum Command {
         /// If not specified, the default format config will be used.
         #[clap(long)]
         format_config: Option<PathBuf>,
+
+        /// When a patch error happens print formatted yaml with all rules included
+        #[clap(long)]
+        show_patch_on_error: bool,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
@@ -112,8 +116,16 @@ impl Command {
                 yaml_file,
                 out_path,
                 format_config,
+                show_patch_on_error,
             } => {
-                patch_cli::patch(yaml_file, out_path.as_deref(), format_config.as_deref())?;
+                let mut config = svdtools::patch::Config::default();
+                config.show_patch_on_error = *show_patch_on_error;
+                patch_cli::patch(
+                    yaml_file,
+                    out_path.as_deref(),
+                    format_config.as_deref(),
+                    &config,
+                )?
             }
             Self::Makedeps {
                 yaml_file,
