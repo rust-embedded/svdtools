@@ -29,6 +29,10 @@ enum Command {
         #[clap(long)]
         format_config: Option<PathBuf>,
 
+        /// Check for errors after patching
+        #[clap(long)]
+        post_validate: bool,
+
         /// When a patch error happens print formatted yaml with all rules included
         #[clap(long)]
         show_patch_on_error: bool,
@@ -125,10 +129,14 @@ impl Command {
                 yaml_file,
                 out_path,
                 format_config,
+                post_validate,
                 show_patch_on_error,
                 enum_derive,
             } => {
                 let mut config = svdtools::patch::Config::default();
+                if *post_validate {
+                    config.post_validate = svd_rs::ValidateLevel::Strict;
+                }
                 config.show_patch_on_error = *show_patch_on_error;
                 if let Some(enum_derive) = enum_derive.as_ref() {
                     config.enum_derive = *enum_derive;
