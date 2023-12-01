@@ -3,8 +3,13 @@ use clap::Parser;
 use std::path::PathBuf;
 
 use svdtools::{
-    convert::convert_cli, html::html_cli, html::htmlcompare_cli, interrupts::interrupts_cli,
-    makedeps::makedeps_cli, mmap::mmap_cli, patch::patch_cli,
+    convert::convert_cli,
+    html::html_cli,
+    html::htmlcompare_cli,
+    interrupts::interrupts_cli,
+    makedeps::makedeps_cli,
+    mmap::mmap_cli,
+    patch::{patch_cli, EnumAutoDerive},
 };
 
 #[derive(Parser, Debug)]
@@ -27,6 +32,10 @@ enum Command {
         /// When a patch error happens print formatted yaml with all rules included
         #[clap(long)]
         show_patch_on_error: bool,
+
+        /// Derive level when several identical enumerationValues added in a field
+        #[clap(long)]
+        enum_derive: Option<EnumAutoDerive>,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
@@ -117,9 +126,13 @@ impl Command {
                 out_path,
                 format_config,
                 show_patch_on_error,
+                enum_derive,
             } => {
                 let mut config = svdtools::patch::Config::default();
                 config.show_patch_on_error = *show_patch_on_error;
+                if let Some(enum_derive) = enum_derive.as_ref() {
+                    config.enum_derive = *enum_derive;
+                }
                 patch_cli::patch(
                     yaml_file,
                     out_path.as_deref(),
