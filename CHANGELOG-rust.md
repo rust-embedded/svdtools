@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.5] 2023-11-30
+
 * Move field with derived enums before other
 * `-1` for default enum value
 * Update `displayName` during collect, improve searching common `description`
@@ -104,7 +106,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.5...HEAD
+[v0.3.5]: https://github.com/rust-embedded/svdtools/compare/v0.3.4...v0.3.5
 [v0.3.4]: https://github.com/rust-embedded/svdtools/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/rust-embedded/svdtools/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/rust-embedded/svdtools/compare/v0.3.1...v0.3.2
