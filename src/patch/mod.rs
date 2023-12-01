@@ -291,7 +291,6 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
             let value = value as u64;
             let ev = EnumeratedValue::builder()
                 .name(vname.into())
-                .value(Some(value))
                 .description(Some(description.into()));
             let ev = (if def {
                 ev.is_default(Some(true))

@@ -5,6 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.6] 2023-11-01
+
+* Fix #184
+
 ## [v0.3.5] 2023-11-30
 
 * Move field with derived enums before other
@@ -106,7 +110,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.6...HEAD
+[v0.3.6]: https://github.com/rust-embedded/svdtools/compare/v0.3.5...v0.3.6
 [v0.3.5]: https://github.com/rust-embedded/svdtools/compare/v0.3.4...v0.3.5
 [v0.3.4]: https://github.com/rust-embedded/svdtools/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/rust-embedded/svdtools/compare/v0.3.2...v0.3.3
