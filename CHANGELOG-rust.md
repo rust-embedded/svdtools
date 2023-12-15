@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Support `_include` in peripherals in `device.yaml`
 * Add `--enum_derive` flag
 * Strip `alternateRegister` too
 * Add `modifiedWriteValues` and `readAction` field patch (#156)

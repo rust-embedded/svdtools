@@ -142,6 +142,21 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
     let y_path = "_path".to_yaml();
     let mut included = vec![];
     let self_path = PathBuf::from(parent.get(&y_path).unwrap().str()?);
+
+    // Process any peripheral-level includes in child
+    for (pspec, val) in parent.iter_mut() {
+        if !pspec.str()?.starts_with('_') {
+            match val {
+                Yaml::Hash(val) if val.contains_key(&"_include".to_yaml()) => {
+                    let ypath = self_path.to_str().unwrap().to_yaml();
+                    val.insert(y_path.clone(), ypath.clone());
+                    included.extend(yaml_includes(val)?);
+                }
+                _ => {}
+            }
+        }
+    }
+
     let inc = parent.get_vec("_include")?.unwrap_or(&Vec::new()).clone();
     for relpath in inc {
         let relpath = relpath.as_str().unwrap();
@@ -161,19 +176,6 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
         let ypath = path.to_str().unwrap().to_yaml();
         child.insert(y_path.clone(), ypath.clone());
         included.push(path.clone());
-
-        // Process any peripheral-level includes in child
-        for (pspec, val) in child.iter_mut() {
-            if !pspec.str()?.starts_with('_') {
-                match val {
-                    Yaml::Hash(val) if val.contains_key(&"_include".to_yaml()) => {
-                        val.insert(y_path.clone(), ypath.clone());
-                        included.extend(yaml_includes(val)?);
-                    }
-                    _ => {}
-                }
-            }
-        }
 
         // Process any top-level includes in child
         included.extend(yaml_includes(child)?);
