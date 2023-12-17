@@ -581,6 +581,11 @@ impl RegisterBlockExt for Peripheral {
                     dname.drain(..len);
                 }
             }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                if glob.is_match(&name) {
+                    name.drain(..len);
+                }
+            }
         }
         Ok(())
     }
@@ -599,6 +604,12 @@ impl RegisterBlockExt for Peripheral {
                 if glob.is_match(&dname) {
                     let nlen = dname.len();
                     dname.truncate(nlen - len);
+                }
+            }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                if glob.is_match(&name) {
+                    let nlen = name.len();
+                    name.truncate(nlen - len);
                 }
             }
         }
@@ -1040,6 +1051,11 @@ impl RegisterBlockExt for Cluster {
                     dname.drain(..len);
                 }
             }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                if glob.is_match(&name) {
+                    name.drain(..len);
+                }
+            }
         }
         Ok(())
     }
@@ -1058,6 +1074,12 @@ impl RegisterBlockExt for Cluster {
                 if glob.is_match(&dname) {
                     let nlen = dname.len();
                     dname.truncate(nlen - len);
+                }
+            }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                if glob.is_match(&name) {
+                    let nlen = name.len();
+                    name.truncate(nlen - len);
                 }
             }
         }
