@@ -8,8 +8,8 @@ use svd_parser::svd::{
     addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
     AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, Cpu, CpuBuilder, Endian, EnumeratedValue,
     EnumeratedValues, EnumeratedValuesBuilder, FieldInfo, FieldInfoBuilder, Interrupt,
-    ModifiedWriteValues, PeripheralInfo, PeripheralInfoBuilder, RegisterCluster, RegisterInfo,
-    RegisterInfoBuilder, RegisterProperties, Usage, ValidateLevel, WriteConstraint,
+    ModifiedWriteValues, PeripheralInfo, PeripheralInfoBuilder, ReadAction, RegisterCluster,
+    RegisterInfo, RegisterInfoBuilder, RegisterProperties, Usage, ValidateLevel, WriteConstraint,
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
@@ -433,6 +433,9 @@ fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     }
     if let Some(modified_write_values) = fadd.get_str("modifiedWriteValues")? {
         fnew = fnew.modified_write_values(ModifiedWriteValues::parse_str(modified_write_values))
+    }
+    if let Some(read_action) = fadd.get_str("readAction")? {
+        fnew = fnew.read_action(ReadAction::parse_str(read_action))
     }
 
     Ok(fnew)
