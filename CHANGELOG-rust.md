@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Add `--enum_derive` flag
+* Strip `alternateRegister` too
 
 ## [v0.3.6] 2023-11-01
 

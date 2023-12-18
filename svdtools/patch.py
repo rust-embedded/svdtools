@@ -1019,6 +1019,10 @@ class Peripheral:
             if dnametag is not None:
                 dnametag.text = regex.sub("", dnametag.text)
 
+            alttag = rtag.find("alternateRegister")
+            if alttag is not None:
+                alttag.text = regex.sub("", alttag.text)
+
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
         registers = []
@@ -1345,6 +1349,9 @@ class Cluster:
             if dnametag is not None:
                 assert isinstance(dnametag.text, str)
                 dnametag.text = regex.sub("", dnametag.text)
+            alttag = rtag.find("alternateRegister")
+            if alttag is not None:
+                alttag.text = regex.sub("", alttag.text)
 
 
 def sorted_fields(fields):
