@@ -8,10 +8,11 @@ This changelog tracks the Rust `svdtools` project. See
 * Add `--enum_derive` flag
 * Strip `alternateRegister` too
 * Add `modifiedWriteValues` and `readAction` field patch (#156)
+* Fix #144
 
 ## [v0.3.6] 2023-11-01
 
-* Fix #184
+* Fix #182
 
 ## [v0.3.5] 2023-11-30
 

@@ -633,7 +633,7 @@ impl RegisterBlockExt for Peripheral {
     }
 
     fn clear_fields(&mut self, rspec: &str) -> PatchResult {
-        for rtag in self.iter_registers(rspec) {
+        for rtag in self.all_registers_mut().matched(rspec) {
             if rtag.derived_from.is_some() {
                 continue;
             }
@@ -1099,7 +1099,7 @@ impl RegisterBlockExt for Cluster {
     }
 
     fn clear_fields(&mut self, rspec: &str) -> PatchResult {
-        for rtag in self.iter_registers(rspec) {
+        for rtag in self.all_registers_mut().matched(rspec) {
             if rtag.derived_from.is_some() {
                 continue;
             }
