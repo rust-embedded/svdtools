@@ -13,7 +13,7 @@ use svd_parser::svd::{
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
-use svd_rs::{DimElement, DimElementBuilder, MaybeArray};
+use svd_rs::{BitRange, DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 use anyhow::{anyhow, Context, Result};
@@ -422,22 +422,28 @@ fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
         .description(fadd.get_string("description")?)
         .derived_from(fadd.get_string("derivedFrom")?)
-        .access(fadd.get_str("access")?.and_then(Access::parse_str));
+        .access(fadd.get_str("access")?.and_then(Access::parse_str))
+        .modified_write_values(
+            fadd.get_str("modifiedWriteValues")?
+                .and_then(ModifiedWriteValues::parse_str),
+        )
+        .read_action(fadd.get_str("readAction")?.and_then(ReadAction::parse_str));
 
     if let Some(name) = fadd.get_str("name")? {
         fnew = fnew.name(name.into());
     }
-    if let Some(offset) = fadd.get_i64("bitOffset")? {
-        fnew = fnew.bit_offset(offset as u32)
-    }
-    if let Some(width) = fadd.get_i64("bitWidth")? {
-        fnew = fnew.bit_width(width as u32)
-    }
-    if let Some(modified_write_values) = fadd.get_str("modifiedWriteValues")? {
-        fnew = fnew.modified_write_values(ModifiedWriteValues::parse_str(modified_write_values))
-    }
-    if let Some(read_action) = fadd.get_str("readAction")? {
-        fnew = fnew.read_action(ReadAction::parse_str(read_action))
+    // NOTE: support only both `msb` and `lsb` passed together
+    if let (Some(msb), Some(lsb)) = (fadd.get_i64("msb")?, fadd.get_i64("lsb")?) {
+        fnew = fnew.bit_range(BitRange::from_msb_lsb(msb as _, lsb as _));
+    } else if let Some(bit_range) = fadd.get_str("bitRange")?.and_then(BitRange::from_bit_range) {
+        fnew = fnew.bit_range(bit_range);
+    } else {
+        if let Some(offset) = fadd.get_i64("bitOffset")? {
+            fnew = fnew.bit_offset(offset as u32)
+        }
+        if let Some(width) = fadd.get_i64("bitWidth")? {
+            fnew = fnew.bit_width(width as u32)
+        }
     }
 
     Ok(fnew)

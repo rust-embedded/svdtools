@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Support `bitRange` and `msb+lsb` in field `_modify`
 * Support `_include` in peripherals in `device.yaml`
 * Add `--enum_derive` flag
 * Strip `alternateRegister` too
