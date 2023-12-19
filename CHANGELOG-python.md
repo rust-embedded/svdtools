@@ -5,6 +5,7 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* Support `_include` in peripherals in `device.yaml`
 * `-1` for default enum value
 * Strip `alternateRegister` too
 

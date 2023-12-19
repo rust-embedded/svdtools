@@ -119,6 +119,11 @@ def update_dict(parent, child):
 def yaml_includes(parent):
     """Recursively loads any included YAML files."""
     included = []
+    # Process any peripheral-level includes in child
+    for pspec in parent:
+        if not pspec.startswith("_") and "_include" in parent[pspec]:
+            parent[pspec]["_path"] = parent["_path"]
+            included += yaml_includes(parent[pspec])
     for relpath in parent.get("_include", []):
         path = abspath(parent["_path"], relpath)
         if path in included:
@@ -127,11 +132,6 @@ def yaml_includes(parent):
             child = yaml.safe_load(f)
         child["_path"] = path
         included.append(path)
-        # Process any peripheral-level includes in child
-        for pspec in child:
-            if not pspec.startswith("_") and "_include" in child[pspec]:
-                child[pspec]["_path"] = path
-                included += yaml_includes(child[pspec])
         # Process any top-level includes in child
         included += yaml_includes(child)
         update_dict(parent, child)
