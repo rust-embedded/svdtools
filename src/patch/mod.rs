@@ -34,6 +34,7 @@ const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Config {
+    pub post_validate: ValidateLevel,
     pub show_patch_on_error: bool,
     pub enum_derive: EnumAutoDerive,
     pub update_fields: bool,
@@ -56,6 +57,7 @@ pub enum EnumAutoDerive {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            post_validate: ValidateLevel::Disabled,
             show_patch_on_error: false,
             enum_derive: Default::default(),
             update_fields: true,
@@ -114,6 +116,8 @@ pub fn process_file(
             format!("Processing device `{name}`")
         }
     })?;
+
+    svd.validate_all(config.post_validate)?;
 
     // SVD should now be updated, write it out
     let config = get_encoder_config(format_config)?;

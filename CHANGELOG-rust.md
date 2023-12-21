@@ -11,6 +11,7 @@ This changelog tracks the Rust `svdtools` project. See
 * Strip `alternateRegister` too
 * Add `modifiedWriteValues` and `readAction` field patch (#156)
 * Fix #144
+* Flag to check for errors after patching
 
 ## [v0.3.6] 2023-11-01
 
