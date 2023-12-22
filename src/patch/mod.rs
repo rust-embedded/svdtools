@@ -736,3 +736,18 @@ fn common_description(descs: &[Option<&str>], dim_index: &[String]) -> Option<Op
     }
     same.then(|| desc0.map(Into::into))
 }
+
+pub trait Spec {
+    /// Return specification and `ignore_if_not_exists` flag
+    fn spec(&self) -> (&str, bool);
+}
+
+impl Spec for str {
+    fn spec(&self) -> (&str, bool) {
+        if let Some(s) = self.strip_prefix("?~") {
+            (s, true)
+        } else {
+            (self, false)
+        }
+    }
+}

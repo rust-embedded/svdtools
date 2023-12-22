@@ -56,10 +56,19 @@ _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
 yaml.add_constructor(_mapping_tag, dict_constructor, yaml.SafeLoader)
 
 
+def get_spec(spec):
+    if spec.startswith("?~"):
+        return spec[2:], True
+    else:
+        return spec, False
+
+
 def matchname(name, spec):
     """Check if name matches against a specification."""
     if spec.startswith("_"):
         return False
+    if spec.startswith("?~"):
+        raise SvdPatchError(f"{spec}: optional rules are not supported here yet")
     if "{" in spec:
         return any(fnmatchcase(name, subspec) for subspec in braceexpand(spec))
     else:
@@ -649,6 +658,7 @@ class Device:
     def process_peripheral(self, pspec, peripheral, update_fields=True):
         """Work through a peripheral, handling all registers."""
         # Find all peripherals that match the spec
+        pspec, ignore = get_spec(pspec)
         pcount = 0
         for ptag in self.iter_peripherals(pspec):
             pcount += 1
@@ -766,7 +776,7 @@ class Device:
                         cluster = peripheral["_clusters"][cspec]
                         p.process_cluster(cspec, cluster, update_fields)
 
-        if pcount == 0:
+        if not ignore and pcount == 0:
             raise MissingPeripheralError(f"Could not find {pspec}")
 
 
@@ -1026,6 +1036,7 @@ class Peripheral:
     def collect_in_array(self, rspec, rmod):
         """Collect same registers in peripheral into register array."""
         registers = []
+        rspec, ignore = get_spec(rspec)
         li, ri = spec_ind(rspec)
         for rtag in list(self.iter_registers(rspec)):
             rname = rtag.findtext("name")
@@ -1038,6 +1049,8 @@ class Peripheral:
             )
         dim = len(registers)
         if dim == 0:
+            if ignore:
+                return
             raise SvdPatchError(
                 "{}: registers {} not found".format(self.ptag.findtext("name"), rspec)
             )
@@ -1094,6 +1107,7 @@ class Peripheral:
         check = True
         rspecs = [r for r in cmod if r != "description"]
         for rspec in rspecs:
+            rspec, ignore = get_spec(rspec)
             registers = []
             for rtag, match_rspec in list(self.iter_registers_with_matches(rspec)):
                 rname = rtag.findtext("name")
@@ -1105,14 +1119,17 @@ class Peripheral:
                         int(rtag.findtext("addressOffset"), 0),
                     ]
                 )
+            if len(registers) == 0:
+                if ignore:
+                    continue
+                raise SvdPatchError(
+                    "{}: registers {rspec} not found".format(self.ptag.findtext("name"))
+                )
             registers = sorted(registers, key=lambda r: r[2])
             rdict[rspec] = registers
             bitmasks = [Register(r[0]).get_bitmask() for r in registers]
             if first:
                 dim = len(registers)
-                if dim == 0:
-                    check = False
-                    break
                 dimIndex = ",".join([r[1] for r in registers])
                 offsets = [r[2] for r in registers]
                 dimIncrement = 0
@@ -1134,6 +1151,12 @@ class Peripheral:
                     check = False
                     break
             first = False
+        if not rdict:
+            raise SvdPatchError(
+                "{}: registers cannot be collected into {} cluster. No matches found".format(
+                    self.ptag.findtext("name"), cname
+                )
+            )
         if not check:
             raise SvdPatchError(
                 "{}: registers cannot be collected into {} cluster".format(
@@ -1183,6 +1206,7 @@ class Peripheral:
     def process_register(self, rspec, register, update_fields=True):
         """Work through a register, handling all fields."""
         # Find all registers that match the spec
+        rspec, ignore = get_spec(rspec)
         pname = self.ptag.find("name").text
         rcount = 0
         for rtag in self.iter_registers(rspec):
@@ -1235,7 +1259,7 @@ class Peripheral:
             for fspec in register.get("_array", {}):
                 fmod = register["_array"][fspec]
                 r.collect_fields_in_array(fspec, fmod)
-        if rcount == 0:
+        if not ignore and rcount == 0:
             raise MissingRegisterError(f"Could not find {pname}:{rspec}")
 
     def process_cluster_tag(
@@ -1273,12 +1297,13 @@ class Peripheral:
         assert isinstance(cspec, str)
         assert isinstance(cluster, OrderedDict)
         assert isinstance(update_fields, bool)
+        cspec, ignore = get_spec(cspec)
         # Find all clusters that match the spec
         ccount = 0
         for ctag in self.iter_clusters(cspec):
             self.process_cluster_tag(ctag, cluster, update_fields)
             ccount += 1
-        if ccount == 0:
+        if not ignore and ccount == 0:
             raise MissingClusterError(f"Could not find {self.name}:{cspec}")
 
 
@@ -1511,6 +1536,7 @@ class Register:
     def collect_fields_in_array(self, fspec, fmod):
         """Collect same fields in peripheral into register array."""
         fields = []
+        fspec, ignore = get_spec(fspec)
         li, ri = spec_ind(fspec)
         for ftag in list(self.iter_fields(fspec)):
             fname = ftag.findtext("name")
@@ -1519,6 +1545,8 @@ class Register:
             )
         dim = len(fields)
         if dim == 0:
+            if ignore:
+                return
             raise SvdPatchError(
                 "{}: fields {} not found".format(self.rtag.findtext("name"), fspec)
             )
@@ -1569,8 +1597,11 @@ class Register:
         Split all fspec in rtag.
         Name and description can be customized with %s as a placeholder to the iterator value.
         """
+        fspec, ignore = get_spec(fspec)
         fields = list(self.iter_fields(fspec))
         if len(fields) == 0:
+            if ignore:
+                return
             rname = self.rtag.find("name").text
             raise RegisterMergeError(
                 f"Could not find any fields to split {rname}.{fspec}"
@@ -1676,6 +1707,8 @@ class Register:
             field = field["_replace_enum"]
             replace_if_exists = True
 
+        fspec, ignore = get_spec(fspec)
+
         derived, enum, enum_name, enum_usage = None, None, None, None
         for ftag in sorted_fields(list(self.iter_fields(fspec))):
             if "_derivedFrom" in field:
@@ -1729,17 +1762,18 @@ class Register:
                 derived = enum_name
             else:
                 ftag.append(make_derived_enumerated_values(derived))
-        if derived is None:
+        if not ignore and derived is None:
             rname = self.rtag.find("name").text
             raise MissingFieldError(f"Could not find {pname}:{rname}.{fspec}")
 
     def process_field_range(self, pname, fspec, field):
         """Add a writeConstraint range given by field to all fspec in rtag."""
+        fspec, ignore = get_spec(fspec)
         set_any = False
         for ftag in self.iter_fields(fspec):
             ftag.append(make_write_constraint(field))
             set_any = True
-        if not set_any:
+        if not ignore and not set_any:
             rname = self.rtag.find("name").text
             raise MissingFieldError(f"Could not find {pname}:{rname}.{fspec}")
 
