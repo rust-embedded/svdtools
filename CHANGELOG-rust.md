@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.7] 2023-12-22
+
 * Support `bitRange` and `msb+lsb` in field `_modify`
 * Support `_include` in peripherals in `device.yaml`
 * Add `--enum_derive` flag
@@ -119,7 +121,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.7...HEAD
+[v0.3.7]: https://github.com/rust-embedded/svdtools/compare/v0.3.6...v0.3.7
 [v0.3.6]: https://github.com/rust-embedded/svdtools/compare/v0.3.5...v0.3.6
 [v0.3.5]: https://github.com/rust-embedded/svdtools/compare/v0.3.4...v0.3.5
 [v0.3.4]: https://github.com/rust-embedded/svdtools/compare/v0.3.3...v0.3.4
