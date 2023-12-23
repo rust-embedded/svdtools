@@ -1304,7 +1304,7 @@ fn collect_in_cluster(
     let mut rspecs = Vec::new();
     let single = !cname.contains("%s");
 
-    for rspec in cmod.keys() {
+    for (rspec, rmod) in cmod {
         let rspec = rspec.str()?;
         if rspec == "description" {
             continue;
@@ -1396,7 +1396,7 @@ fn collect_in_cluster(
                 ));
             }
         }
-        rdict.insert(rspec.to_string(), registers);
+        rdict.insert(rspec.to_string(), (rmod, registers));
     }
     if rdict.is_empty() {
         return Err(anyhow!(
@@ -1405,6 +1405,7 @@ fn collect_in_cluster(
     }
     let address_offset = rdict
         .values()
+        .map(|v| &v.1)
         .min_by_key(|rs| rs[0].address_offset)
         .unwrap()[0]
         .address_offset;
@@ -1420,9 +1421,9 @@ fn collect_in_cluster(
     let mut config = config.clone();
     config.update_fields = true;
     let cluster = if single {
-        for (rspec, mut registers) in rdict.into_iter() {
+        for (_, (rmod, mut registers)) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0).single();
-            let rmod = cmod.get_hash(rspec.as_str())?.unwrap();
+            let rmod = rmod.hash()?;
             reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             if let Some(name) = rmod.get_str("name")? {
@@ -1434,9 +1435,9 @@ fn collect_in_cluster(
 
         cinfo.children(children).build(VAL_LVL)?.single()
     } else {
-        for (rspec, mut registers) in rdict.into_iter() {
+        for (rspec, (rmod, mut registers)) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0).single();
-            let rmod = cmod.get_hash(rspec.as_str())?.unwrap();
+            let rmod = rmod.hash()?;
             reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             reg.name = if let Some(name) = rmod.get_str("name")? {
