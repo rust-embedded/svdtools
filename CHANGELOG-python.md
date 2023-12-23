@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.1.27] 2023-12-23
+
 * Support `_include` in peripherals in `device.yaml`
 * `-1` for default enum value
 * Strip `alternateRegister` too
@@ -176,7 +178,8 @@ This changelog tracks the Python `svdtools` project. See
 * Add `click` CLI, to call as `svd patch <yaml-file>`
 * Add packaging
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.1.26...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.1.27...HEAD
+[v0.1.27]: https://github.com/rust-embedded/svdtools/compare/v0.1.26...v0.1.27
 [v0.1.26]: https://github.com/rust-embedded/svdtools/compare/v0.1.25...v0.1.26
 [v0.1.25]: https://github.com/rust-embedded/svdtools/compare/v0.1.24...v0.1.25
 [v0.1.24]: https://github.com/rust-embedded/svdtools/compare/v0.1.23...v0.1.24
