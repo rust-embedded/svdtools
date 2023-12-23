@@ -151,7 +151,7 @@ impl DeviceExt for Device {
 
         // Now process all peripherals
         for (periphspec, val) in device {
-            let periphspec = periphspec.str()?;
+            let periphspec = periphspec.key()?;
             if !periphspec.starts_with('_') {
                 //val["_path"] = device["_path"]; // TODO: check
                 self.process_peripheral(periphspec, val.hash()?, config)

@@ -330,7 +330,7 @@ impl PeripheralExt for Peripheral {
 
         // Handle registers
         for (rspec, register) in pmod {
-            let rspec = rspec.str()?;
+            let rspec = rspec.key()?;
             if !rspec.starts_with('_') {
                 self.process_register(rspec, register.hash()?, config)
                     .with_context(|| format!("According to `{rspec}`"))?;
@@ -353,7 +353,7 @@ impl PeripheralExt for Peripheral {
 
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
-            let cspec = cspec.str()?;
+            let cspec = cspec.key()?;
             if !cspec.starts_with('_') {
                 self.process_cluster(cspec, cluster.hash()?, config)
                     .with_context(|| format!("According to `{cspec}`"))?;
@@ -850,7 +850,7 @@ impl ClusterExt for Cluster {
 
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
-            let cspec = cspec.str()?;
+            let cspec = cspec.key()?;
             if !cspec.starts_with('_') {
                 self.process_cluster(cspec, cluster.hash()?, config)
                     .with_context(|| format!("According to `{cspec}`"))?;
@@ -859,7 +859,7 @@ impl ClusterExt for Cluster {
 
         // Handle registers
         for (rspec, register) in pmod {
-            let rspec = rspec.str()?;
+            let rspec = rspec.key()?;
             if !rspec.starts_with('_') {
                 self.process_register(rspec, register.hash()?, config)
                     .with_context(|| format!("According to `{rspec}`"))?;

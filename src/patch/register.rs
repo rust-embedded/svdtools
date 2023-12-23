@@ -182,7 +182,7 @@ impl RegisterExt for Register {
         // Handle fields
         if config.update_fields {
             for (fspec, field) in rmod {
-                let fspec = fspec.str()?;
+                let fspec = fspec.key()?;
                 if !fspec.starts_with('_') {
                     self.process_field(pname, fspec, field, config)
                         .with_context(|| format!("Processing field matched to `{fspec}`"))?;
