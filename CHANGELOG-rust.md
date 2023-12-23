@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Fix #176 in `collect_in_cluster`
+
 ## [v0.3.7] 2023-12-22
 
 * Support `bitRange` and `msb+lsb` in field `_modify`

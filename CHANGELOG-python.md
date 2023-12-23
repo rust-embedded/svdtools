@@ -5,6 +5,8 @@ This changelog tracks the Python `svdtools` project. See
 
 ## [Unreleased]
 
+* Fix #176 in `collect_in_cluster`
+
 ## [v0.1.27] 2023-12-23
 
 * Support `_include` in peripherals in `device.yaml`

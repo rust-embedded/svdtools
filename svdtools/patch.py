@@ -1107,6 +1107,7 @@ class Peripheral:
         check = True
         rspecs = [r for r in cmod if r != "description"]
         for rspec in rspecs:
+            rmod = cmod[rspec]
             rspec, ignore = get_spec(rspec)
             registers = []
             for rtag, match_rspec in list(self.iter_registers_with_matches(rspec)):
@@ -1126,7 +1127,7 @@ class Peripheral:
                     "{}: registers {rspec} not found".format(self.ptag.findtext("name"))
                 )
             registers = sorted(registers, key=lambda r: r[2])
-            rdict[rspec] = registers
+            rdict[rspec] = (rmod, registers)
             bitmasks = [Register(r[0]).get_bitmask() for r in registers]
             if first:
                 dim = len(registers)
@@ -1164,7 +1165,7 @@ class Peripheral:
                 )
             )
         ctag = ET.SubElement(self.ptag.find("registers"), "cluster")
-        addressOffset = min([registers[0][2] for _, registers in rdict.items()])
+        addressOffset = min([registers[0][2] for _, (_, registers) in rdict.items()])
         ET.SubElement(ctag, "name").text = cname
         if "description" in cmod:
             description = cmod["description"]
@@ -1172,11 +1173,10 @@ class Peripheral:
             description = "Cluster {}, containing {}".format(cname, ", ".join(rspecs))
         ET.SubElement(ctag, "description").text = description
         ET.SubElement(ctag, "addressOffset").text = hex(addressOffset)
-        for rspec, registers in rdict.items():
+        for rspec, (rmod, registers) in rdict.items():
             for rtag, _, _ in registers[1:]:
                 self.ptag.find("registers").remove(rtag)
             rtag = registers[0][0]
-            rmod = cmod[rspec]
             self.process_register(rspec, rmod)
             new_rtag = copy.deepcopy(rtag)
             self.ptag.find("registers").remove(rtag)
