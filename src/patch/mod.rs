@@ -1,5 +1,7 @@
 pub mod patch_cli;
 
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -29,6 +31,31 @@ use yaml_ext::{AsType, GetVal, ToYaml};
 use crate::get_encoder_config;
 
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
+
+pub type Env = HashMap<Cow<'static, str>, String>;
+
+fn update_env(env: &mut Env, dict: &Hash) -> PatchResult {
+    for (key, val) in dict.hash_iter("_env") {
+        let key = key.str()?;
+        let val = val.str()?;
+        env.insert(key.to_string().into(), val.to_string());
+    }
+    Ok(())
+}
+
+fn insert_env<'a>(s: &'a str, env: &Env) -> Cow<'a, str> {
+    let mut s = Cow::Borrowed(s);
+    for (k, v) in env {
+        let k = format!("`{k}`");
+        if s.contains(&k) {
+            s = s.replace(&k, v).into();
+        }
+    }
+    s
+}
+fn insert_env_opt(s: Option<&str>, env: &Env) -> Option<String> {
+    s.map(|s| insert_env(s, env).into_owned())
+}
 
 #[non_exhaustive]
 #[derive(Clone, Debug)]
@@ -429,10 +456,10 @@ fn modify_dim_element<T: Clone>(
     Ok(())
 }
 
-fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
+fn make_field(fadd: &Hash, env: &Env) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
-        .description(fadd.get_string("description")?)
-        .derived_from(fadd.get_string("derivedFrom")?)
+        .description(insert_env_opt(fadd.get_str("description")?, env))
+        .derived_from(insert_env_opt(fadd.get_str("derivedFrom")?, env))
         .access(fadd.get_str("access")?.and_then(Access::parse_str))
         .modified_write_values(
             fadd.get_str("modifiedWriteValues")?
@@ -460,11 +487,11 @@ fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     Ok(fnew)
 }
 
-fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
+fn make_register(radd: &Hash, env: &Env) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName")?)
-        .description(radd.get_string("description")?)
-        .derived_from(radd.get_string("derivedFrom")?)
+        .description(insert_env_opt(radd.get_str("description")?, env))
+        .derived_from(insert_env_opt(radd.get_str("derivedFrom")?, env))
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
         .properties(get_register_properties(radd)?)
@@ -473,7 +500,7 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
                 let mut fields = Vec::new();
                 for (fname, val) in h {
                     fields.push(
-                        make_field(val.hash()?)?
+                        make_field(val.hash()?, env)?
                             .name(fname.str()?.into())
                             .build(VAL_LVL)?
                             .single(),
@@ -519,10 +546,10 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     Ok(rnew)
 }
 
-fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
+fn make_cluster(cadd: &Hash, env: &Env) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
-        .description(cadd.get_string("description")?)
-        .derived_from(cadd.get_string("derivedFrom")?)
+        .description(insert_env_opt(cadd.get_str("description")?, env))
+        .derived_from(insert_env_opt(cadd.get_str("derivedFrom")?, env))
         .default_register_properties(get_register_properties(cadd)?)
         .children(match cadd.get_hash("registers")? {
             Some(h) => {
@@ -530,7 +557,7 @@ fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
                 for (rname, val) in h {
                     ch.push(RegisterCluster::Register({
                         let radd = val.hash()?;
-                        let reg = make_register(radd)?
+                        let reg = make_register(radd, env)?
                             .name(rname.str()?.into())
                             .build(VAL_LVL)?;
                         if let Some(dim) = make_dim_element(radd)? {
@@ -565,12 +592,12 @@ fn make_interrupt(iadd: &Hash) -> Result<InterruptBuilder> {
     Ok(int)
 }
 
-fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
+fn make_peripheral(padd: &Hash, modify: bool, env: &Env) -> Result<PeripheralInfoBuilder> {
     let mut pnew = PeripheralInfo::builder()
         .display_name(padd.get_string("displayName")?)
         .version(padd.get_string("version")?)
-        .description(padd.get_string("description")?)
-        .derived_from(padd.get_string("derivedFrom")?)
+        .description(insert_env_opt(padd.get_str("description")?, env))
+        .derived_from(insert_env_opt(padd.get_str("derivedFrom")?, env))
         .group_name(padd.get_string("groupName")?)
         .interrupt(if !modify {
             match padd.get_hash("interrupts")? {
@@ -619,7 +646,7 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
                     for (rname, val) in h.iter() {
                         regs.push(RegisterCluster::Register({
                             let radd = val.hash()?;
-                            let reg = make_register(radd)?
+                            let reg = make_register(radd, env)?
                                 .name(rname.str()?.into())
                                 .build(VAL_LVL)?;
                             if let Some(dim) = make_dim_element(radd)? {
