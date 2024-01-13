@@ -1,6 +1,5 @@
 pub mod patch_cli;
 
-use globset::Glob;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -248,19 +247,23 @@ fn matchname(name: &str, spec: &str) -> bool {
     matchsubspec(name, spec).is_some()
 }
 
+fn newglob(spec: &str) -> globset::GlobMatcher {
+    globset::Glob::new(spec).unwrap().compile_matcher()
+}
+
 /// If a name matches a specification, return the first sub-specification that it matches
 fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
     if spec.starts_with('_') {
         return None;
     }
     if spec.contains('{') {
-        let glob = Glob::new(spec).unwrap().compile_matcher();
+        let glob = newglob(spec);
         if glob.is_match(name) {
             return Some(spec);
         }
     } else {
         for subspec in spec.split(',') {
-            let glob = Glob::new(subspec).unwrap().compile_matcher();
+            let glob = newglob(subspec);
             if glob.is_match(name) {
                 return Some(subspec);
             }
