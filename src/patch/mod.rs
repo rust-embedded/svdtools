@@ -248,7 +248,11 @@ fn matchname(name: &str, spec: &str) -> bool {
 }
 
 fn newglob(spec: &str) -> globset::GlobMatcher {
-    globset::Glob::new(spec).unwrap().compile_matcher()
+    globset::GlobBuilder::new(spec)
+        .backslash_escape(true)
+        .build()
+        .unwrap()
+        .compile_matcher()
 }
 
 /// If a name matches a specification, return the first sub-specification that it matches
