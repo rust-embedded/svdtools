@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Fix escape special characters on Windows 
+
 ## [v0.3.8] 2023-12-23
 
 * Fix #176 in `collect_in_cluster`
