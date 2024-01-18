@@ -42,21 +42,22 @@ fn html_page(title: &str, table: &str) -> String {
 <head>
     <meta charset="UTF-8">"#,
         &title,
-        r##"</head>
-<style>
-table thead tr th {
-    position: sticky;
-    top: 0;
-    z-index: 6;
-    background: white;
-}
-td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    background: white;
-}
-</style>
+        r##"
+    <style>
+    table thead tr th {
+        position: sticky;
+        top: 0;
+        z-index: 6;
+        background: white;
+    }
+    td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: white;
+    }
+    </style>
+</head>
 <body>"##,
         &header,
         table,
