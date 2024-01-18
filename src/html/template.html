@@ -12,9 +12,6 @@
   border: solid 1px #eee;
   margin-bottom: 5px;
 }
-.registers {
-  display: none;
-}
 .bitfield td, .bitfield th {
   text-align: center;
 }
@@ -118,7 +115,6 @@ summary {
           {{ peripheral.fields_documented }}/{{peripheral.fields_total }}
           fields covered.
         </em>
-        <a class="toggle-registers" href="#">Toggle Registers</a>
       </p>
       <details class="register-map" id="{{ pname }}-register-map">
         <summary>Toggle register map</summary>
@@ -152,7 +148,8 @@ summary {
           {% endfor %}
         </tbody></table>
       </details>
-      <div class="container registers" id="{{ pname }}-registers">
+      <details class="registers" id="{{ pname }}-registers">
+        <summary>Toggle registers</summary>
         {% for register in peripheral.registers %}
         <div class="row">
           <div class="col-sm-11 register">
@@ -242,7 +239,7 @@ summary {
           </div>
         </div>
         {% endfor %}
-      </div>
+      </details>
     </div>
   </div>
   {% endfor %}
@@ -252,18 +249,14 @@ summary {
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
 <script>
-  $('.toggle-registers').click(function(e) {
-    $(this).parent().siblings(".registers").toggle();
-    e.preventDefault();
-  });
-  $('#show-all-registers').click(function(e) {
-    $('.registers').show();
-    e.preventDefault();
-  });
-  $('#hide-all-registers').click(function(e) {
-    $('.registers').hide();
-    e.preventDefault();
-  });
+  document.getElementById('show-all-registers').addEventListener('click', e => {
+    document.querySelectorAll('.registers').forEach(el => el.open = true)
+    e.preventDefault()
+  })
+  document.getElementById('hide-all-registers').addEventListener('click', e => {
+    document.querySelectorAll('.registers').forEach(el => el.open = false)
+    e.preventDefault()
+  })
   $('.fieldlink').click(function(e) {
     $(this).parents(".container").first().siblings(".fields").show();
   });
@@ -271,20 +264,19 @@ summary {
     $(this).parents(".container").first().siblings(".fields").toggle();
     e.preventDefault();
   });
-  if(window.location.hash && window.location.hash.includes(":")) {
-    var hash = window.location.hash;
-    var parts = hash.substr(1).split(":");
-    var peripheral = parts[0];
-    var register = parts[1];
-    $('#' + peripheral + '-registers').show(0, function() {
-      if(parts.length == 3) {
-        $('#' + peripheral + '-' + register + '-fields').show(0, function() {
-          window.location.hash = hash;
-        });
-      } else {
-        window.location.hash = hash;
-      }
-    });
+  if (window.location.hash?.includes(":")) {
+    const hash = window.location.hash;
+    const [peripheral, register, field] = hash.substr(1).split(":", 3)
+    if (document.getElementById(`${peripheral}-registers`)) {
+      document.getElementById(`${peripheral}-registers`).open = true
+    }
+    if(field) {
+      $('#' + peripheral + '-' + register + '-fields').show(0, function() {
+        window.location.hash = hash
+      })
+    } else {
+      window.location.hash = hash
+    }
   }
   $(function () {
     $('[data-toggle="popover"]').popover()
