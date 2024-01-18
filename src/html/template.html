@@ -12,8 +12,7 @@
   border: solid 1px #eee;
   margin-bottom: 5px;
 }
-.registers,
-.register-map {
+.registers {
   display: none;
 }
 .bitfield td, .bitfield th {
@@ -48,6 +47,10 @@ nav.menu a {
 }
 .bitfield td.separated {
   background-color:#eee;
+}
+summary {
+  /* fix bootstrap 2 bug, https://github.com/twbs/bootstrap/issues/21060 */
+  display: list-item;
 }
 </style>
 </head>
@@ -117,8 +120,8 @@ nav.menu a {
         </em>
         <a class="toggle-registers" href="#">Toggle Registers</a>
       </p>
-      <p><a class="toggle-register-map" href="#">Show register map</a></p>
-      <div class="register-map" id="{{ pname }}-register-map">
+      <details class="register-map" id="{{ pname }}-register-map">
+        <summary>Toggle register map</summary>
         <table class="table table-bordered register-map-table">
           <tbody><tr>
             <th>Offset</th>
@@ -148,7 +151,7 @@ nav.menu a {
             </tr>
           {% endfor %}
         </tbody></table>
-      </div>
+      </details>
       <div class="container registers" id="{{ pname }}-registers">
         {% for register in peripheral.registers %}
         <div class="row">
@@ -251,10 +254,6 @@ nav.menu a {
 <script>
   $('.toggle-registers').click(function(e) {
     $(this).parent().siblings(".registers").toggle();
-    e.preventDefault();
-  });
-  $('.toggle-register-map').click(function(e) {
-    $(this).parent().siblings(".register-map").toggle();
     e.preventDefault();
   });
   $('#show-all-registers').click(function(e) {
