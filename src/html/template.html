@@ -30,9 +30,6 @@
 .headerlink {
   font-size: 50%;
 }
-.fields {
-  display: none;
-}
 nav.menu {
   line-height: 2
 }
@@ -205,12 +202,12 @@ summary {
                     </tr>
                     {% endif %}{% endfor %}
                   </tbody></table>
-                  <a href="#" class="toggle-fields">Toggle Fields</a>
                 </div>
               </div>
             </div>
             {% endif %}
-            <div class="container fields" id="{{ pname }}-{{ register.name }}-fields">
+            <details class="fields" id="{{ pname }}-{{ register.name }}-fields">
+              <summary>Toggle fields</summary>
               {% for field in register.fields %}
               <div class="row">
                 <div class="col-sm-10">
@@ -235,7 +232,7 @@ summary {
                 </div>
               </div>
               {% endfor %}
-            </div>
+            </details>
           </div>
         </div>
         {% endfor %}
@@ -257,27 +254,18 @@ summary {
     document.querySelectorAll('.registers').forEach(el => el.open = false)
     e.preventDefault()
   })
-  $('.fieldlink').click(function(e) {
-    $(this).parents(".container").first().siblings(".fields").show();
-  });
-  $('.toggle-fields').click(function(e) {
-    $(this).parents(".container").first().siblings(".fields").toggle();
-    e.preventDefault();
-  });
-  if (window.location.hash?.includes(":")) {
-    const hash = window.location.hash;
-    const [peripheral, register, field] = hash.substr(1).split(":", 3)
-    if (document.getElementById(`${peripheral}-registers`)) {
+  function locationHashChanged() {
+    const [peripheral, register, field] = window.location.hash.substr(1).split(":", 3)
+    if (register && document.getElementById(`${peripheral}-registers`)) {
       document.getElementById(`${peripheral}-registers`).open = true
     }
-    if(field) {
-      $('#' + peripheral + '-' + register + '-fields').show(0, function() {
-        window.location.hash = hash
-      })
-    } else {
-      window.location.hash = hash
+    if(field && document.getElementById(`${peripheral}-${register}-fields`)) {
+      document.getElementById(`${peripheral}-${register}-fields`).open = true
     }
+    window.location.hash = window.location.hash
   }
+  window.addEventListener("hashchange", locationHashChanged)
+  locationHashChanged()
   $(function () {
     $('[data-toggle="popover"]').popover()
   })
