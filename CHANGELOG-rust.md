@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.9] 2024-01-19
+
+* Use `<details>` instead of JavaScript in `html` template
 * Fix escape special characters on Windows 
 
 ## [v0.3.8] 2023-12-23
@@ -127,7 +130,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.9...HEAD
+[v0.3.9]: https://github.com/rust-embedded/svdtools/compare/v0.3.8...v0.3.9
 [v0.3.8]: https://github.com/rust-embedded/svdtools/compare/v0.3.7...v0.3.8
 [v0.3.7]: https://github.com/rust-embedded/svdtools/compare/v0.3.6...v0.3.7
 [v0.3.6]: https://github.com/rust-embedded/svdtools/compare/v0.3.5...v0.3.6
