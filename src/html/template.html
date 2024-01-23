@@ -251,7 +251,9 @@ details[open] > summary {
     if(field && document.getElementById(`${peripheral}-${register}-fields`)) {
       document.getElementById(`${peripheral}-${register}-fields`).open = true
     }
-    window.location.hash = window.location.hash
+    if (window.location.hash) {
+      window.location.hash = window.location.hash
+    }
   }
   window.addEventListener("hashchange", locationHashChanged)
   locationHashChanged()
