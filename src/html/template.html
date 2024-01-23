@@ -98,8 +98,7 @@ details[open] > summary {
   </nav>
   {% for peripheral in device.peripherals %}{% assign pname = peripheral.name %}
   <div class="peripheral">
-    <h3>
-      <a name="{{ pname }}"></a>
+    <h3 id="{{ pname }}">
       {{ pname }}
       <a class="headerlink" href="#{{ pname }}">
         <span class="glyphicon glyphicon-link"></span>
@@ -158,8 +157,7 @@ details[open] > summary {
       <summary>Toggle registers</summary>
       {% for register in peripheral.registers %}
       <div class="register">
-        <h4>
-          <a name="{{ pname }}:{{ register.name }}"></a>
+        <h4 id="{{ pname }}:{{ register.name }}">
           {{ register.name }}
           <a class="headerlink" href="#{{ pname }}:{{ register.name }}">
             <span class="glyphicon glyphicon-link"></span>
@@ -213,9 +211,7 @@ details[open] > summary {
         <details class="fields" id="{{ pname }}-{{ register.name }}-fields">
           <summary>Toggle fields</summary>
           {%- for field in register.fields %}
-          <h4>
-            <a name="{{ pname }}:{{ register.name }}:{{ field.name }}">
-            </a>
+          <h4 id="{{ pname }}:{{ register.name }}:{{ field.name }}">
             {{ field.name }}
             <a class="headerlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
               <span class="glyphicon glyphicon-link"></span>
