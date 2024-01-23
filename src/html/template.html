@@ -28,9 +28,6 @@
 .vertical div {
   writing-mode: vertical-lr;
 }
-.doccol {
-  color: rgb(92, 184, 92);
-}
 .headerlink {
   font-size: 50%;
 }
@@ -192,10 +189,8 @@ details[open] > summary {
               {%- for field in row.fields %}
               <td colspan="{{ field.width }}"{% if field.separated %} class="separated"{% endif %}>
                 {%- if field.name %}
-                <a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
-                  <span{% if field.doc %} class="doccol"{%- endif %}>
-                    {{ field.name }}
-                  </span>
+                <a class="fieldlink{% if field.doc %} text-success{% endif %}" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
+                  {{ field.name }}
                 </a>
                 <br>
                 {{ field.access }}
