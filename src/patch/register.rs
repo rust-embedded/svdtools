@@ -535,6 +535,7 @@ impl RegisterExt for Register {
             Some(ModifiedWriteValues::OneToToggle),
             Some(ModifiedWriteValues::ZeroToToggle),
         ];
+
         match fmod {
             Yaml::Hash(fmod) => {
                 let is_read = READ_KEYS
@@ -713,7 +714,6 @@ impl RegisterExt for Register {
                     ));
                 }
             };
-            let evs = make_derived_enumerated_values(d)?;
             for ftag in self.iter_fields(fspec) {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
                 let checked_usage = check_usage(access, usage)
@@ -726,7 +726,9 @@ impl RegisterExt for Register {
                 if ftag.name == d {
                     return Err(anyhow!("EnumeratedValues can't be derived from itself"));
                 }
-                set_enum(ftag, evs.clone(), orig_usage, true, access)?;
+                let derived_name = make_ev_name(&ftag.name.replace("%s", ""), usage)?;
+                let evs = make_derived_enumerated_values(&derived_name, d)?;
+                set_enum(ftag, evs, orig_usage, true, access)?;
             }
         } else {
             let (fspec, ignore) = fspec.spec();
@@ -769,9 +771,10 @@ impl RegisterExt for Register {
                         VAL_LVL,
                     )?;
                 } else {
+                    let derived_name = make_ev_name(&ftag.name.replace("%s", ""), usage)?;
                     set_enum(
                         ftag,
-                        make_derived_enumerated_values(&name)?,
+                        make_derived_enumerated_values(&derived_name, &name)?,
                         checked_usage,
                         true,
                         access,

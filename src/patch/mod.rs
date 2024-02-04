@@ -353,9 +353,10 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
 }
 
 /// Returns an enumeratedValues Element which is derivedFrom name
-fn make_derived_enumerated_values(name: &str) -> Result<EnumeratedValues> {
+fn make_derived_enumerated_values(derived_name: &str, base_name: &str) -> Result<EnumeratedValues> {
     Ok(EnumeratedValues::builder()
-        .derived_from(Some(name.into()))
+        .name(Some(derived_name.into()))
+        .derived_from(Some(base_name.into()))
         .build(VAL_LVL)?)
 }
 
