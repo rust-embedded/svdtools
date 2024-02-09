@@ -528,12 +528,17 @@ fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
             Some(h) => {
                 let mut ch = Vec::new();
                 for (rname, val) in h {
-                    ch.push(RegisterCluster::Register(
-                        make_register(val.hash()?)?
+                    ch.push(RegisterCluster::Register({
+                        let radd = val.hash()?;
+                        let reg = make_register(radd)?
                             .name(rname.str()?.into())
-                            .build(VAL_LVL)?
-                            .single(),
-                    ));
+                            .build(VAL_LVL)?;
+                        if let Some(dim) = make_dim_element(radd)? {
+                            reg.array(dim.build(VAL_LVL)?)
+                        } else {
+                            reg.single()
+                        }
+                    }));
                 }
                 ch
             }
@@ -612,12 +617,17 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
                 Some(h) => {
                     let mut regs = Vec::new();
                     for (rname, val) in h.iter() {
-                        regs.push(RegisterCluster::Register(
-                            make_register(val.hash()?)?
+                        regs.push(RegisterCluster::Register({
+                            let radd = val.hash()?;
+                            let reg = make_register(radd)?
                                 .name(rname.str()?.into())
-                                .build(VAL_LVL)?
-                                .single(),
-                        ))
+                                .build(VAL_LVL)?;
+                            if let Some(dim) = make_dim_element(radd)? {
+                                reg.array(dim.build(VAL_LVL)?)
+                            } else {
+                                reg.single()
+                            }
+                        }));
                     }
                     Some(regs)
                 }
