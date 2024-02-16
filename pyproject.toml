@@ -1,6 +1,6 @@
 [build-system]
-requires = ["black", "flit", "isort"]
-build-backend = "flit.buildapi"
+requires = ["black", "flit_core >=2,<4", "isort"]
+build-backend = "flit_core.buildapi"
 
 [tool.flit.metadata]
 module = "svdtools"
