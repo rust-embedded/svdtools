@@ -512,43 +512,36 @@ impl RegisterExt for Register {
         fmod: &Yaml,
         config: &Config,
     ) -> PatchResult {
-        const READ_KEYS: [&str; 5] = ["_read", "_RM", "_RS", "_RC", "_RME"];
-        const READ_VALS: [Option<ReadAction>; 5] = [
-            None,
-            Some(ReadAction::Modify),
-            Some(ReadAction::Set),
-            Some(ReadAction::Clear),
-            Some(ReadAction::ModifyExternal),
-        ];
-        const WRITE_KEYS: [&str; 10] = [
-            "_write", "_WM", "_WS", "_WC", "_W1S", "_W0C", "_W1C", "_W0S", "_W1T", "_W0T",
-        ];
-        const WRITE_VALS: [Option<ModifiedWriteValues>; 10] = [
-            None,
-            Some(ModifiedWriteValues::Modify),
-            Some(ModifiedWriteValues::Set),
-            Some(ModifiedWriteValues::Clear),
-            Some(ModifiedWriteValues::OneToSet),
-            Some(ModifiedWriteValues::ZeroToClear),
-            Some(ModifiedWriteValues::OneToClear),
-            Some(ModifiedWriteValues::ZeroToSet),
-            Some(ModifiedWriteValues::OneToToggle),
-            Some(ModifiedWriteValues::ZeroToToggle),
-        ];
+        const READ: phf::Map<&'static str, Option<ReadAction>> = phf::phf_map! {
+            "_read" => None,
+            "_RM" =>  Some(ReadAction::Modify),
+            "_RS" => Some(ReadAction::Set),
+            "_RC" => Some(ReadAction::Clear),
+            "_RME" => Some(ReadAction::ModifyExternal),
+        };
+        const WRITE: phf::Map<&'static str, Option<ModifiedWriteValues>> = phf::phf_map! {
+            "_write" => None,
+            "_WM" => Some(ModifiedWriteValues::Modify),
+            "_WS" => Some(ModifiedWriteValues::Set),
+            "_WC" => Some(ModifiedWriteValues::Clear),
+            "_W1S" => Some(ModifiedWriteValues::OneToSet),
+            "_W0C" => Some(ModifiedWriteValues::ZeroToClear),
+            "_W1C" => Some(ModifiedWriteValues::OneToClear),
+            "_W0S" => Some(ModifiedWriteValues::ZeroToSet),
+            "_W1T" => Some(ModifiedWriteValues::OneToToggle),
+            "_W0T" => Some(ModifiedWriteValues::ZeroToToggle),
+        };
+
         match fmod {
             Yaml::Hash(fmod) => {
-                let is_read = READ_KEYS
-                    .iter()
-                    .any(|key| fmod.contains_key(&key.to_yaml()));
-                let is_write = WRITE_KEYS
-                    .iter()
-                    .any(|key| fmod.contains_key(&key.to_yaml()));
+                let is_read = READ.keys().any(|key| fmod.contains_key(&key.to_yaml()));
+                let is_write = WRITE.keys().any(|key| fmod.contains_key(&key.to_yaml()));
                 if !is_read && !is_write {
                     self.process_field_enum(pname, fspec, fmod, None, config)
                         .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
-                        for (key, action) in READ_KEYS.into_iter().zip(READ_VALS.into_iter()) {
+                        for (key, action) in &READ {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
@@ -561,14 +554,14 @@ impl RegisterExt for Register {
                                     .with_context(|| "Adding read-only enumeratedValues")?;
                                 }
                                 if let Some(action) = action {
-                                    self.set_field_read_action(fspec, action);
+                                    self.set_field_read_action(fspec, *action);
                                 }
                                 break;
                             }
                         }
                     }
                     if is_write {
-                        for (key, mwv) in WRITE_KEYS.into_iter().zip(WRITE_VALS.into_iter()) {
+                        for (key, mwv) in &WRITE {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
@@ -581,7 +574,7 @@ impl RegisterExt for Register {
                                     .with_context(|| "Adding write-only enumeratedValues")?;
                                 }
                                 if let Some(mwv) = mwv {
-                                    self.set_field_modified_write_values(fspec, mwv);
+                                    self.set_field_modified_write_values(fspec, *mwv);
                                 }
                             }
                         }
