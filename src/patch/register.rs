@@ -742,7 +742,11 @@ impl RegisterExt for Register {
             let (min_offset, fname, min_offset_pos) =
                 offsets.iter().min_by_key(|&on| on.0).unwrap();
             let min_pos = offsets.iter().map(|on| on.2).min().unwrap();
-            let name = make_ev_name(&fname.replace("%s", ""), usage)?;
+            let name = if let Some(name) = fmod.get_str("_name")? {
+                name.to_string()
+            } else {
+                make_ev_name(&fname.replace("%s", ""), usage)?
+            };
             for ftag in self.iter_fields(fspec) {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
                 let checked_usage = check_usage(access, usage)

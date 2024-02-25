@@ -306,6 +306,8 @@ _rebase:
 
         # A field in this register, matches an SVD <field> tag
         FIELD:
+            # You can optionally specify name for `enumeratedValues`
+            _name: NAME
             # By giving the field a dictionary we construct an enumerateValues
             VARIANT: [VALUE, DESCRIPTION]
             VARIANT: [VALUE, DESCRIPTION]
