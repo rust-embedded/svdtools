@@ -1713,6 +1713,8 @@ class Register:
         for ftag in sorted_fields(list(self.iter_fields(fspec))):
             if "_derivedFrom" in field:
                 derived = field["_derivedFrom"]
+            elif "_name" in field:
+                name = field["_name"]
             else:
                 name = ftag.find("name").text
 

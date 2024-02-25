@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Allow to specify `name` for `enumeratedValues`
+
 ## [v0.3.9] 2024-01-19
 
 * Use `<details>` instead of JavaScript in `html` template

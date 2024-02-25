@@ -6,6 +6,7 @@ This changelog tracks the Python `svdtools` project. See
 ## [Unreleased]
 
 * Fix #176 in `collect_in_cluster`
+* Allow to specify `name` for `enumeratedValues`
 
 ## [v0.1.27] 2023-12-23
 
