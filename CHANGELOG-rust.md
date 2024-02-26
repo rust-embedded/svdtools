@@ -5,7 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.10] 2024-02-26
+
 * Allow to specify `name` for `enumeratedValues`
+* Avoid unneded whitespaces in generated `html`
 
 ## [v0.3.9] 2024-01-19
 
@@ -132,7 +135,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.9...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.10...HEAD
+[v0.3.10]: https://github.com/rust-embedded/svdtools/compare/v0.3.9...v0.3.10
 [v0.3.9]: https://github.com/rust-embedded/svdtools/compare/v0.3.8...v0.3.9
 [v0.3.8]: https://github.com/rust-embedded/svdtools/compare/v0.3.7...v0.3.8
 [v0.3.7]: https://github.com/rust-embedded/svdtools/compare/v0.3.6...v0.3.7
