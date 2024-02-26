@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
+use super::{abspath, matchname, update_env, Config, Env, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -33,14 +33,14 @@ pub trait DeviceExt {
     fn modify_cpu(&mut self, cmod: &Hash) -> PatchResult;
 
     /// Modify pspec inside device according to pmod
-    fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult;
+    fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash, env: &Env) -> PatchResult;
 
     /// Add pname given by padd to device
-    fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult;
+    fn add_peripheral(&mut self, pname: &str, padd: &Hash, env: &Env) -> PatchResult;
 
     /// Remove registers from pname and mark it as derivedFrom pderive.
     /// Update all derivedFrom referencing pname
-    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult;
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml, env: &Env) -> PatchResult;
 
     /// Move registers from pold to pnew.
     /// Update all derivedFrom referencing pold
@@ -55,6 +55,7 @@ pub trait DeviceExt {
         pspec: &str,
         peripheral: &Hash,
         config: &Config,
+        env: &Env,
     ) -> PatchResult;
 }
 
@@ -64,6 +65,9 @@ impl DeviceExt for Device {
     }
 
     fn process(&mut self, device: &Hash, config: &Config) -> PatchResult {
+        let mut env = Env::new();
+        update_env(&mut env, device)?;
+
         // Handle any deletions
         for pspec in device.str_vec_iter("_delete")? {
             self.delete_peripheral(pspec)
@@ -91,7 +95,7 @@ impl DeviceExt for Device {
                 "_peripherals" => {
                     for (pspec, pmod) in val.hash()? {
                         let pspec = pspec.str()?;
-                        self.modify_peripheral(pspec, pmod.hash()?)
+                        self.modify_peripheral(pspec, pmod.hash()?, &env)
                             .with_context(|| {
                                 format!("Modifying peripherals matched to `{pspec}`")
                             })?;
@@ -115,7 +119,7 @@ impl DeviceExt for Device {
                 }
 
                 _ => self
-                    .modify_peripheral(key, val.hash()?)
+                    .modify_peripheral(key, val.hash()?, &env)
                     .with_context(|| format!("Modifying peripherals matched to `{key}`"))?,
             }
         }
@@ -130,14 +134,14 @@ impl DeviceExt for Device {
         // Handle any new peripherals (!)
         for (pname, padd) in device.hash_iter("_add") {
             let pname = pname.str()?;
-            self.add_peripheral(pname, padd.hash()?)
+            self.add_peripheral(pname, padd.hash()?, &env)
                 .with_context(|| format!("Adding peripheral `{pname}`"))?;
         }
 
         // Handle any derived peripherals
         for (pname, pderive) in device.hash_iter("_derive") {
             let pname = pname.str()?;
-            self.derive_peripheral(pname, pderive)
+            self.derive_peripheral(pname, pderive, &env)
                 .with_context(|| format!("Deriving peripheral `{pname}` from `{pderive:?}`"))?;
         }
 
@@ -154,7 +158,7 @@ impl DeviceExt for Device {
             let periphspec = periphspec.str()?;
             if !periphspec.starts_with('_') {
                 //val["_path"] = device["_path"]; // TODO: check
-                self.process_peripheral(periphspec, val.hash()?, config)
+                self.process_peripheral(periphspec, val.hash()?, config, &env)
                     .with_context(|| format!("According to `{periphspec}`"))?;
             }
         }
@@ -218,11 +222,11 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult {
+    fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash, env: &Env) -> PatchResult {
         let mut modified = HashSet::new();
         let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
         if !ptags.is_empty() {
-            let peripheral_builder = make_peripheral(pmod, true)?;
+            let peripheral_builder = make_peripheral(pmod, true, env)?;
             let dim = make_dim_element(pmod)?;
             for ptag in ptags {
                 modified.insert(ptag.name.clone());
@@ -267,12 +271,12 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult {
+    fn add_peripheral(&mut self, pname: &str, padd: &Hash, env: &Env) -> PatchResult {
         if self.get_peripheral(pname).is_some() {
             return Err(anyhow!("device already has a peripheral {pname}"));
         }
 
-        let pnew = make_peripheral(padd, false)?
+        let pnew = make_peripheral(padd, false, env)?
             .name(pname.to_string())
             .build(VAL_LVL)?;
         let pnew = if let Some(dim) = make_dim_element(padd)? {
@@ -285,7 +289,7 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml) -> PatchResult {
+    fn derive_peripheral(&mut self, pname: &str, pderive: &Yaml, env: &Env) -> PatchResult {
         let (pderive, info) = if let Some(pderive) = pderive.as_str() {
             (
                 pderive,
@@ -300,7 +304,7 @@ impl DeviceExt for Device {
             })?;
             (
                 pderive,
-                make_peripheral(hash, true)?.derived_from(Some(pderive.into())),
+                make_peripheral(hash, true, env)?.derived_from(Some(pderive.into())),
             )
         } else {
             return Err(anyhow!("derive: incorrect syntax for {pname}"));
@@ -415,13 +419,14 @@ impl DeviceExt for Device {
         pspec: &str,
         peripheral: &Hash,
         config: &Config,
+        env: &Env,
     ) -> PatchResult {
         // Find all peripherals that match the spec
         let mut pcount = 0;
         let (pspec, ignore) = pspec.spec();
         for ptag in self.iter_peripherals(pspec) {
             pcount += 1;
-            ptag.process(peripheral, config)
+            ptag.process(peripheral, config, env.clone())
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
         if !ignore && pcount == 0 {
