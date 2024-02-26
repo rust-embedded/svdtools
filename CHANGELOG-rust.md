@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Add `_env` string variable map
+
 ## [v0.3.10] 2024-02-26
 
 * Allow to specify `name` for `enumeratedValues`
