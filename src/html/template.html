@@ -28,9 +28,6 @@
 .vertical div {
   writing-mode: vertical-lr;
 }
-.doccol {
-  color: rgb(92, 184, 92);
-}
 .headerlink {
   font-size: 50%;
 }
@@ -92,14 +89,13 @@ details[open] > summary {
     </div>
   </div>
   <nav class="menu">
-    {% for peripheral in device.peripherals %}
-      <a href="#{{ peripheral.name }}">{{ peripheral.name }}</a>
-    {% endfor %}
+    {%- for peripheral in device.peripherals %}
+    <a href="#{{ peripheral.name }}">{{ peripheral.name }}</a>
+    {%- endfor %}
   </nav>
   {% for peripheral in device.peripherals %}{% assign pname = peripheral.name %}
   <div class="peripheral">
-    <h3>
-      <a name="{{ pname }}"></a>
+    <h3 id="{{ pname }}">
       {{ pname }}
       <a class="headerlink" href="#{{ pname }}">
         <span class="glyphicon glyphicon-link"></span>
@@ -119,41 +115,46 @@ details[open] > summary {
     <details class="register-map" id="{{ pname }}-register-map">
       <summary>Toggle register map</summary>
       <table class="table table-bordered register-map-table">
-        <tbody><tr>
+        <tr>
           <th>Offset</th>
           <th>Name</th>
-          {% for i in (0..31) reversed %}
+          {%- for i in (0..31) reversed %}
           <th class="vertical"><div>{{ i }}</div></th>
-          {% endfor %}
+          {%- endfor %}
         </tr>
-        {% for register in peripheral.registers %}
-          <tr>
-            <td>{{ register.offset }}{% if register.size != 32 %} ({{ register.size }}-bit){% endif %}</td>
-            <td>{{ register.name }}</td>
-            {% for row in register.table %}{% if row %}
-              {% for field in row.fields %}
-                {% unless field.name %}
-                  {% for _ in (1..field.width) %}
-                  <td{% if field.separated %} class="separated"{% endif %}></td>
-                  {% endfor %}
-                {% endunless %}
-                {% if field.name %}
-                  <td colspan="{{ field.width }}" class="vertical{% if field.separated %} separated{% endif %}">
-                    <div><a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">{{ field.name }}</a></div>
-                  </td>
-                {% endif %}
-              {% endfor %}
-            {% else %}{% for _ in (1..16) %}<td></td>{% endfor %}{% endif %}{% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody></table>
+        {%- for register in peripheral.registers %}
+        <tr>
+          <td>{{ register.offset }}{% if register.size != 32 %} ({{ register.size }}-bit){% endif %}</td>
+          <td>{{ register.name }}</td>
+          {%- for row in register.table %}
+          {%-   if row %}
+          {%-     for field in row.fields %}
+          {%-       unless field.name %}
+          {%-         for _ in (1..field.width) %}
+          <td{% if field.separated %} class="separated"{% endif %}></td>
+          {%-         endfor %}
+          {%-       endunless %}
+          {%-       if field.name %}
+          <td colspan="{{ field.width }}" class="vertical{% if field.separated %} separated{% endif %}">
+            <div><a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">{{ field.name }}</a></div>
+          </td>
+          {%-       endif %}
+          {%-     endfor %}
+          {%-   else %}
+          {%-     for _ in (1..16) %}
+          <td></td>
+          {%- endfor %}
+          {%-   endif %}
+          {%- endfor %}
+        </tr>
+        {%- endfor %}
+      </table>
     </details>
     <details class="registers" id="{{ pname }}-registers">
       <summary>Toggle registers</summary>
       {% for register in peripheral.registers %}
       <div class="register">
-        <h4>
-          <a name="{{ pname }}:{{ register.name }}"></a>
+        <h4 id="{{ pname }}:{{ register.name }}">
           {{ register.name }}
           <a class="headerlink" href="#{{ pname }}:{{ register.name }}">
             <span class="glyphicon glyphicon-link"></span>
@@ -177,61 +178,58 @@ details[open] > summary {
         </p>
         <div class="bitfield">
           <table class="table table-striped table-bordered bitfield">
-            <tbody>{% for row in register.table %}{% if row %}
+            {%- for row in register.table %}
+            {%- if row %}
             <tr>
-              {% for header in row.headers %}
+              {%- for header in row.headers %}
               <th>{{ header }}</th>
-              {% endfor %}
+              {%- endfor %}
             </tr>
             <tr>
-              {% for field in row.fields %}
+              {%- for field in row.fields %}
               <td colspan="{{ field.width }}"{% if field.separated %} class="separated"{% endif %}>
-                {% if field.name %}
-                <a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
-                {% if field.doc %}
-                <span class="doccol">
-                {% else %}
-                <span>
-                {% endif %}
-                {{ field.name }}</span></a>
+                {%- if field.name %}
+                <a class="fieldlink{% if field.doc %} text-success{% endif %}" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
+                  {{ field.name }}
+                </a>
                 <br>
                 {{ field.access }}
-                {% endif %}
+                {%- endif %}
               </td>
-              {% endfor %}
+              {%- endfor %}
             </tr>
-            {% endif %}{% endfor %}
-          </tbody></table>
+            {%- endif %}
+            {%- endfor %}
+          </table>
         </div>
         {% endif %}
         <details class="fields" id="{{ pname }}-{{ register.name }}-fields">
           <summary>Toggle fields</summary>
-          {% for field in register.fields %}
-          <h4>
-            <a name="{{ pname }}:{{ register.name }}:{{ field.name }}">
-            </a>
+          {%- for field in register.fields %}
+          <h4 id="{{ pname }}:{{ register.name }}:{{ field.name }}">
             {{ field.name }}
             <a class="headerlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">
               <span class="glyphicon glyphicon-link"></span>
             </a>
           </h4>
           <p>
-            {% if field.width > 1 %}
+            {%- if field.width > 1 %}
               Bits {{ field.offset }}-{{ field.msb }}:
-            {% else %}
+            {%- else %}
               Bit {{ field.offset }}:
-            {% endif %}
-            {{ field.description }}.</p>
-          {% if field.doc %}
+            {%- endif %}
+            {{ field.description }}.
+          </p>
+          {%- if field.doc %}
           <p>{{ field.doc }}</p>
-          {% endif %}
-          {% endfor %}
+          {%- endif %}
+          {%- endfor %}
         </details>
       </div>
-      {% endfor %}
+      {%- endfor %}
     </details>
   </div>
-  {% endfor %}
+  {%- endfor %}
 </div>
 
 <script>
