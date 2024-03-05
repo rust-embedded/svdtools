@@ -103,6 +103,9 @@ pub trait RegisterBlockExt {
     /// Collect same registers in peripheral into register array
     fn collect_in_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult;
 
+    /// Expand register array
+    fn expand_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult;
+
     /// Collect registers in peripheral into clusters
     fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult;
 
@@ -337,6 +340,13 @@ impl PeripheralExt for Peripheral {
             }
         }
 
+        // Expand register arrays
+        for (rspec, rmod) in pmod.hash_iter("_expand_array") {
+            let rspec = rspec.str()?;
+            self.expand_array(rspec, rmod.hash()?, config)
+                .with_context(|| format!("During expand of `{rspec}` array"))?;
+        }
+
         // Collect registers in arrays
         for (rspec, rmod) in pmod.hash_iter("_array") {
             let rspec = rspec.str()?;
@@ -544,8 +554,10 @@ impl RegisterBlockExt for Peripheral {
             registers.retain(
                 |rc| !matches!(rc, RegisterCluster::Register(r) if matchname(&r.name, rspec)),
             );
+            Ok(())
+        } else {
+            Err(anyhow!("No registers or clusters"))
         }
-        Ok(())
     }
 
     fn delete_cluster(&mut self, cspec: &str) -> PatchResult {
@@ -553,12 +565,13 @@ impl RegisterBlockExt for Peripheral {
             registers.retain(
                 |rc| !matches!(rc, RegisterCluster::Cluster(c) if matchname(&c.name, cspec)),
             );
+            Ok(())
+        } else {
+            Err(anyhow!("No registers or clusters"))
         }
-        Ok(())
     }
 
     fn modify_cluster(&mut self, cspec: &str, cmod: &Hash) -> PatchResult {
-        // TODO: empty error
         let ctags = self.iter_clusters(cspec).collect::<Vec<_>>();
         if !ctags.is_empty() {
             let cluster_builder = make_cluster(cmod)?;
@@ -567,8 +580,10 @@ impl RegisterBlockExt for Peripheral {
                 modify_dim_element(ctag, &dim)?;
                 ctag.modify_from(cluster_builder.clone(), VAL_LVL)?;
             }
+            Ok(())
+        } else {
+            Err(anyhow!("No clusters"))
         }
-        Ok(())
     }
 
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
@@ -621,9 +636,18 @@ impl RegisterBlockExt for Peripheral {
     fn collect_in_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         if let Some(regs) = self.registers.as_mut() {
-            collect_in_array(regs, &pname, rspec, rmod, config)?;
+            collect_in_array(regs, &pname, rspec, rmod, config)
+        } else {
+            Err(anyhow!("No registers or clusters"))
         }
-        Ok(())
+    }
+
+    fn expand_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
+        if let Some(regs) = self.registers.as_mut() {
+            expand_array(regs, rspec, rmod, config)
+        } else {
+            Err(anyhow!("No registers or clusters"))
+        }
     }
 
     fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult {
@@ -866,6 +890,13 @@ impl ClusterExt for Cluster {
             }
         }
 
+        // Expand register arrays
+        for (rspec, rmod) in pmod.hash_iter("_expand_array") {
+            let rspec = rspec.str()?;
+            self.expand_array(rspec, rmod.hash()?, config)
+                .with_context(|| format!("During expand of `{rspec}` array"))?;
+        }
+
         // Collect registers in arrays
         for (rspec, rmod) in pmod.hash_iter("_array") {
             let rspec = rspec.str()?;
@@ -1096,6 +1127,11 @@ impl RegisterBlockExt for Cluster {
         collect_in_array(regs, &pname, rspec, rmod, config)
     }
 
+    fn expand_array(&mut self, rspec: &str, rmod: &Hash, config: &Config) -> PatchResult {
+        let regs = &mut self.children;
+        expand_array(regs, rspec, rmod, config)
+    }
+
     fn collect_in_cluster(&mut self, cname: &str, cmod: &Hash, config: &Config) -> PatchResult {
         let pname = self.name.clone();
         let regs = &mut self.children;
@@ -1285,6 +1321,31 @@ fn collect_in_array(
         .with_context(|| format!("Processing register `{}`", reg.name))?;
     regs.insert(place, RegisterCluster::Register(reg));
     Ok(())
+}
+
+fn expand_array(
+    regs: &mut Vec<RegisterCluster>,
+    rspec: &str,
+    _rmod: &Hash,
+    _config: &Config,
+) -> PatchResult {
+    let mut found = false;
+    for rc in std::mem::take(regs) {
+        match rc {
+            RegisterCluster::Register(Register::Array(r, d)) if matchname(&r.name, rspec) => {
+                found = true;
+                for ri in svd::register::expand(&r, &d) {
+                    regs.push(RegisterCluster::Register(ri.single()))
+                }
+            }
+            rc => regs.push(rc),
+        }
+    }
+    if !found {
+        Err(anyhow!("Register {rspec} not found"))
+    } else {
+        Ok(())
+    }
 }
 
 fn collect_in_cluster(
