@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.11] 2024-03-06
+
 * Add `_expand_array`
 * Allow register arrays in `collect_in_cluster`
 * Custom `dimIncrement` for 1-element `cluster` or `array`
@@ -139,7 +141,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.10...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.11...HEAD
+[v0.3.11]: https://github.com/rust-embedded/svdtools/compare/v0.3.10...v0.3.11
 [v0.3.10]: https://github.com/rust-embedded/svdtools/compare/v0.3.9...v0.3.10
 [v0.3.9]: https://github.com/rust-embedded/svdtools/compare/v0.3.8...v0.3.9
 [v0.3.8]: https://github.com/rust-embedded/svdtools/compare/v0.3.7...v0.3.8
