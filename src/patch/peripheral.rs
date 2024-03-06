@@ -1249,11 +1249,13 @@ fn collect_in_array(
     let dim_increment = if dim > 1 {
         offsets[1] - offsets[0]
     } else {
-        registers[0]
-            .properties
-            .size
-            .map(|s| s / 8)
-            .unwrap_or_default()
+        rmod.get_u32("dimIncrement")?.unwrap_or_else(|| {
+            registers[0]
+                .properties
+                .size
+                .map(|s| s / 8)
+                .unwrap_or_default()
+        })
     };
     if !check_offsets(&offsets, dim_increment) {
         return Err(anyhow!(
@@ -1359,7 +1361,7 @@ fn collect_in_cluster(
     let mut first = None;
     let mut dim = 0;
     let mut dim_index = Vec::new();
-    let mut dim_increment = 0;
+    let mut dim_increment = cmod.get_u32("dimIncrement")?.unwrap_or(0);
     let mut offsets = Vec::new();
     let mut place = usize::MAX;
     let mut rspecs = Vec::new();
@@ -1367,7 +1369,7 @@ fn collect_in_cluster(
 
     for (rspec, rmod) in cmod {
         let rspec = rspec.str()?;
-        if rspec == "description" {
+        if rspec == "description" || rspec == "dimIncrement" {
             continue;
         }
         let mut registers = Vec::new();
