@@ -693,7 +693,8 @@ fn spec_ind(spec: &str) -> Option<(usize, usize)> {
     use regex::Regex;
     let spec = spec.split(',').next().unwrap_or(spec);
     static RE: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"^\w*((?:[\?*]|\[\d+(?:-\d+)?\]|\[[a-zA-Z]+(?:-[a-zA-Z]+)?\])+)\w*$").unwrap()
+        Regex::new(r"^[\w%]*((?:[\?*]|\[\d+(?:-\d+)?\]|\[[a-zA-Z]+(?:-[a-zA-Z]+)?\])+)[\w%]*$")
+            .unwrap()
     });
     let Some(caps) = RE.captures(spec) else {
         return None;

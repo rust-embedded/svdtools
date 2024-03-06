@@ -1249,10 +1249,8 @@ fn collect_in_array(
     let dim_increment = if dim > 1 {
         offsets[1] - offsets[0]
     } else {
-        registers[0]
-            .properties
-            .size
-            .map(|s| s / 8)
+        rmod.get_u32("dimIncrement")?
+            .or_else(|| registers[0].properties.size.map(|s| s / 8))
             .unwrap_or_default()
     };
     if !check_offsets(&offsets, dim_increment) {
@@ -1359,7 +1357,7 @@ fn collect_in_cluster(
     let mut first = None;
     let mut dim = 0;
     let mut dim_index = Vec::new();
-    let mut dim_increment = 0;
+    let mut dim_increment = cmod.get_u32("dimIncrement")?.unwrap_or(0);
     let mut offsets = Vec::new();
     let mut place = usize::MAX;
     let mut rspecs = Vec::new();
@@ -1367,7 +1365,7 @@ fn collect_in_cluster(
 
     for (rspec, rmod) in cmod {
         let rspec = rspec.str()?;
-        if rspec == "description" {
+        if rspec == "description" || rspec == "dimIncrement" {
             continue;
         }
         let mut registers = Vec::new();
@@ -1375,8 +1373,8 @@ fn collect_in_cluster(
         let (rspec, ignore) = rspec.spec();
         while i < regs.len() {
             match &regs[i] {
-                RegisterCluster::Register(Register::Single(r)) if matchname(&r.name, rspec) => {
-                    if let RegisterCluster::Register(Register::Single(r)) = regs.remove(i) {
+                RegisterCluster::Register(r) if matchname(&r.name, rspec) => {
+                    if let RegisterCluster::Register(r) = regs.remove(i) {
                         registers.push(r);
                         place = place.min(i);
                     }
@@ -1399,15 +1397,29 @@ fn collect_in_cluster(
             ));
         }
         rspecs.push(rspec.to_string());
+
         if single {
             if registers.len() > 1 {
                 return Err(anyhow!("{path}: more than one registers {rspec} found"));
             }
         } else {
             registers.sort_by_key(|r| r.address_offset);
+            if let Register::Array(_, rdim) = &registers[0] {
+                if !registers
+                    .iter()
+                    .skip(1)
+                    .all(|r| matches!(r, Register::Array(_, d) if d == rdim))
+                {
+                    return Err(anyhow!("`{rspec}` have different dim blocks"));
+                }
+            } else if !registers.iter().skip(1).all(|r| r.is_single()) {
+                return Err(anyhow!(
+                    "Some of `{rspec}` registers are arrays and some are not"
+                ));
+            }
             let bitmasks = registers
                 .iter()
-                .map(RegisterInfo::get_bitmask)
+                .map(|r| RegisterInfo::get_bitmask(r))
                 .collect::<Vec<_>>();
             let new_dim_index = registers
                 .iter()
@@ -1483,7 +1495,7 @@ fn collect_in_cluster(
     config.update_fields = true;
     let cluster = if single {
         for (_, (rmod, mut registers)) in rdict.into_iter() {
-            let mut reg = registers.swap_remove(0).single();
+            let mut reg = registers.swap_remove(0);
             let rmod = rmod.hash()?;
             reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
@@ -1497,7 +1509,7 @@ fn collect_in_cluster(
         cinfo.children(children).build(VAL_LVL)?.single()
     } else {
         for (rspec, (rmod, mut registers)) in rdict.into_iter() {
-            let mut reg = registers.swap_remove(0).single();
+            let mut reg = registers.swap_remove(0);
             let rmod = rmod.hash()?;
             reg.process(rmod, path, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
