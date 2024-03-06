@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Add `_expand_array`
+* Allow register arrays in `collect_in_cluster`
 
 ## [v0.3.10] 2024-02-26
 
