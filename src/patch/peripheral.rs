@@ -1249,13 +1249,9 @@ fn collect_in_array(
     let dim_increment = if dim > 1 {
         offsets[1] - offsets[0]
     } else {
-        rmod.get_u32("dimIncrement")?.unwrap_or_else(|| {
-            registers[0]
-                .properties
-                .size
-                .map(|s| s / 8)
-                .unwrap_or_default()
-        })
+        rmod.get_u32("dimIncrement")?
+            .or_else(|| registers[0].properties.size.map(|s| s / 8))
+            .unwrap_or_default()
     };
     if !check_offsets(&offsets, dim_increment) {
         return Err(anyhow!(
