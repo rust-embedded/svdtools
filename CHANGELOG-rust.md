@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Allow to modify registers in `_cluster:`
+* Add addressOffset check in `collect_in_cluster`
 
 ## [v0.3.11] 2024-03-06
 

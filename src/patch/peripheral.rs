@@ -1284,6 +1284,9 @@ fn collect_in_array(
             .or_else(|| registers[0].properties.size.map(|s| s / 8))
             .unwrap_or_default()
     };
+    if dim_increment == 0 {
+        return Err(anyhow!("Need to specify dimIncrement"));
+    }
     if !check_offsets(&offsets, dim_increment) {
         return Err(anyhow!(
             "{}: registers cannot be collected into {rspec} array. Different addressOffset increments",
@@ -1558,6 +1561,9 @@ fn collect_in_cluster(
                 reg.description = Some(desc.into());
             }
             reg.address_offset -= address_offset;
+            if reg.address_offset >= dim_increment {
+                return Err(anyhow!("Register {} addressOffset={} is out of cluster {cname} dimIncrement = {dim_increment}", &reg.name, reg.address_offset));
+            }
             children.push(RegisterCluster::Register(reg));
         }
 
