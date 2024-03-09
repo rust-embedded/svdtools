@@ -198,7 +198,7 @@ pub(crate) trait RegisterBlockExt: Name {
 
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
-    fn derive_register(&mut self, rname: &str, rderive: &Yaml) -> PatchResult {
+    fn derive_register(&mut self, rname: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
         let (rderive, info) = if let Some(rderive) = rderive.as_str() {
             (
                 rderive,
@@ -217,10 +217,8 @@ pub(crate) trait RegisterBlockExt: Name {
         };
 
         self.get_reg(rderive).ok_or_else(|| {
-            anyhow!(
-                "register {rderive} not found. Present registers: {}.`",
-                self.present_registers()
-            )
+            let present = self.present_registers();
+            anyhow!("Could not find `{bpath}:{rderive}. Present registers: {present}.")
         })?;
 
         match self.get_mut_reg(rname) {
@@ -241,7 +239,7 @@ pub(crate) trait RegisterBlockExt: Name {
 
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
-    fn derive_cluster(&mut self, _cname: &str, _cderive: &Yaml) -> PatchResult {
+    fn derive_cluster(&mut self, _cname: &str, _cderive: &Yaml, _bpath: &BlockPath) -> PatchResult {
         todo!()
     }
 
@@ -255,10 +253,10 @@ pub(crate) trait RegisterBlockExt: Name {
             .regs()
             .find(|r| r.name == srcname)
             .ok_or_else(|| {
+                let present = self.present_registers();
                 anyhow!(
-                    "{} {bpath} does not have register {srcname}. Present registers: {}.`",
+                    "{} {bpath} does not have register {srcname}. Present registers: {present}.`",
                     Self::RB_TYPE,
-                    self.present_registers()
                 )
             })?
             .clone();
@@ -277,7 +275,7 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     /// Add cname given by deriving from ccopy to ptag
-    fn copy_cluster(&mut self, _rname: &str, _ccopy: &Hash) -> PatchResult {
+    fn copy_cluster(&mut self, _rname: &str, _ccopy: &Hash, _bpath: &BlockPath) -> PatchResult {
         todo!()
     }
 
@@ -326,7 +324,6 @@ pub(crate) trait RegisterBlockExt: Name {
     /// Work through a register, handling all fields
     fn process_register(
         &mut self,
-
         rspec: &str,
         rmod: &Hash,
         bpath: &BlockPath,
@@ -656,7 +653,7 @@ impl PeripheralExt for Peripheral {
                     for (cname, val) in rcopy.hash()? {
                         let cname = cname.str()?;
                         let ccopy = val.hash()?;
-                        self.copy_cluster(rname, ccopy)
+                        self.copy_cluster(rname, ccopy, &ppath)
                             .with_context(|| format!("Copying cluster `{cname}` from `{val:?}`"))?;
                     }
                 }
@@ -754,7 +751,7 @@ impl PeripheralExt for Peripheral {
                 "_registers" => {
                     for (rname, val) in rderive.hash()? {
                         let rname = rname.str()?;
-                        self.derive_register(rname, val).with_context(|| {
+                        self.derive_register(rname, val, &ppath).with_context(|| {
                             format!("Deriving register `{rname}` from `{val:?}`")
                         })?;
                     }
@@ -762,15 +759,16 @@ impl PeripheralExt for Peripheral {
                 "_clusters" => {
                     for (cname, val) in rderive.hash()? {
                         let cname = cname.str()?;
-                        self.derive_cluster(rname, val).with_context(|| {
+                        self.derive_cluster(rname, val, &ppath).with_context(|| {
                             format!("Deriving cluster `{cname}` from `{val:?}`")
                         })?;
                     }
                 }
                 _ => {
-                    self.derive_register(rname, rderive).with_context(|| {
-                        format!("Deriving register `{rname}` from `{rderive:?}`")
-                    })?;
+                    self.derive_register(rname, rderive, &ppath)
+                        .with_context(|| {
+                            format!("Deriving register `{rname}` from `{rderive:?}`")
+                        })?;
                 }
             }
         }
@@ -911,7 +909,7 @@ impl ClusterExt for Cluster {
                     for (cname, val) in rcopy.hash()? {
                         let cname = cname.str()?;
                         let ccopy = val.hash()?;
-                        self.copy_cluster(rname, ccopy)
+                        self.copy_cluster(rname, ccopy, &cpath)
                             .with_context(|| format!("Copying cluster `{cname}` from `{val:?}`"))?;
                     }
                 }
@@ -994,7 +992,7 @@ impl ClusterExt for Cluster {
                 "_registers" => {
                     for (rname, val) in rderive.hash()? {
                         let rname = rname.str()?;
-                        self.derive_register(rname, val).with_context(|| {
+                        self.derive_register(rname, val, &cpath).with_context(|| {
                             format!("Deriving register `{rname}` from `{val:?}`")
                         })?;
                     }
@@ -1002,15 +1000,16 @@ impl ClusterExt for Cluster {
                 "_clusters" => {
                     for (cname, val) in rderive.hash()? {
                         let cname = cname.str()?;
-                        self.derive_cluster(rname, val).with_context(|| {
+                        self.derive_cluster(rname, val, &cpath).with_context(|| {
                             format!("Deriving cluster `{cname}` from `{val:?}`")
                         })?;
                     }
                 }
                 _ => {
-                    self.derive_register(rname, rderive).with_context(|| {
-                        format!("Deriving register `{rname}` from `{rderive:?}`")
-                    })?;
+                    self.derive_register(rname, rderive, &cpath)
+                        .with_context(|| {
+                            format!("Deriving register `{rname}` from `{rderive:?}`")
+                        })?;
                 }
             }
         }

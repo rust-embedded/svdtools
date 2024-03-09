@@ -56,18 +56,18 @@ pub trait RegisterExt {
     /// Work through a field, handling either an enum or a range
     fn process_field(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         fmod: &Yaml,
+        rpath: &RegisterPath,
         config: &Config,
     ) -> PatchResult;
 
     /// Add an enumeratedValues given by field to all fspec in rtag
     fn process_field_enum(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         fmod: &Hash,
+        rpath: &RegisterPath,
         usage: Option<Usage>,
         config: &Config,
     ) -> PatchResult;
@@ -81,9 +81,9 @@ pub trait RegisterExt {
     /// Add a writeConstraint range given by field to all fspec in rtag
     fn process_field_range(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         fmod: &[Yaml],
+        rpath: &RegisterPath,
     ) -> PatchResult;
 
     /// Delete substring from the beginning bitfield names inside rtag
@@ -203,7 +203,7 @@ impl RegisterExt for Register {
             for (fspec, field) in rmod {
                 let fspec = fspec.str()?;
                 if !fspec.starts_with('_') {
-                    self.process_field(&rpath, fspec, field, config)
+                    self.process_field(fspec, field, &rpath, config)
                         .with_context(|| format!("Processing field matched to `{fspec}`"))?;
                 }
             }
@@ -527,9 +527,9 @@ impl RegisterExt for Register {
 
     fn process_field(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         fmod: &Yaml,
+        rpath: &RegisterPath,
         config: &Config,
     ) -> PatchResult {
         const READ: phf::Map<&'static str, Option<ReadAction>> = phf::phf_map! {
@@ -557,7 +557,7 @@ impl RegisterExt for Register {
                 let is_read = READ.keys().any(|key| fmod.contains_key(&key.to_yaml()));
                 let is_write = WRITE.keys().any(|key| fmod.contains_key(&key.to_yaml()));
                 if !is_read && !is_write {
-                    self.process_field_enum(rpath, fspec, fmod, None, config)
+                    self.process_field_enum(fspec, fmod, rpath, None, config)
                         .with_context(|| "Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
@@ -565,9 +565,9 @@ impl RegisterExt for Register {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
-                                        rpath,
                                         fspec,
                                         fmod,
+                                        rpath,
                                         Some(Usage::Read),
                                         config,
                                     )
@@ -585,9 +585,9 @@ impl RegisterExt for Register {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
-                                        rpath,
                                         fspec,
                                         fmod,
+                                        rpath,
                                         Some(Usage::Write),
                                         config,
                                     )
@@ -602,7 +602,7 @@ impl RegisterExt for Register {
                 }
             }
             Yaml::Array(fmod) if fmod.len() == 2 => {
-                self.process_field_range(rpath, fspec, fmod)
+                self.process_field_range(fspec, fmod, rpath)
                     .with_context(|| "Adding writeConstraint range")?;
             }
             _ => {}
@@ -628,9 +628,9 @@ impl RegisterExt for Register {
 
     fn process_field_enum(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         mut fmod: &Hash,
+        rpath: &RegisterPath,
         usage: Option<Usage>,
         config: &Config,
     ) -> PatchResult {
@@ -807,9 +807,9 @@ impl RegisterExt for Register {
 
     fn process_field_range(
         &mut self,
-        rpath: &RegisterPath,
         fspec: &str,
         fmod: &[Yaml],
+        rpath: &RegisterPath,
     ) -> PatchResult {
         let mut set_any = false;
         let (fspec, ignore) = fspec.spec();
