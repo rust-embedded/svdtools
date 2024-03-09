@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Allow to modify registers in `_cluster:`
+
 ## [v0.3.11] 2024-03-06
 
 * Add `_expand_array`

@@ -27,8 +27,29 @@ pub trait PeripheralExt: InterruptExt + RegisterBlockExt {
 
 /// Collecting methods for processing cluster contents
 pub trait ClusterExt: RegisterBlockExt {
+    const KEYWORDS: &'static [&'static str] = &[
+        "_add",
+        "_copy",
+        "_delete",
+        "_derive",
+        "_modify",
+        "_strip",
+        "_strip_end",
+        "_expand_array",
+        "_expand_cluster",
+        "_array",
+        "_cluster",
+        "_clusters",
+    ];
+
     /// Work through a cluster, handling all registers
     fn process(&mut self, peripheral: &Hash, pname: &str, config: &Config) -> PatchResult;
+
+    /// Work through a cluster, handling all registers
+    fn pre_process(&mut self, peripheral: &Hash, pname: &str, config: &Config) -> PatchResult;
+
+    /// Work through a cluster, handling all registers
+    fn post_process(&mut self, peripheral: &Hash, pname: &str, config: &Config) -> PatchResult;
 }
 
 /// Collecting methods for processing peripheral interrupt contents
@@ -710,7 +731,7 @@ impl RegisterBlockExt for Peripheral {
 }
 
 impl ClusterExt for Cluster {
-    fn process(&mut self, pmod: &Hash, _pname: &str, config: &Config) -> PatchResult {
+    fn pre_process(&mut self, pmod: &Hash, _pname: &str, _config: &Config) -> PatchResult {
         // Handle deletions
         if let Some(deletions) = pmod.get(&"_delete".to_yaml()) {
             match deletions {
@@ -872,6 +893,12 @@ impl ClusterExt for Cluster {
             }
         }
 
+        Ok(())
+    }
+
+    fn process(&mut self, pmod: &Hash, pname: &str, config: &Config) -> PatchResult {
+        self.pre_process(pmod, pname, config)?;
+
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
@@ -890,6 +917,10 @@ impl ClusterExt for Cluster {
             }
         }
 
+        self.post_process(pmod, pname, config)
+    }
+
+    fn post_process(&mut self, pmod: &Hash, _pname: &str, config: &Config) -> PatchResult {
         // Expand register arrays
         for (rspec, rmod) in pmod.hash_iter("_expand_array") {
             let rspec = rspec.str()?;
@@ -1365,7 +1396,7 @@ fn collect_in_cluster(
 
     for (rspec, rmod) in cmod {
         let rspec = rspec.str()?;
-        if rspec == "description" || rspec == "dimIncrement" {
+        if ["description", "dimIncrement"].contains(&rspec) || Cluster::KEYWORDS.contains(&rspec) {
             continue;
         }
         let mut registers = Vec::new();
@@ -1493,7 +1524,7 @@ fn collect_in_cluster(
         .address_offset(address_offset);
     let mut config = config.clone();
     config.update_fields = true;
-    let cluster = if single {
+    let mut cluster = if single {
         for (_, (rmod, mut registers)) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0);
             let rmod = rmod.hash()?;
@@ -1538,6 +1569,8 @@ fn collect_in_cluster(
                 .build(VAL_LVL)?,
         )
     };
+    cluster.pre_process(cmod, cname, &config)?;
+    cluster.post_process(cmod, cname, &config)?;
     regs.insert(place, RegisterCluster::Cluster(cluster));
     Ok(())
 }
