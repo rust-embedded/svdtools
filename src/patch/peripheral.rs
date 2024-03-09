@@ -27,6 +27,21 @@ pub trait PeripheralExt: InterruptExt + RegisterBlockExt {
 
 /// Collecting methods for processing cluster contents
 pub trait ClusterExt: RegisterBlockExt {
+    const KEYWORDS: &'static [&'static str] = &[
+        "_add",
+        "_copy",
+        "_delete",
+        "_derive",
+        "_modify",
+        "_strip",
+        "_strip_end",
+        "_expand_array",
+        "_expand_cluster",
+        "_array",
+        "_cluster",
+        "_clusters",
+    ];
+
     /// Work through a cluster, handling all registers
     fn process(&mut self, peripheral: &Hash, pname: &str, config: &Config) -> PatchResult;
 
@@ -716,7 +731,7 @@ impl RegisterBlockExt for Peripheral {
 }
 
 impl ClusterExt for Cluster {
-    fn pre_process(&mut self, pmod: &Hash, _pname: &str, config: &Config) -> PatchResult {
+    fn pre_process(&mut self, pmod: &Hash, _pname: &str, _config: &Config) -> PatchResult {
         // Handle deletions
         if let Some(deletions) = pmod.get(&"_delete".to_yaml()) {
             match deletions {
@@ -878,6 +893,12 @@ impl ClusterExt for Cluster {
             }
         }
 
+        Ok(())
+    }
+
+    fn process(&mut self, pmod: &Hash, pname: &str, config: &Config) -> PatchResult {
+        self.pre_process(pmod, pname, config)?;
+
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
@@ -886,12 +907,6 @@ impl ClusterExt for Cluster {
                     .with_context(|| format!("According to `{cspec}`"))?;
             }
         }
-
-        Ok(())
-    }
-
-    fn process(&mut self, pmod: &Hash, pname: &str, config: &Config) -> PatchResult {
-        self.pre_process(pmod, pname, config)?;
 
         // Handle registers
         for (rspec, register) in pmod {
@@ -1381,7 +1396,7 @@ fn collect_in_cluster(
 
     for (rspec, rmod) in cmod {
         let rspec = rspec.str()?;
-        if rspec == "description" || rspec == "dimIncrement" || rspec.starts_with('_') {
+        if ["description", "dimIncrement"].contains(&rspec) || Cluster::KEYWORDS.contains(&rspec) {
             continue;
         }
         let mut registers = Vec::new();
