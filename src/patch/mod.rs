@@ -382,7 +382,7 @@ fn make_address_block(h: &Hash) -> Result<AddressBlockBuilder> {
 
 fn make_dim_element(h: &Hash) -> Result<Option<DimElementBuilder>> {
     let mut d = DimElement::builder()
-        .dim_index(if let Some(y) = h.get(&"dimIndex".to_yaml()) {
+        .dim_index(if let Some(y) = h.get_yaml("dimIndex") {
             match y {
                 Yaml::String(text) => Some(DimElement::parse_indexes(text).ok_or(DimIndexParse)?),
                 Yaml::Array(a) => {
@@ -492,8 +492,8 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     }
 
     if let Some(write_constraint) = radd
-        .get(&"_write_constraint".to_yaml())
-        .or_else(|| radd.get(&"writeConstraint".to_yaml()))
+        .get_yaml("_write_constraint")
+        .or_else(|| radd.get_yaml("writeConstraint"))
     {
         let wc = match write_constraint {
             Yaml::String(s) if s == "none" => {

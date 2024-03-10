@@ -19,7 +19,7 @@ use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_fi
 
 pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Field>>;
 
-pub trait RegisterInfoExt {
+pub(crate) trait RegisterInfoExt {
     /// Calculate filling of register
     fn get_bitmask(&self) -> u64;
 }
@@ -38,6 +38,26 @@ impl RegisterInfoExt for RegisterInfo {
 
 /// Collecting methods for processing register contents
 pub trait RegisterExt {
+    const KEYWORDS: &'static [&'static str] = &[
+        "_include",
+        "_path",
+        "_delete",
+        "_strip",
+        "_strip_end",
+        "_clear",
+        "_modify",
+        "_add",
+        "_merge",
+        "_split",
+        "_array",
+    ];
+
+    /// Iterates over all fields that match fspec and live inside rtag
+    fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
+
+    /// Returns string of present fields
+    fn present_fields(&self) -> String;
+
     /// Work through a register, handling all fields
     fn process(&mut self, rmod: &Hash, bpath: &BlockPath, config: &Config) -> PatchResult;
 
@@ -49,9 +69,6 @@ pub trait RegisterExt {
 
     /// Clear contents of fields matched by fspec inside rtag
     fn clear_field(&mut self, fspec: &str) -> PatchResult;
-
-    /// Iterates over all fields that match fspec and live inside rtag
-    fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b>;
 
     /// Work through a field, handling either an enum or a range
     fn process_field(
@@ -118,6 +135,14 @@ pub trait RegisterExt {
 }
 
 impl RegisterExt for Register {
+    fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b> {
+        self.fields_mut().matched(spec)
+    }
+
+    fn present_fields(&self) -> String {
+        self.fields().map(|f| f.name.as_str()).join(", ")
+    }
+
     fn process(&mut self, rmod: &Hash, bpath: &BlockPath, config: &Config) -> PatchResult {
         if self.derived_from.is_some() {
             return Ok(());
@@ -161,7 +186,7 @@ impl RegisterExt for Register {
         }
 
         // Handle merges
-        match rmod.get(&"_merge".to_yaml()) {
+        match rmod.get_yaml("_merge") {
             Some(Yaml::Hash(h)) => {
                 for (fspec, fmerge) in h {
                     let fspec = fspec.str()?;
@@ -180,7 +205,7 @@ impl RegisterExt for Register {
         }
 
         // Handle splits
-        match rmod.get(&"_split".to_yaml()) {
+        match rmod.get_yaml("_split") {
             Some(Yaml::Hash(h)) => {
                 for (fspec, fsplit) in h {
                     let fspec = fspec.str()?;
@@ -202,10 +227,11 @@ impl RegisterExt for Register {
         if config.update_fields {
             for (fspec, field) in rmod {
                 let fspec = fspec.str()?;
-                if !fspec.starts_with('_') {
-                    self.process_field(fspec, field, &rpath, config)
-                        .with_context(|| format!("Processing field matched to `{fspec}`"))?;
+                if Self::KEYWORDS.contains(&fspec) {
+                    continue;
                 }
+                self.process_field(fspec, field, &rpath, config)
+                    .with_context(|| format!("Processing field matched to `{fspec}`"))?;
             }
         }
 
@@ -217,10 +243,6 @@ impl RegisterExt for Register {
         }
 
         Ok(())
-    }
-
-    fn iter_fields<'a, 'b>(&'a mut self, spec: &'b str) -> FieldMatchIterMut<'a, 'b> {
-        self.fields_mut().matched(spec)
     }
 
     fn strip_start(&mut self, substr: &str) -> PatchResult {
@@ -254,8 +276,8 @@ impl RegisterExt for Register {
             for ftag in ftags {
                 modify_dim_element(ftag, &dim)?;
                 if let Some(value) = fmod
-                    .get(&"_write_constraint".to_yaml())
-                    .or_else(|| fmod.get(&"writeConstraint".to_yaml()))
+                    .get_yaml("_write_constraint")
+                    .or_else(|| fmod.get_yaml("writeConstraint"))
                 {
                     let wc = match value {
                         Yaml::String(s) if s == "none" => {
@@ -352,9 +374,9 @@ impl RegisterExt for Register {
         };
 
         if names.is_empty() {
+            let present = self.present_fields();
             return Err(anyhow!(
-                "Could not find any fields to merge {rpath}:{key}. Present fields: {}.`",
-                self.fields().map(|f| f.name.as_str()).join(", ")
+                "Could not find any fields to merge {rpath}:{key}. Present fields: {present}.`"
             ));
         }
         let mut bitwidth = 0;
@@ -411,9 +433,9 @@ impl RegisterExt for Register {
                 if ignore {
                     return Ok(());
                 }
+                let present = self.present_fields();
                 return Err(anyhow!(
-                    "{rpath}: fields {fspec} not found. Present fields: {}.`",
-                    self.fields().map(|f| f.name.as_str()).join(", ")
+                    "{rpath}: fields {fspec} not found. Present fields: {present}.`"
                 ));
             }
             fields.sort_by_key(|f| f.bit_range.offset);
@@ -481,9 +503,9 @@ impl RegisterExt for Register {
                 if ignore {
                     return Ok(());
                 }
+                let present = self.present_fields();
                 return Err(anyhow!(
-                    "Could not find any fields to split {rpath}:{fspec}. Present fields: {}.`",
-                    self.fields().map(|f| f.name.as_str()).join(", ")
+                    "Could not find any fields to split {rpath}:{fspec}. Present fields: {present}.`"
                 ));
             }
             (Some(_), Some(_)) => {
@@ -558,7 +580,7 @@ impl RegisterExt for Register {
                 let is_write = WRITE.keys().any(|key| fmod.contains_key(&key.to_yaml()));
                 if !is_read && !is_write {
                     self.process_field_enum(fspec, fmod, rpath, None, config)
-                        .with_context(|| "Adding read-write enumeratedValues")?;
+                        .context("Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
                         for (key, action) in &READ {
@@ -571,7 +593,7 @@ impl RegisterExt for Register {
                                         Some(Usage::Read),
                                         config,
                                     )
-                                    .with_context(|| "Adding read-only enumeratedValues")?;
+                                    .context("Adding read-only enumeratedValues")?;
                                 }
                                 if let Some(action) = action {
                                     self.set_field_read_action(fspec, *action);
@@ -591,7 +613,7 @@ impl RegisterExt for Register {
                                         Some(Usage::Write),
                                         config,
                                     )
-                                    .with_context(|| "Adding write-only enumeratedValues")?;
+                                    .context("Adding write-only enumeratedValues")?;
                                 }
                                 if let Some(mwv) = mwv {
                                     self.set_field_modified_write_values(fspec, *mwv);
@@ -603,7 +625,7 @@ impl RegisterExt for Register {
             }
             Yaml::Array(fmod) if fmod.len() == 2 => {
                 self.process_field_range(fspec, fmod, rpath)
-                    .with_context(|| "Adding writeConstraint range")?;
+                    .context("Adding writeConstraint range")?;
             }
             _ => {}
         }
@@ -753,9 +775,9 @@ impl RegisterExt for Register {
                 if ignore {
                     return Ok(());
                 }
+                let present = self.present_fields();
                 return Err(anyhow!(
-                    "Could not find field {rpath}:{fspec}. Present fields: {}.`",
-                    self.fields().map(|f| f.name.as_str()).join(", ")
+                    "Could not find field {rpath}:{fspec}. Present fields: {present}.`"
                 ));
             }
             let (min_offset, fname, min_offset_pos) =
@@ -821,9 +843,9 @@ impl RegisterExt for Register {
             set_any = true;
         }
         if !ignore && !set_any {
+            let present = self.present_fields();
             return Err(anyhow!(
-                "Could not find field {rpath}:{fspec}. Present fields: {}.`",
-                self.fields().map(|f| f.name.as_str()).join(", ")
+                "Could not find field {rpath}:{fspec}. Present fields: {present}.`"
             ));
         }
         Ok(())

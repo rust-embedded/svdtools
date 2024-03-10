@@ -25,6 +25,25 @@ pub type RegMatchIterMut<'a, 'b> = MatchIter<'b, RegisterIterMut<'a>>;
 
 /// Collecting methods for processing peripheral contents
 pub(crate) trait PeripheralExt: InterruptExt + RegisterBlockExt {
+    const KEYWORDS: &'static [&'static str] = &[
+        "_include",
+        "_path",
+        "_delete",
+        "_copy",
+        "_strip",
+        "_strip_end",
+        "_modify",
+        "_clear_fields",
+        "_add",
+        "_derive",
+        "_expand_array",
+        "_expand_cluster",
+        "_array",
+        "_cluster",
+        "_clusters",
+        "_interrupts",
+    ];
+
     /// Work through a peripheral, handling all registers
     fn process(&mut self, peripheral: &Hash, config: &Config) -> PatchResult;
 }
@@ -32,13 +51,16 @@ pub(crate) trait PeripheralExt: InterruptExt + RegisterBlockExt {
 /// Collecting methods for processing cluster contents
 pub(crate) trait ClusterExt: RegisterBlockExt {
     const KEYWORDS: &'static [&'static str] = &[
-        "_add",
-        "_copy",
+        "_include",
+        "_path",
         "_delete",
-        "_derive",
-        "_modify",
+        "_copy",
         "_strip",
         "_strip_end",
+        "_modify",
+        "_clear_fields",
+        "_add",
+        "_derive",
         "_expand_array",
         "_expand_cluster",
         "_array",
@@ -593,7 +615,7 @@ impl PeripheralExt for Peripheral {
         let ppath = BlockPath::new(&self.name);
 
         // Handle deletions
-        if let Some(deletions) = pmod.get(&"_delete".to_yaml()) {
+        if let Some(deletions) = pmod.get_yaml("_delete") {
             match deletions {
                 Yaml::String(rspec) => {
                     self.delete_register(rspec)
@@ -776,10 +798,11 @@ impl PeripheralExt for Peripheral {
         // Handle registers
         for (rspec, register) in pmod {
             let rspec = rspec.str()?;
-            if !rspec.starts_with('_') {
-                self.process_register(rspec, register.hash()?, &ppath, config)
-                    .with_context(|| format!("According to `{rspec}`"))?;
+            if Self::KEYWORDS.contains(&rspec) {
+                continue;
             }
+            self.process_register(rspec, register.hash()?, &ppath, config)
+                .with_context(|| format!("According to `{rspec}`"))?;
         }
 
         // Expand register arrays
@@ -805,10 +828,8 @@ impl PeripheralExt for Peripheral {
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
-            if !cspec.starts_with('_') {
-                self.process_cluster(cspec, cluster.hash()?, &ppath, config)
-                    .with_context(|| format!("According to `{cspec}`"))?;
-            }
+            self.process_cluster(cspec, cluster.hash()?, &ppath, config)
+                .with_context(|| format!("According to `{cspec}`"))?;
         }
 
         Ok(())
@@ -851,7 +872,7 @@ impl InterruptExt for Peripheral {
 impl ClusterExt for Cluster {
     fn pre_process(&mut self, cmod: &Hash, parent: &BlockPath, _config: &Config) -> PatchResult {
         // Handle deletions
-        if let Some(deletions) = cmod.get(&"_delete".to_yaml()) {
+        if let Some(deletions) = cmod.get_yaml("_delete") {
             match deletions {
                 Yaml::String(rspec) => {
                     self.delete_register(rspec)
@@ -1025,19 +1046,18 @@ impl ClusterExt for Cluster {
         // Handle clusters
         for (cspec, cluster) in cmod.hash_iter("_clusters") {
             let cspec = cspec.str()?;
-            if !cspec.starts_with('_') {
-                self.process_cluster(cspec, cluster.hash()?, &cpath, config)
-                    .with_context(|| format!("According to `{cspec}`"))?;
-            }
+            self.process_cluster(cspec, cluster.hash()?, &cpath, config)
+                .with_context(|| format!("According to `{cspec}`"))?;
         }
 
         // Handle registers
         for (rspec, register) in cmod {
             let rspec = rspec.str()?;
-            if !rspec.starts_with('_') {
-                self.process_register(rspec, register.hash()?, &cpath, config)
-                    .with_context(|| format!("According to `{rspec}`"))?;
+            if Self::KEYWORDS.contains(&rspec) {
+                continue;
             }
+            self.process_register(rspec, register.hash()?, &cpath, config)
+                .with_context(|| format!("According to `{rspec}`"))?;
         }
 
         self.post_process(cmod, parent, config)
