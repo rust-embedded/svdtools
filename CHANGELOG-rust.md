@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* `dimArrayIndex` support
 * Allow to modify registers in `_cluster:`
 * Add addressOffset check in `collect_in_cluster`
 * Refactor `RegisterBlockExt`, use `BlockPath` for better errors
