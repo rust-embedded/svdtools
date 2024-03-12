@@ -149,27 +149,9 @@ impl<'a> Iterator for OverStringIter<'a> {
 type HashIter<'a> = OptIter<linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
 pub trait GetVal {
-    fn get_bool(&self, k: &str) -> Result<Option<bool>>;
-    fn get_i64(&self, k: &str) -> Result<Option<i64>>;
-    fn get_u64(&self, k: &str) -> Result<Option<u64>> {
-        self.get_i64(k).map(|v| v.map(|v| v as u64))
-    }
-    fn get_u32(&self, k: &str) -> Result<Option<u32>> {
-        self.get_i64(k).map(|v| v.map(|v| v as u32))
-    }
-    fn get_str(&self, k: &str) -> Result<Option<&str>>;
-    fn get_string(&self, k: &str) -> Result<Option<String>> {
-        self.get_str(k).map(|v| v.map(From::from))
-    }
-    fn get_hash(&self, k: &str) -> Result<Option<&Hash>>;
-    fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a>;
-    fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>>;
-    fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>>;
-}
-
-impl GetVal for Hash {
+    fn get_yaml(&self, k: &str) -> Option<&Yaml>;
     fn get_bool(&self, k: &str) -> Result<Option<bool>> {
-        match self.get(&k.to_yaml()) {
+        match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .bool()
@@ -178,7 +160,7 @@ impl GetVal for Hash {
         }
     }
     fn get_i64(&self, k: &str) -> Result<Option<i64>> {
-        match self.get(&k.to_yaml()) {
+        match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .i64()
@@ -186,8 +168,14 @@ impl GetVal for Hash {
                 .map(Some),
         }
     }
+    fn get_u64(&self, k: &str) -> Result<Option<u64>> {
+        self.get_i64(k).map(|v| v.map(|v| v as u64))
+    }
+    fn get_u32(&self, k: &str) -> Result<Option<u32>> {
+        self.get_i64(k).map(|v| v.map(|v| v as u32))
+    }
     fn get_str(&self, k: &str) -> Result<Option<&str>> {
-        match self.get(&k.to_yaml()) {
+        match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .str()
@@ -195,8 +183,11 @@ impl GetVal for Hash {
                 .map(Some),
         }
     }
+    fn get_string(&self, k: &str) -> Result<Option<String>> {
+        self.get_str(k).map(|v| v.map(From::from))
+    }
     fn get_hash(&self, k: &str) -> Result<Option<&Hash>> {
-        match self.get(&k.to_yaml()) {
+        match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .hash()
@@ -205,14 +196,10 @@ impl GetVal for Hash {
         }
     }
     fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a> {
-        HashIter::new(
-            self.get(&k.to_yaml())
-                .and_then(Yaml::as_hash)
-                .map(|h| h.iter()),
-        )
+        HashIter::new(self.get_yaml(k).and_then(Yaml::as_hash).map(|h| h.iter()))
     }
     fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>> {
-        match self.get(&k.to_yaml()) {
+        match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .vec()
@@ -221,12 +208,19 @@ impl GetVal for Hash {
         }
     }
     fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>> {
-        Ok(OptIter::new(match self.get(&k.to_yaml()) {
+        Ok(OptIter::new(match self.get_yaml(k) {
             None => None,
             Some(y) if matches!(y, Yaml::String(_) | Yaml::Array(_)) => {
                 Some(OverStringIter(y, None))
             }
             _ => return Err(anyhow!("`{k}` requires string value or array of strings")),
         }))
+    }
+}
+
+impl GetVal for Hash {
+    #[inline(always)]
+    fn get_yaml(&self, k: &str) -> Option<&Yaml> {
+        self.get(&k.to_yaml())
     }
 }

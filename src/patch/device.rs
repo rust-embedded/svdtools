@@ -17,8 +17,24 @@ pub type PerMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Periphe
 
 /// Collecting methods for processing device contents
 pub trait DeviceExt {
+    const KEYWORDS: &'static [&'static str] = &[
+        "_svd",
+        "_include",
+        "_path",
+        "_delete",
+        "_copy",
+        "_modify",
+        "_clear_fields",
+        "_add",
+        "_derive",
+        "_rebase",
+    ];
+
     /// Iterates over all peripherals that match pspec
     fn iter_peripherals<'a, 'b>(&'a mut self, spec: &'b str) -> PerMatchIterMut<'a, 'b>;
+
+    /// Returns string of present peripherals
+    fn present_peripherals(&self) -> String;
 
     /// Work through a device, handling all peripherals
     fn process(&mut self, device: &Hash, config: &Config) -> PatchResult;
@@ -61,6 +77,10 @@ pub trait DeviceExt {
 impl DeviceExt for Device {
     fn iter_peripherals<'a, 'b>(&'a mut self, spec: &'b str) -> PerMatchIterMut<'a, 'b> {
         self.peripherals.iter_mut().matched(spec)
+    }
+
+    fn present_peripherals(&self) -> String {
+        self.peripherals.iter().map(|p| p.name.as_str()).join(", ")
     }
 
     fn process(&mut self, device: &Hash, config: &Config) -> PatchResult {
@@ -182,13 +202,19 @@ impl DeviceExt for Device {
                     .with_context(|| format!("Parsing file {contents}"))?;
                 filedev
                     .get_peripheral(pcopyname)
-                    .ok_or_else(|| anyhow!("peripheral {pcopyname} not found"))?
+                    .ok_or_else(|| {
+                        let present = self.present_peripherals();
+                        anyhow!("peripheral {pcopyname} not found. Present peripherals: {present}.")
+                    })?
                     .clone()
             }
             [pcopyname] => {
                 let mut new = self
                     .get_peripheral(pcopyname)
-                    .ok_or_else(|| anyhow!("peripheral {pcopyname} not found"))?
+                    .ok_or_else(|| {
+                        let present = self.present_peripherals();
+                        anyhow!("peripheral {pcopyname} not found. Present peripherals: {present}.")
+                    })?
                     .clone();
                 // When copying from a peripheral in the same file, remove any interrupts.
                 new.interrupt = Vec::new();
@@ -313,7 +339,10 @@ impl DeviceExt for Device {
                 .enumerate()
                 .find(|(_, f)| f.name == pderive)
             else {
-                return Err(anyhow!("peripheral {pderive} not found"));
+                let present = self.present_peripherals();
+                return Err(anyhow!(
+                    "peripheral {pderive} not found. Present peripherals: {present}."
+                ));
             };
             Some(i)
         } else {
@@ -416,22 +445,19 @@ impl DeviceExt for Device {
         peripheral: &Hash,
         config: &Config,
     ) -> PatchResult {
-        // Find all peripherals that match the spec
-        let mut pcount = 0;
         let (pspec, ignore) = pspec.spec();
-        for ptag in self.iter_peripherals(pspec) {
-            pcount += 1;
+        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
+        if ptags.is_empty() && !ignore {
+            let present = self.present_peripherals();
+            return Err(anyhow!(
+                "Could not find `{pspec}. Present peripherals: {present}.`"
+            ));
+        }
+        for ptag in ptags {
             ptag.process(peripheral, config)
                 .with_context(|| format!("Processing peripheral `{}`", ptag.name))?;
         }
-        if !ignore && pcount == 0 {
-            Err(anyhow!(
-                "Could not find `{pspec}. Present peripherals: {}.`",
-                self.peripherals.iter().map(|p| p.name.as_str()).join(", ")
-            ))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
