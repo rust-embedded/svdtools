@@ -1,8 +1,10 @@
 pub mod patch_cli;
 
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use svd_parser::expand::{BlockPath, FieldPath, RegisterPath};
 use svd_parser::svd::{
     addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
     AddressBlockUsage, ClusterInfo, ClusterInfoBuilder, Cpu, CpuBuilder, Endian, EnumeratedValue,
@@ -462,10 +464,10 @@ fn modify_dim_element<T: Clone>(
     Ok(())
 }
 
-fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
+fn make_field(fadd: &Hash, rpath: Option<&RegisterPath>) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
-        .description(fadd.get_string("description")?)
-        .derived_from(fadd.get_string("derivedFrom")?)
+        .description(opt_interpolate(&rpath, fadd.get_str("description")?))
+        .derived_from(opt_interpolate(&rpath, fadd.get_str("derivedFrom")?))
         .access(fadd.get_str("access")?.and_then(Access::parse_str))
         .modified_write_values(
             fadd.get_str("modifiedWriteValues")?
@@ -493,11 +495,11 @@ fn make_field(fadd: &Hash) -> Result<FieldInfoBuilder> {
     Ok(fnew)
 }
 
-fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
+fn make_register(radd: &Hash, path: Option<&BlockPath>) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName")?)
-        .description(radd.get_string("description")?)
-        .derived_from(radd.get_string("derivedFrom")?)
+        .description(opt_interpolate(&path, radd.get_str("description")?))
+        .derived_from(opt_interpolate(&path, radd.get_str("derivedFrom")?))
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
         .properties(get_register_properties(radd)?)
@@ -506,7 +508,7 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
                 let mut fields = Vec::new();
                 for (fname, val) in h {
                     fields.push(
-                        make_field(val.hash()?)?
+                        make_field(val.hash()?, None)?
                             .name(fname.str()?.into())
                             .build(VAL_LVL)?
                             .single(),
@@ -552,10 +554,10 @@ fn make_register(radd: &Hash) -> Result<RegisterInfoBuilder> {
     Ok(rnew)
 }
 
-fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
+fn make_cluster(cadd: &Hash, path: Option<&BlockPath>) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
-        .description(cadd.get_string("description")?)
-        .derived_from(cadd.get_string("derivedFrom")?)
+        .description(opt_interpolate(&path, cadd.get_str("description")?))
+        .derived_from(opt_interpolate(&path, cadd.get_str("derivedFrom")?))
         .default_register_properties(get_register_properties(cadd)?)
         .children(match cadd.get_hash("registers")? {
             Some(h) => {
@@ -563,7 +565,7 @@ fn make_cluster(cadd: &Hash) -> Result<ClusterInfoBuilder> {
                 for (rname, val) in h {
                     ch.push(RegisterCluster::Register({
                         let radd = val.hash()?;
-                        let reg = make_register(radd)?
+                        let reg = make_register(radd, None)?
                             .name(rname.str()?.into())
                             .build(VAL_LVL)?;
                         if let Some(dim) = make_dim_element(radd)? {
@@ -652,7 +654,7 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
                     for (rname, val) in h.iter() {
                         regs.push(RegisterCluster::Register({
                             let radd = val.hash()?;
-                            let reg = make_register(radd)?
+                            let reg = make_register(radd, None)?
                                 .name(rname.str()?.into())
                                 .build(VAL_LVL)?;
                             if let Some(dim) = make_dim_element(radd)? {
@@ -800,5 +802,55 @@ impl Spec for str {
         } else {
             (self, false)
         }
+    }
+}
+
+fn opt_interpolate<T: Interpolate>(path: &Option<&T>, s: Option<&str>) -> Option<String> {
+    path.and_then(|path| path.interpolate_opt(s))
+}
+
+trait Interpolate {
+    fn interpolate<'a>(&self, s: &'a str) -> Cow<'a, str>;
+    fn interpolate_opt(&self, s: Option<&str>) -> Option<String> {
+        s.map(|s| self.interpolate(s).into_owned())
+    }
+}
+
+impl Interpolate for BlockPath {
+    fn interpolate<'a>(&self, s: &'a str) -> Cow<'a, str> {
+        let mut cow = Cow::Borrowed(s);
+        if cow.contains("`peripheral`") {
+            cow = cow.replace("`peripheral`", &self.peripheral).into()
+        }
+        if cow.contains("`block_path`") {
+            cow = cow.replace("`block_path`", &self.to_string()).into()
+        }
+        cow
+    }
+}
+
+impl Interpolate for RegisterPath {
+    fn interpolate<'a>(&self, s: &'a str) -> Cow<'a, str> {
+        let mut cow = self.block.interpolate(s);
+        if cow.contains("`register`") {
+            cow = cow.replace("`register`", &self.name).into()
+        }
+        if cow.contains("`register_path`") {
+            cow = cow.replace("`register_path`", &self.to_string()).into()
+        }
+        cow
+    }
+}
+
+impl Interpolate for FieldPath {
+    fn interpolate<'a>(&self, s: &'a str) -> Cow<'a, str> {
+        let mut cow = self.register().interpolate(s);
+        if cow.contains("`field`") {
+            cow = cow.replace("`field`", &self.name).into()
+        }
+        if cow.contains("`field_path`") {
+            cow = cow.replace("`field_path`", &self.to_string()).into()
+        }
+        cow
     }
 }

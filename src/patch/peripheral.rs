@@ -202,7 +202,9 @@ pub(crate) trait RegisterBlockExt: Name {
             ));
         }
         self.add_child(RegisterCluster::Register({
-            let reg = make_register(radd)?.name(rname.into()).build(VAL_LVL)?;
+            let reg = make_register(radd, Some(bpath))?
+                .name(rname.into())
+                .build(VAL_LVL)?;
             if let Some(dim) = make_dim_element(radd)? {
                 reg.array(dim.build(VAL_LVL)?)
             } else {
@@ -221,7 +223,9 @@ pub(crate) trait RegisterBlockExt: Name {
             ));
         }
         self.add_child(RegisterCluster::Cluster({
-            let cl = make_cluster(cadd)?.name(cname.into()).build(VAL_LVL)?;
+            let cl = make_cluster(cadd, Some(bpath))?
+                .name(cname.into())
+                .build(VAL_LVL)?;
             if let Some(dim) = make_dim_element(cadd)? {
                 cl.array(dim.build(VAL_LVL)?)
             } else {
@@ -245,7 +249,7 @@ pub(crate) trait RegisterBlockExt: Name {
             })?;
             (
                 rderive,
-                make_register(hash)?.derived_from(Some(rderive.into())),
+                make_register(hash, Some(bpath))?.derived_from(Some(rderive.into())),
             )
         } else {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
@@ -295,7 +299,7 @@ pub(crate) trait RegisterBlockExt: Name {
                 )
             })?
             .clone();
-        let fixes = make_register(rcopy)?
+        let fixes = make_register(rcopy, Some(bpath))?
             .name(rname.into())
             .display_name(Some("".into()));
         // Modifying fields in derived register not implemented
@@ -325,10 +329,10 @@ pub(crate) trait RegisterBlockExt: Name {
                     "Could not find `{bpath}:{rcspec}. Present registers: {present}.`"
                 ))
             } else {
-                modify_cluster(ctags, rcmod)
+                modify_cluster(ctags, rcmod, bpath)
             }
         } else {
-            modify_register(rtags, rcmod)
+            modify_register(rtags, rcmod, bpath)
         }
     }
 
@@ -342,7 +346,7 @@ pub(crate) trait RegisterBlockExt: Name {
                 "Could not find `{bpath}:{rspec}. Present registers: {present}.`"
             ));
         }
-        modify_register(rtags, rmod)
+        modify_register(rtags, rmod, bpath)
     }
 
     /// Modify cspec inside ptag according to cmod
@@ -355,7 +359,7 @@ pub(crate) trait RegisterBlockExt: Name {
                 "Could not find cluster `{bpath}:{cspec}. Present clusters: {present}.`"
             ));
         }
-        modify_cluster(ctags, cmod)
+        modify_cluster(ctags, cmod, bpath)
     }
     /// Work through a register or cluster
     fn process_child(
@@ -553,8 +557,8 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 }
 
-fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash) -> PatchResult {
-    let register_builder = make_register(rmod)?;
+fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash, bpath: &BlockPath) -> PatchResult {
+    let register_builder = make_register(rmod, Some(bpath))?;
     let dim = make_dim_element(rmod)?;
     for rtag in rtags {
         modify_dim_element(rtag, &dim)?;
@@ -566,8 +570,8 @@ fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash) -> PatchResult {
     Ok(())
 }
 
-fn modify_cluster(ctags: Vec<&mut Cluster>, cmod: &Hash) -> PatchResult {
-    let cluster_builder = make_cluster(cmod)?;
+fn modify_cluster(ctags: Vec<&mut Cluster>, cmod: &Hash, bpath: &BlockPath) -> PatchResult {
+    let cluster_builder = make_cluster(cmod, Some(bpath))?;
     let dim = make_dim_element(cmod)?;
     for ctag in ctags {
         modify_dim_element(ctag, &dim)?;
