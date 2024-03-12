@@ -9,6 +9,7 @@ This changelog tracks the Rust `svdtools` project. See
 * Add addressOffset check in `collect_in_cluster`
 * Refactor `RegisterBlockExt`, use `BlockPath` for better errors
 * Allow specs started with `_`
+* Allow process, `_delete` and `_modify` cluster without `_clusters` specifier
 
 ## [v0.3.11] 2024-03-06
 

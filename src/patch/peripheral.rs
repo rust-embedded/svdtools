@@ -132,6 +132,9 @@ pub(crate) trait RegisterBlockExt: Name {
     fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register>;
 
     /// Register/cluster block
+    fn children(&self) -> Option<&Vec<RegisterCluster>>;
+
+    /// Register/cluster block
     fn children_mut(&mut self) -> Option<&mut Vec<RegisterCluster>>;
 
     /// Iterates over all registers that match rspec and live inside ptag
@@ -155,6 +158,16 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     fn add_child(&mut self, child: RegisterCluster);
+
+    /// Delete registers and clusters matched by rspec inside ptag
+    fn delete_child(&mut self, rcspec: &str) -> PatchResult {
+        if let Some(children) = self.children_mut() {
+            children.retain(|rc| !matchname(rc.name(), rcspec));
+            Ok(())
+        } else {
+            Err(anyhow!("No registers or clusters"))
+        }
+    }
 
     /// Delete registers matched by rspec inside ptag
     fn delete_register(&mut self, rspec: &str) -> PatchResult {
@@ -301,31 +314,38 @@ pub(crate) trait RegisterBlockExt: Name {
         todo!()
     }
 
+    fn modify_child(&mut self, rcspec: &str, rcmod: &Hash, bpath: &BlockPath) -> PatchResult {
+        let (rcspec, ignore) = rcspec.spec();
+        let rtags = self.iter_registers(rcspec).collect::<Vec<_>>();
+        if rtags.is_empty() && !ignore {
+            let ctags = self.iter_clusters(rcspec).collect::<Vec<_>>();
+            if ctags.is_empty() {
+                let present = self.present_registers();
+                Err(anyhow!(
+                    "Could not find `{bpath}:{rcspec}. Present registers: {present}.`"
+                ))
+            } else {
+                modify_cluster(ctags, rcmod)
+            }
+        } else {
+            modify_register(rtags, rcmod)
+        }
+    }
+
     /// Modify rspec inside ptag according to rmod
-    fn modify_register(&mut self, rspec: &str, rmod: &Hash, _bpath: &BlockPath) -> PatchResult {
-        let (rspec, _ignore) = rspec.spec();
+    fn modify_register(&mut self, rspec: &str, rmod: &Hash, bpath: &BlockPath) -> PatchResult {
+        let (rspec, ignore) = rspec.spec();
         let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
-        // TODO: enable this check
-        /*if rtags.is_empty() && !ignore {
+        if rtags.is_empty() && !ignore {
             let present = self.present_registers();
             return Err(anyhow!(
                 "Could not find `{bpath}:{rspec}. Present registers: {present}.`"
             ));
-        }*/
-        let register_builder = make_register(rmod)?;
-        let dim = make_dim_element(rmod)?;
-        for rtag in rtags {
-            modify_dim_element(rtag, &dim)?;
-            rtag.modify_from(register_builder.clone(), VAL_LVL)?;
-            if let Some("") = rmod.get_str("access")? {
-                rtag.properties.access = None;
-            }
         }
-        Ok(())
+        modify_register(rtags, rmod)
     }
 
     /// Modify cspec inside ptag according to cmod
-
     fn modify_cluster(&mut self, cspec: &str, cmod: &Hash, bpath: &BlockPath) -> PatchResult {
         let (cspec, ignore) = cspec.spec();
         let ctags = self.iter_clusters(cspec).collect::<Vec<_>>();
@@ -335,13 +355,39 @@ pub(crate) trait RegisterBlockExt: Name {
                 "Could not find cluster `{bpath}:{cspec}. Present clusters: {present}.`"
             ));
         }
-        let cluster_builder = make_cluster(cmod)?;
-        let dim = make_dim_element(cmod)?;
-        for ctag in ctags {
-            modify_dim_element(ctag, &dim)?;
-            ctag.modify_from(cluster_builder.clone(), VAL_LVL)?;
+        modify_cluster(ctags, cmod)
+    }
+    /// Work through a register or cluster
+    fn process_child(
+        &mut self,
+        rcspec: &str,
+        rcmod: &Hash,
+        bpath: &BlockPath,
+        config: &Config,
+    ) -> PatchResult {
+        let (rspec, ignore) = rcspec.spec();
+        let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
+        if rtags.is_empty() && !ignore {
+            let ctags = self.iter_clusters(rspec).collect::<Vec<_>>();
+            if ctags.is_empty() {
+                let present = self.present_registers();
+                Err(anyhow!(
+                    "Could not find `{bpath}:{rspec}. Present registers: {present}.`"
+                ))
+            } else {
+                for ctag in ctags {
+                    ctag.process(rcmod, bpath, config)
+                        .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
+                }
+                Ok(())
+            }
+        } else {
+            for rtag in rtags {
+                rtag.process(rcmod, bpath, config)
+                    .with_context(|| format!("Processing register `{}`", rtag.name))?;
+            }
+            Ok(())
         }
-        Ok(())
     }
     /// Work through a register, handling all fields
     fn process_register(
@@ -507,6 +553,29 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 }
 
+fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash) -> PatchResult {
+    let register_builder = make_register(rmod)?;
+    let dim = make_dim_element(rmod)?;
+    for rtag in rtags {
+        modify_dim_element(rtag, &dim)?;
+        rtag.modify_from(register_builder.clone(), VAL_LVL)?;
+        if let Some("") = rmod.get_str("access")? {
+            rtag.properties.access = None;
+        }
+    }
+    Ok(())
+}
+
+fn modify_cluster(ctags: Vec<&mut Cluster>, cmod: &Hash) -> PatchResult {
+    let cluster_builder = make_cluster(cmod)?;
+    let dim = make_dim_element(cmod)?;
+    for ctag in ctags {
+        modify_dim_element(ctag, &dim)?;
+        ctag.modify_from(cluster_builder.clone(), VAL_LVL)?;
+    }
+    Ok(())
+}
+
 impl RegisterBlockExt for Peripheral {
     const RB_TYPE: &'static str = "peripheral";
 
@@ -530,6 +599,9 @@ impl RegisterBlockExt for Peripheral {
     }
     fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register> {
         self.get_mut_register(name)
+    }
+    fn children(&self) -> Option<&Vec<RegisterCluster>> {
+        self.registers.as_ref()
     }
     fn children_mut(&mut self) -> Option<&mut Vec<RegisterCluster>> {
         self.registers.as_mut()
@@ -565,6 +637,9 @@ impl RegisterBlockExt for Cluster {
     }
     fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register> {
         self.get_mut_register(name)
+    }
+    fn children(&self) -> Option<&Vec<RegisterCluster>> {
+        Some(&self.children)
     }
     fn children_mut(&mut self) -> Option<&mut Vec<RegisterCluster>> {
         Some(&mut self.children)
@@ -617,15 +692,17 @@ impl PeripheralExt for Peripheral {
         // Handle deletions
         if let Some(deletions) = pmod.get_yaml("_delete") {
             match deletions {
-                Yaml::String(rspec) => {
-                    self.delete_register(rspec)
-                        .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
+                Yaml::String(rcspec) => {
+                    self.delete_child(rcspec).with_context(|| {
+                        format!("Deleting registers and clusters matched to `{rcspec}`")
+                    })?;
                 }
                 Yaml::Array(deletions) => {
-                    for rspec in deletions {
-                        let rspec = rspec.str()?;
-                        self.delete_register(rspec)
-                            .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
+                    for rcspec in deletions {
+                        let rcspec = rcspec.str()?;
+                        self.delete_child(rcspec).with_context(|| {
+                            format!("Deleting registers and clusters matched to `{rcspec}`")
+                        })?;
                     }
                 }
                 Yaml::Hash(deletions) => {
@@ -716,16 +793,16 @@ impl PeripheralExt for Peripheral {
                         })?;
                     }
                 }
-                "_cluster" => {
+                "_clusters" => {
                     for (cspec, val) in rmod {
                         let cspec = cspec.str()?;
                         self.modify_cluster(cspec, val.hash()?, &ppath)
                             .with_context(|| format!("Modifying clusters matched to `{cspec}`"))?;
                     }
                 }
-                rspec => self
-                    .modify_register(rspec, rmod, &ppath)
-                    .with_context(|| format!("Modifying registers matched to `{rspec}`"))?,
+                rcspec => self.modify_child(rcspec, rmod, &ppath).with_context(|| {
+                    format!("Modifying registers or clusters matched to `{rcspec}`")
+                })?,
             }
         }
 
@@ -795,14 +872,14 @@ impl PeripheralExt for Peripheral {
             }
         }
 
-        // Handle registers
-        for (rspec, register) in pmod {
-            let rspec = rspec.str()?;
-            if Self::KEYWORDS.contains(&rspec) {
+        // Handle registers or clusters
+        for (rcspec, rcmod) in pmod {
+            let rcspec = rcspec.str()?;
+            if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
-            self.process_register(rspec, register.hash()?, &ppath, config)
-                .with_context(|| format!("According to `{rspec}`"))?;
+            self.process_child(rcspec, rcmod.hash()?, &ppath, config)
+                .with_context(|| format!("According to `{rcspec}`"))?;
         }
 
         // Expand register arrays
@@ -874,15 +951,17 @@ impl ClusterExt for Cluster {
         // Handle deletions
         if let Some(deletions) = cmod.get_yaml("_delete") {
             match deletions {
-                Yaml::String(rspec) => {
-                    self.delete_register(rspec)
-                        .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
+                Yaml::String(rcspec) => {
+                    self.delete_child(rcspec).with_context(|| {
+                        format!("Deleting registers and clusters matched to `{rcspec}`")
+                    })?;
                 }
                 Yaml::Array(deletions) => {
-                    for rspec in deletions {
-                        let rspec = rspec.str()?;
-                        self.delete_register(rspec)
-                            .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
+                    for rcspec in deletions {
+                        let rcspec = rcspec.str()?;
+                        self.delete_child(rcspec).with_context(|| {
+                            format!("Deleting registers and clusters matched to `{rcspec}`")
+                        })?;
                     }
                 }
                 Yaml::Hash(deletions) => {
@@ -963,16 +1042,16 @@ impl ClusterExt for Cluster {
                             .with_context(|| format!("Modifying registers matched to `{rspec}`"))?;
                     }
                 }
-                "_cluster" => {
+                "_clusters" => {
                     for (cspec, val) in rmod {
                         let cspec = cspec.str()?;
                         self.modify_cluster(cspec, val.hash()?, &cpath)
                             .with_context(|| format!("Modifying clusters matched to `{cspec}`"))?;
                     }
                 }
-                rspec => self
-                    .modify_register(rspec, rmod, &cpath)
-                    .with_context(|| format!("Modifying registers matched to `{rspec}`"))?,
+                rcspec => self.modify_child(rcspec, rmod, &cpath).with_context(|| {
+                    format!("Modifying registers or clusters matched to `{rcspec}`")
+                })?,
             }
         }
 
@@ -1050,14 +1129,14 @@ impl ClusterExt for Cluster {
                 .with_context(|| format!("According to `{cspec}`"))?;
         }
 
-        // Handle registers
-        for (rspec, register) in cmod {
-            let rspec = rspec.str()?;
-            if Self::KEYWORDS.contains(&rspec) {
+        // Handle registers or clusters
+        for (rcspec, rcmod) in cmod {
+            let rcspec = rcspec.str()?;
+            if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
-            self.process_register(rspec, register.hash()?, &cpath, config)
-                .with_context(|| format!("According to `{rspec}`"))?;
+            self.process_child(rcspec, rcmod.hash()?, &cpath, config)
+                .with_context(|| format!("According to `{rcspec}`"))?;
         }
 
         self.post_process(cmod, parent, config)
