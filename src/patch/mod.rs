@@ -12,7 +12,7 @@ use svd_parser::svd::{
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
-use svd_rs::{BitRange, DimElement, DimElementBuilder, MaybeArray};
+use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 use anyhow::{anyhow, Context, Result};
@@ -323,10 +323,13 @@ fn make_ev_array(values: &Hash) -> Result<EnumeratedValuesBuilder> {
                 ));
             }
             let vd = vd.vec()?;
-            let description = vd.get(1).and_then(Yaml::as_str).ok_or_else(|| {
-                anyhow!("enumeratedValue can't have empty description for value {vname}")
-            })?;
-            let value = vd[0].i64()?;
+            let Some((value, description)) = vd.first().zip(vd.get(1)) else {
+                return Err(anyhow!(
+                    "enumeratedValue {vname} can't have empty value or description"
+                ));
+            };
+            let value = value.i64()?;
+            let description = description.str()?;
             let def = value == -1;
             let value = value as u64;
             let ev = EnumeratedValue::builder()
@@ -398,8 +401,11 @@ fn make_dim_element(h: &Hash) -> Result<Option<DimElementBuilder>> {
             None
         })
         .dim_name(h.get_string("dimName")?)
-        // TODO
-        .dim_array_index(None);
+        .dim_array_index(
+            h.get_hash("dimArrayIndex")?
+                .map(make_dim_array_index)
+                .transpose()?,
+        );
     if let Some(dim) = h.get_u32("dim")? {
         d = d.dim(dim)
     }
@@ -410,6 +416,33 @@ fn make_dim_element(h: &Hash) -> Result<Option<DimElementBuilder>> {
         None
     } else {
         Some(d)
+    })
+}
+
+fn make_dim_array_index(h: &Hash) -> Result<DimArrayIndex> {
+    let mut values = Vec::new();
+    for (vname, vd) in h {
+        let vname = vname.str()?;
+        if let Some(vd) = vd.as_vec() {
+            let Some((value, description)) = vd.first().zip(vd.get(1)) else {
+                return Err(anyhow!(
+                    "enumeratedValue {vname} can't have empty value or description"
+                ));
+            };
+            let value = value.i64()?;
+            let description = description.str()?;
+            values.push(
+                EnumeratedValue::builder()
+                    .value(Some(value as u64))
+                    .description(Some(description.into()))
+                    .build(VAL_LVL)?,
+            )
+        }
+    }
+
+    Ok(DimArrayIndex {
+        header_enum_name: h.get_string("headerEnumName")?,
+        values,
     })
 }
 
