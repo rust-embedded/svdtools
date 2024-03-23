@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.12] 2024-03-23
+
 * `dimArrayIndex` support
 * Allow to modify registers in `_cluster:`
 * Add addressOffset check in `collect_in_cluster`
@@ -148,7 +150,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.11...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.12...HEAD
+[v0.3.12]: https://github.com/rust-embedded/svdtools/compare/v0.3.11...v0.3.12
 [v0.3.11]: https://github.com/rust-embedded/svdtools/compare/v0.3.10...v0.3.11
 [v0.3.10]: https://github.com/rust-embedded/svdtools/compare/v0.3.9...v0.3.10
 [v0.3.9]: https://github.com/rust-embedded/svdtools/compare/v0.3.8...v0.3.9
