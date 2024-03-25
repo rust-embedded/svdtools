@@ -110,7 +110,7 @@ pub trait RegisterExt {
     fn strip_end(&mut self, substr: &str) -> PatchResult;
 
     /// Modify fspec inside rtag according to fmod
-    fn modify_field(&mut self, fspec: &str, fmod: &Hash) -> PatchResult;
+    fn modify_field(&mut self, fspec: &str, fmod: &Hash, rpath: &RegisterPath) -> PatchResult;
 
     /// Merge all fspec in rtag.
     /// Support list of field to auto-merge, and dict with fspec or list of fspec
@@ -175,7 +175,7 @@ impl RegisterExt for Register {
         // Handle modifications
         for (fspec, fmod) in rmod.hash_iter("_modify") {
             let fspec = fspec.str()?;
-            self.modify_field(fspec, fmod.hash()?)
+            self.modify_field(fspec, fmod.hash()?, &rpath)
                 .with_context(|| format!("Modifying fields matched to `{fspec}`"))?;
         }
         // Handle additions
@@ -268,9 +268,9 @@ impl RegisterExt for Register {
         Ok(())
     }
 
-    fn modify_field(&mut self, fspec: &str, fmod: &Hash) -> PatchResult {
+    fn modify_field(&mut self, fspec: &str, fmod: &Hash, rpath: &RegisterPath) -> PatchResult {
         let ftags = self.iter_fields(fspec).collect::<Vec<_>>();
-        let field_builder = make_field(fmod)?;
+        let field_builder = make_field(fmod, Some(rpath))?;
         let dim = make_dim_element(fmod)?;
         if !ftags.is_empty() {
             for ftag in ftags {
@@ -313,7 +313,9 @@ impl RegisterExt for Register {
         if self.get_field(fname).is_some() {
             return Err(anyhow!("register {rpath} already has a field {fname}"));
         }
-        let fnew = make_field(fadd)?.name(fname.into()).build(VAL_LVL)?;
+        let fnew = make_field(fadd, Some(rpath))?
+            .name(fname.into())
+            .build(VAL_LVL)?;
         let fnew = if let Some(dim) = make_dim_element(fadd)? {
             fnew.array(dim.build(VAL_LVL)?)
         } else {
