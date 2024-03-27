@@ -4,7 +4,9 @@ use log::info;
 use std::io::Read;
 use std::str::FromStr;
 use std::{fs::File, path::Path};
-use svd_rs::{ClusterInfo, Device, FieldInfo, PeripheralInfo, RegisterInfo};
+use svd_rs::{
+    ClusterInfo, Device, FieldInfo, MaybeArray, PeripheralInfo, RegisterCluster, RegisterInfo,
+};
 
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct CompareConfig {
@@ -22,7 +24,10 @@ impl Same for PeripheralInfo {
             return false;
         }
         (!config.compare_description || self.description == other.description)
-            && self.registers == other.registers
+            && self
+                .registers
+                .as_deref()
+                .is_copy(&other.registers.as_deref(), config)
     }
 }
 
@@ -32,7 +37,7 @@ impl Same for ClusterInfo {
             return false;
         }
         (!config.compare_description || self.description == other.description)
-            && self.children == other.children
+            && self.children.is_copy(&other.children, config)
     }
 }
 
@@ -46,7 +51,20 @@ impl Same for RegisterInfo {
             && self.properties == other.properties
             && self.write_constraint == other.write_constraint
             && self.read_action == other.read_action
-            && self.fields == other.fields
+            && self
+                .fields
+                .as_deref()
+                .is_copy(&other.fields.as_deref(), config)
+    }
+}
+
+impl Same for RegisterCluster {
+    fn is_copy(&self, other: &Self, config: &CompareConfig) -> bool {
+        match (self, other) {
+            (Self::Register(s), Self::Register(o)) if s.is_copy(o, config) => true,
+            (Self::Cluster(s), Self::Cluster(o)) if s.is_copy(o, config) => true,
+            _ => false,
+        }
     }
 }
 
@@ -62,6 +80,44 @@ impl Same for FieldInfo {
             && self.write_constraint == other.write_constraint
             && self.read_action == other.read_action
             && self.enumerated_values == other.enumerated_values
+    }
+}
+
+impl<T: Same> Same for MaybeArray<T> {
+    fn is_copy(&self, other: &Self, config: &CompareConfig) -> bool {
+        match (self, other) {
+            (Self::Array(sinfo, sdim), Self::Array(oinfo, odim))
+                if sdim == odim && sinfo.is_copy(oinfo, config) =>
+            {
+                true
+            }
+            (Self::Single(sinfo), Self::Single(oinfo)) if sinfo.is_copy(oinfo, config) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T: Same + ?Sized> Same for Option<&T> {
+    fn is_copy(&self, other: &Self, config: &CompareConfig) -> bool {
+        match (self, other) {
+            (Some(s), Some(o)) if s.is_copy(o, config) => true,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T: Same> Same for [T] {
+    fn is_copy(&self, other: &Self, config: &CompareConfig) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        for (s, o) in self.iter().zip(other.iter()) {
+            if !s.is_copy(o, config) {
+                return false;
+            }
+        }
+        true
     }
 }
 
