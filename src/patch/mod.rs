@@ -259,9 +259,6 @@ fn newglob(spec: &str) -> globset::GlobMatcher {
 
 /// If a name matches a specification, return the first sub-specification that it matches
 fn matchsubspec<'a>(name: &str, spec: &'a str) -> Option<&'a str> {
-    if spec.starts_with('_') {
-        return None;
-    }
     if spec.contains('{') {
         let glob = newglob(spec);
         if glob.is_match(name) {
@@ -731,9 +728,7 @@ fn spec_ind(spec: &str) -> Option<(usize, usize)> {
         Regex::new(r"^[\w%]*((?:[\?*]|\[\d+(?:-\d+)?\]|\[[a-zA-Z]+(?:-[a-zA-Z]+)?\])+)[\w%]*$")
             .unwrap()
     });
-    let Some(caps) = RE.captures(spec) else {
-        return None;
-    };
+    let caps = RE.captures(spec)?;
     let spec = caps.get(0).unwrap();
     let token = caps.get(1).unwrap();
     let li = token.start();

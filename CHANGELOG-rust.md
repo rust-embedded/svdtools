@@ -6,6 +6,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [Unreleased]
 
 * Interpolate path and name in `description` and `derivedFrom`
+* Allow specs started with `_` (missing part)
 
 ## [v0.3.12] 2024-03-23
 
