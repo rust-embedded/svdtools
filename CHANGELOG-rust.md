@@ -16,6 +16,7 @@ This changelog tracks the Rust `svdtools` project. See
 * Refactor `RegisterBlockExt`, use `BlockPath` for better errors
 * Allow specs started with `_`
 * Allow process, `_delete` and `_modify` cluster without `_clusters` specifier
+* Allow 1 string `_include`
 
 ## [v0.3.11] 2024-03-06
 

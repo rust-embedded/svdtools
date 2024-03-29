@@ -162,9 +162,12 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
         }
     }
 
-    let inc = parent.get_vec("_include")?.unwrap_or(&Vec::new()).clone();
+    let inc = parent
+        .str_vec_iter("_include")?
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
     for relpath in inc {
-        let relpath = relpath.as_str().unwrap();
+        let relpath = relpath.as_str();
         let path = abspath(&self_path, Path::new(relpath))
             .with_context(|| anyhow!("Opening file \"{relpath}\" from file {self_path:?}"))?;
         if included.contains(&path) {
