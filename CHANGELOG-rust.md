@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* If there is no path to interpolate, show unmodified `description`.
+
 ## [v0.3.13] 2024-03-29
 
 * Interpolate path and name in `description` and `derivedFrom`
