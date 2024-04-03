@@ -473,7 +473,8 @@ fn make_field(fadd: &Hash, rpath: Option<&RegisterPath>) -> Result<FieldInfoBuil
             fadd.get_str("modifiedWriteValues")?
                 .and_then(ModifiedWriteValues::parse_str),
         )
-        .read_action(fadd.get_str("readAction")?.and_then(ReadAction::parse_str));
+        .read_action(fadd.get_str("readAction")?.and_then(ReadAction::parse_str))
+        .write_constraint(get_write_constraint(fadd)?);
 
     if let Some(name) = fadd.get_str("name")? {
         fnew = fnew.name(name.into());
@@ -503,6 +504,7 @@ fn make_register(radd: &Hash, path: Option<&BlockPath>) -> Result<RegisterInfoBu
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
         .properties(get_register_properties(radd)?)
+        .write_constraint(get_write_constraint(radd)?)
         .fields(match radd.get_hash("fields")? {
             Some(h) => {
                 let mut fields = Vec::new();
@@ -526,32 +528,35 @@ fn make_register(radd: &Hash, path: Option<&BlockPath>) -> Result<RegisterInfoBu
         rnew = rnew.address_offset(address_offset as u32);
     }
 
-    if let Some(write_constraint) = radd
+    Ok(rnew)
+}
+
+fn get_write_constraint(h: &Hash) -> Result<Option<WriteConstraint>> {
+    if let Some(write_constraint) = h
         .get_yaml("_write_constraint")
-        .or_else(|| radd.get_yaml("writeConstraint"))
+        .or_else(|| h.get_yaml("writeConstraint"))
     {
-        let wc = match write_constraint {
+        match write_constraint {
             Yaml::String(s) if s == "none" => {
                 // Completely remove the existing writeConstraint
-                None
+                Ok(None)
             }
             Yaml::String(s) if s == "enum" => {
                 // Only allow enumerated values
-                Some(WriteConstraint::UseEnumeratedValues(true))
+                Ok(Some(WriteConstraint::UseEnumeratedValues(true)))
             }
             Yaml::Array(a) => {
                 // Allow a certain range
-                Some(WriteConstraint::Range(WriteConstraintRange {
+                Ok(Some(WriteConstraint::Range(WriteConstraintRange {
                     min: a[0].i64()? as u64,
                     max: a[1].i64()? as u64,
-                }))
+                })))
             }
-            _ => return Err(anyhow!("Unknown writeConstraint type {write_constraint:?}")),
-        };
-        rnew = rnew.write_constraint(wc);
+            _ => Err(anyhow!("Unknown writeConstraint type {write_constraint:?}")),
+        }
+    } else {
+        Ok(None)
     }
-
-    Ok(rnew)
 }
 
 fn make_cluster(cadd: &Hash, path: Option<&BlockPath>) -> Result<ClusterInfoBuilder> {
@@ -850,5 +855,57 @@ impl Interpolate for FieldPath {
             cow = cow.replace("`field_path`", &self.to_string()).into()
         }
         cow
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils;
+    use std::path::Path;
+
+    #[test]
+    fn add_register() -> Result<()> {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("add_register")).unwrap();
+        assert_eq!(device.peripherals.len(), 1);
+        let registers = device.peripherals[0]
+            .registers
+            .as_ref()
+            .ok_or(anyhow!("no registers"))?;
+        assert_eq!(registers.len(), 1);
+
+        device.process(&yaml, &Default::default()).unwrap();
+        assert_eq!(device.peripherals.len(), 1);
+        let periph1 = &device.peripherals[0];
+        assert_eq!(periph1.name, "DAC1");
+        let registers = device.peripherals[0]
+            .registers
+            .as_ref()
+            .ok_or(anyhow!("no registers"))?;
+        assert_eq!(registers.len(), 2);
+        let reg2 = match &registers[1] {
+            RegisterCluster::Register(r) => r,
+            RegisterCluster::Cluster(_) => return Err(anyhow!("expected register, found cluster")),
+        };
+        assert_eq!(reg2.name, "ANOTHER_REG");
+        assert_eq!(reg2.address_offset, 4);
+        assert_eq!(reg2.properties.size, Some(32));
+        assert_eq!(reg2.write_constraint, None);
+        let fields = reg2.fields.as_ref().ok_or(anyhow!("no fields"))?;
+        assert_eq!(fields.len(), 1);
+        let field1 = &fields[0];
+        assert_eq!(field1.name, "MPS");
+        assert_eq!(field1.bit_offset(), 0);
+        assert_eq!(field1.bit_width(), 5);
+        assert_eq!(field1.access, Some(Access::ReadWrite));
+        assert_eq!(
+            field1.write_constraint,
+            Some(WriteConstraint::Range(WriteConstraintRange {
+                min: 0,
+                max: 0x1f
+            }))
+        );
+
+        Ok(())
     }
 }
