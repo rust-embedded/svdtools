@@ -804,7 +804,11 @@ impl Spec for str {
 }
 
 fn opt_interpolate<T: Interpolate>(path: &Option<&T>, s: Option<&str>) -> Option<String> {
-    path.and_then(|path| path.interpolate_opt(s))
+    if let Some(path) = path {
+        path.interpolate_opt(s)
+    } else {
+        s.map(ToString::to_string)
+    }
 }
 
 trait Interpolate {
