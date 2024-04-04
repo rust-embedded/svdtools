@@ -5,7 +5,11 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.14] 2024-04-04
+
 * If there is no path to interpolate, show unmodified `description`.
+* Support write constraints when defining new register fields
+* Allow absolute identifiers in `_derive` register
 
 ## [v0.3.13] 2024-03-29
 
@@ -158,7 +162,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.13...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...HEAD
+[v0.3.14]: https://github.com/rust-embedded/svdtools/compare/v0.3.13...v0.3.14
 [v0.3.13]: https://github.com/rust-embedded/svdtools/compare/v0.3.12...v0.3.13
 [v0.3.12]: https://github.com/rust-embedded/svdtools/compare/v0.3.11...v0.3.12
 [v0.3.11]: https://github.com/rust-embedded/svdtools/compare/v0.3.10...v0.3.11
