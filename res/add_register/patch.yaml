@@ -1,0 +1,13 @@
+_svd: ../add/stm32l4x2.svd
+
+DAC1:
+  _add:
+    ANOTHER_REG:
+      addressOffset: 0x04
+      size: 32
+      fields:
+        MPS:
+          bitOffset: 0
+          bitWidth: 5
+          access: read-write
+          writeConstraint: [0, 0x1f]
