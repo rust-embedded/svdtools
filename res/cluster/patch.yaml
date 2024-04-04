@@ -1,0 +1,28 @@
+_svd: esp32s3.svd
+
+USB0:
+  _cluster:
+    IN_EP0:
+      description: "Device IN Endpoint 0"
+      DIEPCTL0:
+        name: DIEPCTL
+        _modify:
+          D_MPS0:
+            name: MPS
+      DIEPINT0:
+        name: DIEPINT
+        _modify:
+          D_XFERCOMPL0:
+            name: XFERCOMPL
+    IN_EP%s:
+      description: "Device IN Endpoints 1-6"
+      DIEPCTL[1-6]:
+        name: DIEPCTL
+        _modify:
+          D_MPS1:
+            name: MPS
+      DIEPINT[1-6]:
+        name: DIEPINT
+        _modify:
+          D_XFERCOMPL1:
+            name: XFERCOMPL

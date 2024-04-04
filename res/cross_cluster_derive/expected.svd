@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<device schemaVersion="1.1"
+xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
+xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
+  <name>ESP32S3</name>
+  <peripherals>
+    <peripheral>
+      <name>USB0</name>
+      <description>USB OTG (On-The-Go)</description>
+      <groupName>USB</groupName>
+      <baseAddress>0x60080000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x2A0</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <cluster>
+          <name>IN_EP0</name>
+          <description>Device IN Endpoint 0</description>
+          <addressOffset>0x900</addressOffset>
+          <register>
+            <name>DIEPCTL</name>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <resetValue>0x00008000</resetValue>
+            <fields>
+              <field>
+                <name>MPS</name>
+                <bitOffset>0</bitOffset>
+                <bitWidth>2</bitWidth>
+                <access>read-write</access>
+              </field>
+            </fields>
+          </register>
+          <register>
+            <name>DIEPINT</name>
+            <addressOffset>0x8</addressOffset>
+            <size>0x20</size>
+            <fields>
+              <field>
+                <name>XFERCOMPL</name>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <access>read-write</access>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <cluster>
+          <dim>2</dim>
+          <dimIncrement>0x20</dimIncrement>
+          <dimIndex>1-2</dimIndex>
+          <name>IN_EP%s</name>
+          <description>Device IN Endpoints 1-6</description>
+          <addressOffset>0x920</addressOffset>
+          <register>
+            <name>DIEPCTL</name>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <resetValue>0x00008000</resetValue>
+            <fields>
+              <field>
+                <name>MPS</name>
+                <bitOffset>0</bitOffset>
+                <bitWidth>11</bitWidth>
+                <access>read-write</access>
+              </field>
+            </fields>
+          </register>
+          <register derivedFrom="USB0.IN_EP0.DIEPINT">
+            <name>DIEPINT</name>
+            <addressOffset>0x8</addressOffset>
+          </register>
+        </cluster>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>

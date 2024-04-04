@@ -255,10 +255,18 @@ pub(crate) trait RegisterBlockExt: Name {
             return Err(anyhow!("derive: incorrect syntax for {rname}"));
         };
 
-        self.get_reg(rderive).ok_or_else(|| {
-            let present = self.present_registers();
-            anyhow!("Could not find `{bpath}:{rderive}. Present registers: {present}.")
-        })?;
+        // Attempt to verify that the destination register name is correct.
+        if rderive.contains('.') {
+            // This is an absolute identifier name
+            // TODO: at the moment we cannot verify absolute names.  We don't have a reference
+            // to the Device in order to try and look up the name.  Since we are mutating a member
+            // of the device, we cannot get a reference to it.
+        } else {
+            self.get_reg(rderive).ok_or_else(|| {
+                let present = self.present_registers();
+                anyhow!("Could not find `{bpath}:{rderive}. Present registers: {present}.")
+            })?;
+        }
 
         match self.get_mut_reg(rname) {
             Some(register) => register.modify_from(info, VAL_LVL)?,
@@ -1497,4 +1505,21 @@ fn collect_in_cluster(
     cluster.post_process(cmod, path, &config)?;
     regs.insert(place, RegisterCluster::Cluster(cluster));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils;
+    use anyhow::Result;
+    use std::path::Path;
+
+    #[test]
+    fn cluster() -> Result<()> {
+        test_utils::test_expected(Path::new("cluster"))
+    }
+
+    #[test]
+    fn cross_cluster_derive() -> Result<()> {
+        test_utils::test_expected(Path::new("cross_cluster_derive"))
+    }
 }

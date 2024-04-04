@@ -51,4 +51,5 @@ itertools = "0.12.0"
 phf = { version = "0.11", features = ["macros"] }
 
 [dev-dependencies]
+similar = "2.5.0"
 tempfile = "3.3"
