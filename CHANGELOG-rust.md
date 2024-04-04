@@ -5,7 +5,11 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.14] 2024-04-04
+
 * If there is no path to interpolate, show unmodified `description`.
+* Support write constraints when defining new register fields
+* Allow absolute identifiers in `_derive`
 
 ## [v0.3.13] 2024-03-29
 
