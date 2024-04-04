@@ -1,0 +1,36 @@
+_svd: ../cluster/esp32s3.svd
+
+USB0:
+  _cluster:
+    # Endpoint 0 is different than the other endpoints, and does not have
+    # quite the same register definitions.  We therefore have to cluster it
+    # by itself.
+    IN_EP0:
+      description: "Device IN Endpoint 0"
+      DIEPCTL0:
+        name: DIEPCTL
+        _modify:
+          D_MPS0:
+            name: MPS
+      DIEPINT0:
+        name: DIEPINT
+        _modify:
+          D_XFERCOMPL0:
+            name: XFERCOMPL
+    # The remaining endpoints are all the same.
+    IN_EP%s:
+      description: "Device IN Endpoints 1-6"
+      DIEPCTL[1-6]:
+        name: DIEPCTL
+        _modify:
+          D_MPS1:
+            name: MPS
+      DIEPINT[1-6]:
+        name: DIEPINT
+        _modify:
+          D_XFERCOMPL1:
+            name: XFERCOMPL
+      _derive:
+        # The DIEPINT registers for endpoints 1-N are the same as endpoint 0,
+        # so use the same type definition.
+        DIEPINT: USB0.IN_EP0.DIEPINT
