@@ -20,7 +20,7 @@ use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 use anyhow::{anyhow, Context, Result};
 pub type PatchResult = anyhow::Result<()>;
 
-mod device;
+pub(crate) mod device;
 use device::DeviceExt;
 mod iterators;
 mod peripheral;

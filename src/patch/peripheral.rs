@@ -1498,3 +1498,15 @@ fn collect_in_cluster(
     regs.insert(place, RegisterCluster::Cluster(cluster));
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_utils;
+    use anyhow::Result;
+    use std::path::Path;
+
+    #[test]
+    fn cluster() -> Result<()> {
+        test_utils::test_expected(Path::new("cluster"))
+    }
+}
