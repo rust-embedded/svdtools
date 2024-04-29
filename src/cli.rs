@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use clap::Parser;
-use std::path::PathBuf;
+use std::{fs::File, io::Write, path::PathBuf};
 
 use svdtools::{
     convert::convert_cli,
@@ -40,6 +40,13 @@ enum Command {
         /// Derive level when several identical enumerationValues added in a field
         #[clap(long)]
         enum_derive: Option<EnumAutoDerive>,
+    },
+    ExpandPatch {
+        /// Path to input YAML file
+        yaml_file: PathBuf,
+
+        /// Path to output file. By default it prints to stdout
+        out_path: Option<PathBuf>,
     },
     /// Generate Make dependency file listing dependencies for a YAML file.
     Makedeps {
@@ -147,6 +154,18 @@ impl Command {
                     format_config.as_deref(),
                     &config,
                 )?
+            }
+            Self::ExpandPatch {
+                yaml_file,
+                out_path,
+            } => {
+                let yml = patch_cli::expand_patch(yaml_file)?;
+                if let Some(out_path) = out_path.as_ref() {
+                    let mut f = File::create(out_path)?;
+                    f.write_all(yml.as_bytes())?;
+                } else {
+                    println!("{yml}");
+                }
             }
             Self::Makedeps {
                 yaml_file,

@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Add `expand-patch` tool to show full patch rule with all includes
+
 ## [v0.3.14] 2024-04-04
 
 * If there is no path to interpolate, show unmodified `description`.
