@@ -196,6 +196,7 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
         included.extend(yaml_includes(child)?);
         update_dict(parent, child)?;
     }
+    parent.remove(&"_include".to_yaml());
     Ok(included)
 }
 
