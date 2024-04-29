@@ -66,19 +66,29 @@ impl Default for Config {
     }
 }
 
+fn load_patch(yaml_file: &Path) -> Result<Yaml> {
+    // Load the specified YAML root file
+    let f = File::open(yaml_file)?;
+    let mut contents = String::new();
+    (&f).read_to_string(&mut contents)?;
+    let docs = YamlLoader::load_from_str(&contents)?;
+    let mut doc = docs.into_iter().next().unwrap(); // select the first document
+    let root = doc.hash_mut()?;
+    root.insert("_path".to_yaml(), yaml_file.to_str().unwrap().to_yaml());
+
+    // Load all included YAML files
+    yaml_includes(root)?;
+    Ok(doc)
+}
+
 pub fn process_file(
     yaml_file: &Path,
     out_path: Option<&Path>,
     format_config: Option<&Path>,
     config: &Config,
 ) -> Result<()> {
-    // Load the specified YAML root file
-    let f = File::open(yaml_file)?;
-    let mut contents = String::new();
-    (&f).read_to_string(&mut contents)?;
-    let mut docs = YamlLoader::load_from_str(&contents)?;
-    let root = docs[0].hash_mut()?; // select the first document
-    root.insert("_path".to_yaml(), yaml_file.to_str().unwrap().to_yaml());
+    let mut doc = load_patch(yaml_file)?;
+    let root = doc.hash_mut()?;
 
     // Load the specified SVD file
     let svdpath = abspath(
@@ -102,15 +112,12 @@ pub fn process_file(
     parser_config.validate_level = ValidateLevel::Disabled;
     let mut svd = svd_parser::parse_with_config(&contents, &parser_config)?;
 
-    // Load all included YAML files
-    yaml_includes(root)?;
-
     // Process device
     svd.process(root, config).with_context(|| {
         let name = &svd.name;
         let mut out_str = String::new();
         let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);
-        emitter.dump(&Yaml::Hash(root.clone())).unwrap();
+        emitter.dump(&doc).unwrap();
         if config.show_patch_on_error {
             format!("Processing device `{name}`. Patches looks like:\n{out_str}")
         } else {
