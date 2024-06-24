@@ -5,6 +5,7 @@ use std::{fs::File, path::Path, str::FromStr};
 pub mod common;
 pub mod convert;
 pub mod html;
+pub mod info;
 pub mod interrupts;
 pub mod makedeps;
 pub mod mmap;

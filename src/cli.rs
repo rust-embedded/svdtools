@@ -1,11 +1,12 @@
 use anyhow::{Ok, Result};
 use clap::Parser;
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
 
 use svdtools::{
     convert::convert_cli,
     html::html_cli,
     html::htmlcompare_cli,
+    info,
     interrupts::interrupts_cli,
     makedeps::makedeps_cli,
     mmap::mmap_cli,
@@ -123,6 +124,16 @@ enum Command {
         /// Path to patched SVD files
         svdfiles: Vec<PathBuf>,
     },
+    /// Prints informetion and statistics about SVD file
+    Info {
+        /// Path to input file
+        in_path: PathBuf,
+        /// Format of input file (XML, JSON or YAML)
+        #[clap(long = "input-format")]
+        input_format: Option<convert_cli::InputFormat>,
+        /// Describe requested information
+        request: String,
+    },
 }
 
 impl Command {
@@ -197,6 +208,23 @@ impl Command {
             }
             Self::Html { htmldir, svdfiles } => {
                 html_cli::svd2html(htmldir, svdfiles)?;
+            }
+            Self::Info {
+                in_path,
+                input_format,
+                request,
+            } => {
+                let request = info::Request::from_str(request)?;
+                let device = convert_cli::open_svd(
+                    in_path,
+                    *input_format,
+                    convert_cli::ParserConfig {
+                        ignore_enums: true,
+                        ..Default::default()
+                    },
+                )?;
+                let response = request.process(&device)?;
+                println!("{response}")
             }
         }
         Ok(())
