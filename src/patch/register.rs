@@ -389,7 +389,7 @@ impl RegisterExt for Register {
             for f in fields.iter_mut() {
                 if names.contains(&f.name) {
                     if first {
-                        desc = f.description.clone();
+                        desc.clone_from(&f.description);
                         first = false;
                     }
                     bitwidth += f.bit_range.width;

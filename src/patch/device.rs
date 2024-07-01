@@ -410,9 +410,9 @@ impl DeviceExt for Device {
             .enumerate()
             .find(|(_, f)| f.name == pnew)
             .ok_or_else(|| anyhow!("peripheral {pnew} not found"))?;
-        d.name = new.name.clone();
+        d.name.clone_from(&new.name);
         d.base_address = new.base_address;
-        d.interrupt = new.interrupt.clone();
+        d.interrupt.clone_from(&new.interrupt);
         *new = d;
         for (i, p) in self.peripherals.iter_mut().enumerate() {
             if p.derived_from.as_deref() == Some(pold) {

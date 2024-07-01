@@ -132,6 +132,7 @@ pub(crate) trait RegisterBlockExt: Name {
     fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register>;
 
     /// Register/cluster block
+    #[allow(unused)]
     fn children(&self) -> Option<&Vec<RegisterCluster>>;
 
     /// Register/cluster block
@@ -402,6 +403,7 @@ pub(crate) trait RegisterBlockExt: Name {
         }
     }
     /// Work through a register, handling all fields
+    #[allow(unused)]
     fn process_register(
         &mut self,
         rspec: &str,

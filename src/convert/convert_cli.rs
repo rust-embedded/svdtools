@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use std::{fs::File, path::Path};
+use svd_rs::Device;
 
 use crate::get_encoder_config;
 pub use crate::ConfigFormat;
@@ -46,31 +47,22 @@ impl FromStr for OutputFormat {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ParserConfig {
     pub expand: bool,
     pub expand_properties: bool,
     pub ignore_enums: bool,
 }
 
-pub fn convert(
+pub fn open_svd(
     in_path: &Path,
-    out_path: &Path,
     input_format: Option<InputFormat>,
-    output_format: Option<OutputFormat>,
     parser_config: ParserConfig,
-    format_config: Option<&Path>,
-) -> Result<()> {
+) -> Result<Device> {
     let input_format = match input_format {
         None => match in_path.extension().and_then(|e| e.to_str()) {
             Some(s) => InputFormat::from_str(s)?,
             _ => return Err(anyhow!("Unknown input file format")),
-        },
-        Some(t) => t,
-    };
-    let output_format = match output_format {
-        None => match out_path.extension().and_then(|e| e.to_str()) {
-            Some(s) => OutputFormat::from_str(s)?,
-            _ => return Err(anyhow!("Unknown output file format")),
         },
         Some(t) => t,
     };
@@ -93,6 +85,26 @@ pub fn convert(
         svd_parser::expand(&device)?
     } else {
         device
+    };
+    Ok(device)
+}
+
+pub fn convert(
+    in_path: &Path,
+    out_path: &Path,
+    input_format: Option<InputFormat>,
+    output_format: Option<OutputFormat>,
+    parser_config: ParserConfig,
+    format_config: Option<&Path>,
+) -> Result<()> {
+    let device = open_svd(in_path, input_format, parser_config)?;
+
+    let output_format = match output_format {
+        None => match out_path.extension().and_then(|e| e.to_str()) {
+            Some(s) => OutputFormat::from_str(s)?,
+            _ => return Err(anyhow!("Unknown output file format")),
+        },
+        Some(t) => t,
     };
 
     let config = get_encoder_config(format_config)?;
