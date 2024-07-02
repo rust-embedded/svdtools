@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.15] 2024-07-02
+
+* Add `info` tool, only with `device-name` for now
 * Add `expand-patch` tool to show full patch rule with all includes
 
 ## [v0.3.14] 2024-04-04
@@ -164,7 +167,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...HEAD
+[v0.3.15]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...v0.3.15
 [v0.3.14]: https://github.com/rust-embedded/svdtools/compare/v0.3.13...v0.3.14
 [v0.3.13]: https://github.com/rust-embedded/svdtools/compare/v0.3.12...v0.3.13
 [v0.3.12]: https://github.com/rust-embedded/svdtools/compare/v0.3.11...v0.3.12
