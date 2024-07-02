@@ -224,7 +224,7 @@ impl Command {
                     },
                 )?;
                 let response = request.process(&device)?;
-                println!("{response}")
+                print!("{response}")
             }
         }
         Ok(())
