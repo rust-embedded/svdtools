@@ -5,6 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.16] 2024-07-03
+
+* Add possibility to add field arrays
+
 ## [v0.3.15] 2024-07-02
 
 * Add `info` tool, only with `device-name` for now
@@ -167,7 +171,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...HEAD
+[v0.3.16]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...v0.3.16
 [v0.3.15]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...v0.3.15
 [v0.3.14]: https://github.com/rust-embedded/svdtools/compare/v0.3.13...v0.3.14
 [v0.3.13]: https://github.com/rust-embedded/svdtools/compare/v0.3.12...v0.3.13

@@ -517,12 +517,17 @@ fn make_register(radd: &Hash, path: Option<&BlockPath>) -> Result<RegisterInfoBu
             Some(h) => {
                 let mut fields = Vec::new();
                 for (fname, val) in h {
-                    fields.push(
-                        make_field(val.hash()?, None)?
+                    fields.push({
+                        let fadd = val.hash()?;
+                        let field = make_field(fadd, None)?
                             .name(fname.str()?.into())
-                            .build(VAL_LVL)?
-                            .single(),
-                    );
+                            .build(VAL_LVL)?;
+                        if let Some(dim) = make_dim_element(fadd)? {
+                            field.array(dim.build(VAL_LVL)?)
+                        } else {
+                            field.single()
+                        }
+                    });
                 }
                 Some(fields)
             }
