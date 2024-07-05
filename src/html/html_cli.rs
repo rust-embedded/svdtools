@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
 #[cfg(target_os = "linux")]
@@ -23,6 +24,7 @@ use svd_parser::{
     expand::{derive_peripheral, Index},
     svd::{Access, Cluster, Register, RegisterInfo, WriteConstraint},
 };
+use svd_rs::{EnumeratedValue, EnumeratedValues};
 
 fn sanitize(input: &str) -> String {
     use once_cell::sync::Lazy;
@@ -261,9 +263,19 @@ fn parse_register(
                 };
 
                 for value in &enums.values {
+                    let val = if let Some(value) = value.value {
+                        value.to_string()
+                    } else {
+                        let val = value
+                            .is_default()
+                            .then(|| enums_to_map(&enums))
+                            .and_then(|map| minimal_hole(&map, fwidth))
+                            .ok_or_else(|| anyhow!("Value is missing from {value:?}"))?;
+                        format!("{val} and missed")
+                    };
+
                     doc += &format!(
-                        "<strong>{}: {}</strong>: {}<br>",
-                        value.value.unwrap(),
+                        "<strong>{val}: {}</strong>: {}<br>",
                         value.name,
                         sanitize(value.description.as_deref().unwrap_or(""))
                     );
@@ -513,4 +525,18 @@ pub fn svd2html(htmldir: &Path, svdfiles: &[PathBuf]) -> anyhow::Result<()> {
     let mut file = std::fs::File::create(htmldir.join("index.html"))?;
     generate_index_page(&devices, &mut file)?;
     Ok(())
+}
+
+fn enums_to_map(evs: &EnumeratedValues) -> BTreeMap<u64, &EnumeratedValue> {
+    let mut map = BTreeMap::new();
+    for ev in &evs.values {
+        if let Some(v) = ev.value {
+            map.insert(v, ev);
+        }
+    }
+    map
+}
+
+fn minimal_hole(map: &BTreeMap<u64, &EnumeratedValue>, width: u32) -> Option<u64> {
+    (0..(1u64 << width)).find(|&v| !map.contains_key(&v))
 }

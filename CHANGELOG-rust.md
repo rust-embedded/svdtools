@@ -5,6 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.17] 2024-07-05
+
+* Support "isDefault" enum value in `svdtools html`
+
 ## [v0.3.16] 2024-07-03
 
 * Add possibility to add field arrays
@@ -171,7 +175,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...HEAD
+[v0.3.17]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...v0.3.17
 [v0.3.16]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...v0.3.16
 [v0.3.15]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...v0.3.15
 [v0.3.14]: https://github.com/rust-embedded/svdtools/compare/v0.3.13...v0.3.14
