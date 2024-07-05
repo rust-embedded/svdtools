@@ -271,7 +271,7 @@ fn parse_register(
                             .then(|| enums_to_map(&enums))
                             .and_then(|map| minimal_hole(&map, fwidth))
                             .ok_or_else(|| anyhow!("Value is missing from {value:?}"))?;
-                        format!("{val} and missed")
+                        format!("{val} (+)")
                     };
 
                     doc += &format!(
@@ -284,7 +284,7 @@ fn parse_register(
             } else if let Some(WriteConstraint::Range(wcrange)) = wc.as_ref() {
                 let mn = hex(wcrange.min);
                 let mx = hex(wcrange.max);
-                fdoc = Some(format!("Allowed values: {mn}-{mx}"));
+                fdoc = Some(format!("Allowed values: <strong>{mn}-{mx}</strong>"));
             }
         }
         fields.push(object!({
