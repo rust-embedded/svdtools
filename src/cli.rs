@@ -1,9 +1,11 @@
 use anyhow::{Ok, Result};
 use clap::Parser;
 use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
+use svd_rs::ValidateLevel;
 
 use svdtools::{
     convert::convert_cli,
+    enum_extract::enum_extract,
     html::html_cli,
     html::htmlcompare_cli,
     info,
@@ -134,6 +136,16 @@ enum Command {
         /// Describe requested information
         request: String,
     },
+    /// Makes patch file with enums extracted from SVD
+    ExtractEnums {
+        /// Path to input file
+        in_path: PathBuf,
+        /// Format of input file (XML, JSON or YAML)
+        #[clap(long = "input-format")]
+        input_format: Option<convert_cli::InputFormat>,
+        /// Path to output file
+        out_path: PathBuf,
+    },
 }
 
 impl Command {
@@ -200,6 +212,7 @@ impl Command {
                     expand: *expand,
                     expand_properties: *expand_properties,
                     ignore_enums: *ignore_enums,
+                    validate_level: ValidateLevel::Disabled,
                 },
                 format_config.as_ref().map(|p| p.as_path()),
             )?,
@@ -225,6 +238,20 @@ impl Command {
                 )?;
                 let response = request.process(&device)?;
                 print!("{response}")
+            }
+            Self::ExtractEnums {
+                in_path,
+                input_format,
+                out_path,
+            } => {
+                let mut cfg = convert_cli::ParserConfig::default();
+                cfg.validate_level = ValidateLevel::Disabled;
+                let device = convert_cli::open_svd(in_path, *input_format, cfg)?;
+                let yml = enum_extract(&device);
+                let mut out_str = String::new();
+                let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);
+                emitter.dump(&yml).unwrap();
+                File::create(out_path)?.write_all(out_str.as_bytes())?;
             }
         }
         Ok(())
