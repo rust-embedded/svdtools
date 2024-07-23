@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use svd_parser::expand::{BlockPath, RegisterPath};
@@ -768,9 +770,11 @@ impl RegisterExt for Register {
         } else {
             let (fspec, ignore) = fspec.spec();
             let mut offsets: Vec<_> = Vec::new();
+            let mut width_vals = HashSet::new();
             for (i, f) in self.fields().enumerate() {
                 if matchname(&f.name, fspec) {
-                    offsets.push((f.bit_range.offset, f.name.to_string(), i));
+                    offsets.push((f.bit_offset(), f.name.to_string(), i));
+                    width_vals.insert(f.bit_width());
                 }
             }
             if offsets.is_empty() {
@@ -779,7 +783,11 @@ impl RegisterExt for Register {
                 }
                 let present = self.present_fields();
                 return Err(anyhow!(
-                    "Could not find field {rpath}:{fspec}. Present fields: {present}.`"
+                    "Could not find field {rpath}:{fspec}. Present fields: {present}."
+                ));
+            } else if width_vals.len() > 1 {
+                return Err(anyhow!(
+                    "{rpath}:{fspec}. Same enumeratedValues are used for different fields."
                 ));
             }
             let (min_offset, fname, min_offset_pos) =
@@ -794,11 +802,9 @@ impl RegisterExt for Register {
                 let access = ftag.access.or(reg_access).unwrap_or_default();
                 let checked_usage = check_usage(access, usage)
                     .with_context(|| format!("In field {}", ftag.name))?;
-                if config.enum_derive == EnumAutoDerive::None
-                    || ftag.bit_range.offset == *min_offset
-                {
+                if config.enum_derive == EnumAutoDerive::None || ftag.bit_offset() == *min_offset {
                     let mut evs = make_ev_array(fmod)?.usage(make_usage(access, checked_usage));
-                    if ftag.bit_range.offset == *min_offset {
+                    if ftag.bit_offset() == *min_offset {
                         evs = evs.name(Some(name.clone()));
                     }
                     let evs = evs.build(VAL_LVL)?;
