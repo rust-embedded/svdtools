@@ -172,7 +172,7 @@ impl DeviceExt for Device {
         // Now process all peripherals
         for (periphspec, val) in device {
             let periphspec = periphspec.str()?;
-            if !periphspec.starts_with('_') {
+            if !Self::KEYWORDS.contains(&periphspec) {
                 //val["_path"] = device["_path"]; // TODO: check
                 self.process_peripheral(periphspec, val.hash()?, config)
                     .with_context(|| format!("According to `{periphspec}`"))?;

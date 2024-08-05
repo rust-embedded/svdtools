@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Protect from using one `enumeratedValues` in fields with different width
+
 ## [v0.3.17] 2024-07-05
 
 * Support "isDefault" enum value in `svdtools html`

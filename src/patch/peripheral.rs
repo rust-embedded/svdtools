@@ -458,12 +458,12 @@ pub(crate) trait RegisterBlockExt: Name {
                 rtag.name.drain(..len);
             }
             if let Some(dname) = rtag.display_name.as_mut() {
-                if glob.is_match(&dname) {
+                if glob.is_match(dname.as_str()) {
                     dname.drain(..len);
                 }
             }
             if let Some(name) = rtag.alternate_register.as_mut() {
-                if glob.is_match(&name) {
+                if glob.is_match(name.as_str()) {
                     name.drain(..len);
                 }
             }
@@ -483,13 +483,13 @@ pub(crate) trait RegisterBlockExt: Name {
                 rtag.name.truncate(nlen - len);
             }
             if let Some(dname) = rtag.display_name.as_mut() {
-                if glob.is_match(&dname) {
+                if glob.is_match(dname.as_str()) {
                     let nlen = dname.len();
                     dname.truncate(nlen - len);
                 }
             }
             if let Some(name) = rtag.alternate_register.as_mut() {
-                if glob.is_match(&name) {
+                if glob.is_match(name.as_str()) {
                     let nlen = name.len();
                     name.truncate(nlen - len);
                 }
