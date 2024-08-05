@@ -1314,7 +1314,7 @@ fn collect_in_cluster(
     cmod: &Hash,
     config: &Config,
 ) -> PatchResult {
-    let mut rdict = linked_hash_map::LinkedHashMap::new();
+    let mut rdict = super::linked_hash_map::LinkedHashMap::new();
     let mut first = None;
     let mut dim = 0;
     let mut dim_index = Vec::new();

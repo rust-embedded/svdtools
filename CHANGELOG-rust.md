@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Replace `yaml-rust` with `yaml-rust2`. Check for duplicate keys and other YAML parse errors
 * Prevent collapsing columns in HTML `register-map-table` with `min-width`
 * Protect from using one `enumeratedValues` in fields with different width
 
