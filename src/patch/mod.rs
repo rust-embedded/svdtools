@@ -202,7 +202,7 @@ pub fn yaml_includes(parent: &mut Hash) -> Result<Vec<PathBuf>> {
 
 /// Recursively merge child.key into parent.key, with parent overriding
 fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
-    use linked_hash_map::Entry;
+    use hashlink::linked_hash_map::Entry;
     for (key, val) in child.iter() {
         match key {
             Yaml::String(key) if key == "_path" || key == "_include" => continue,
