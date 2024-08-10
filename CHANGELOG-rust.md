@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.18] 2024-08-10
+
 * Replace `yaml-rust` with `yaml-rust2`. Check for duplicate keys and other YAML parse errors
 * Prevent collapsing columns in HTML `register-map-table` with `min-width`
 * Protect from using one `enumeratedValues` in fields with different width
@@ -179,7 +181,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...HEAD
+[v0.3.18]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...v0.3.18
 [v0.3.17]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...v0.3.17
 [v0.3.16]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...v0.3.16
 [v0.3.15]: https://github.com/rust-embedded/svdtools/compare/v0.3.14...v0.3.15
