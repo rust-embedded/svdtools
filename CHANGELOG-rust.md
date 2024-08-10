@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Prevent collapsing columns in HTML `register-map-table` with `min-width`
 * Protect from using one `enumeratedValues` in fields with different width
 
 ## [v0.3.17] 2024-07-05
