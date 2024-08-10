@@ -146,7 +146,7 @@ impl<'a> Iterator for OverStringIter<'a> {
     }
 }
 
-type HashIter<'a> = OptIter<linked_hash_map::Iter<'a, Yaml, Yaml>>;
+type HashIter<'a> = OptIter<super::linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
 pub trait GetVal {
     fn get_yaml(&self, k: &str) -> Option<&Yaml>;

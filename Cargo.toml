@@ -3,24 +3,25 @@ name = "svdtools"
 version = "0.3.17"
 repository = "https://github.com/rust-embedded/svdtools/"
 description = "Tool for modifying bugs in CMSIS SVD"
-authors = [
-    "Andrey Zgarbul <zgarbul.andrey@gmail.com>",
-    "MarcoIeni"
-]
+authors = ["Andrey Zgarbul <zgarbul.andrey@gmail.com>", "MarcoIeni"]
 categories = [
     "command-line-utilities",
     "embedded",
     "hardware-support",
     "no-std",
 ]
-keywords = [
-    "svd",
-    "embedded",
-    "register",
-]
+keywords = ["svd", "embedded", "register"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-include = ["/res", "/src", "/tests", "CHANGELOG-rust.md", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+include = [
+    "/res",
+    "/src",
+    "/tests",
+    "CHANGELOG-rust.md",
+    "README.md",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+]
 edition = "2021"
 rust-version = "1.70"
 
@@ -31,13 +32,12 @@ quick-xml = { version = "0.31", features = ["serialize"] }
 svd-rs = { version = "0.14.8", features = ["serde", "derive-from"] }
 svd-parser = { version = "0.14.5", features = ["expand"] }
 svd-encoder = "0.14.4"
-yaml-rust = "0.4"
 # serde_yaml 0.9.x looks broken
 serde_yaml = "0.8.26"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 anyhow = "1.0.65"
 thiserror = "1.0.35"
-linked-hash-map = "0.5"
+hashlink = "0.8.4"
 globset = "0.4.14"
 commands = "0.0.5"
 env_logger = "0.11"
@@ -49,6 +49,10 @@ rayon = "1.7.0"
 regex = "1.10"
 itertools = "0.12.0"
 phf = { version = "0.11", features = ["macros"] }
+
+[dependencies.yaml-rust]
+package = "yaml-rust2"
+version = "0.8"
 
 [dev-dependencies]
 similar = "2.5.0"

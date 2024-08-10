@@ -17,6 +17,8 @@ use svd_parser::SVDError::DimIndexParse;
 use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
+use hashlink::linked_hash_map;
+
 use anyhow::{anyhow, Context, Result};
 pub type PatchResult = anyhow::Result<()>;
 
