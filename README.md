@@ -1,4 +1,11 @@
+![GitHub top language](https://img.shields.io/github/languages/top/rust-embedded/svdtools)
+![Minimum Supported Rust Version](https://img.shields.io/badge/rustc-1.70+-blue.svg)
+[![crates.io](https://img.shields.io/crates/v/svdtools.svg)](https://crates.io/crates/svdtools)
 [![crates.io](https://img.shields.io/crates/d/svdtools.svg)](https://crates.io/crates/svdtools)
+[![Released API docs](https://docs.rs/svdtools/badge.svg)](https://docs.rs/svdtools)
+![Crates.io](https://img.shields.io/crates/l/svdtools)
+[![dependency status](https://deps.rs/repo/github/rust-embedded/svdtools/status.svg)](https://deps.rs/repo/github/rust-embedded/svdtools)
+[![Continuous integration](https://github.com/rust-embedded/svdtools/workflows/Continuous%20integration/badge.svg)](https://github.com/rust-embedded/svdtools)
 
 # svdtools
 
