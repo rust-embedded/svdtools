@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Sugar for simple `_split` and `_merge` 
+
 ## [v0.3.18] 2024-08-10
 
 * Replace `yaml-rust` with `yaml-rust2`. Check for duplicate keys and other YAML parse errors

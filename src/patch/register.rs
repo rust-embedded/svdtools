@@ -203,6 +203,10 @@ impl RegisterExt for Register {
                         .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
                 }
             }
+            Some(Yaml::String(fspec)) => {
+                self.merge_fields(fspec, None, &rpath)
+                    .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
+            }
             _ => {}
         }
 
@@ -221,6 +225,10 @@ impl RegisterExt for Register {
                     self.split_fields(fspec, &Hash::new(), &rpath)
                         .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
                 }
+            }
+            Some(Yaml::String(fspec)) => {
+                self.split_fields(fspec, &Hash::new(), &rpath)
+                    .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
             }
             _ => {}
         }
