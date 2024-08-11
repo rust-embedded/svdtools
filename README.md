@@ -255,7 +255,6 @@ _rebase:
         ARRAY*:
             name: NEW_NAME%s
             _modify:
-                FIELD: [MINIMUM, MAXIMUM]
                 FIELD:
                   description: NEWDESC
         OTHER_ARRAY*: {}
