@@ -12,7 +12,7 @@ use yaml_rust::{yaml::Hash, Yaml};
 use crate::patch::EnumAutoDerive;
 
 use super::iterators::{MatchIter, Matched};
-use super::yaml_ext::{AsType, GetVal, ToYaml};
+use super::yaml_ext::{patch_sugar, AsType, GetVal, ToYaml};
 use super::{
     check_offsets, common_description, make_dim_element, matchname, modify_dim_element, spec_ind,
     Config, PatchResult, Spec, VAL_LVL,
@@ -125,7 +125,12 @@ pub trait RegisterExt {
 
     /// Split all fspec in rtag.
     /// Name and description can be customized with %s as a placeholder to the iterator value
-    fn split_fields(&mut self, fspec: &str, fsplit: &Hash, rpath: &RegisterPath) -> PatchResult;
+    fn split_fields(
+        &mut self,
+        fspec: &str,
+        value: Option<&Yaml>,
+        rpath: &RegisterPath,
+    ) -> PatchResult;
 
     /// Collect same fields in peripheral into register array
     fn collect_fields_in_array(
@@ -188,49 +193,19 @@ impl RegisterExt for Register {
         }
 
         // Handle merges
-        match rmod.get_yaml("_merge") {
-            Some(Yaml::Hash(h)) => {
-                for (fspec, fmerge) in h {
-                    let fspec = fspec.str()?;
-                    self.merge_fields(fspec, Some(fmerge), &rpath)
-                        .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
-                }
-            }
-            Some(Yaml::Array(a)) => {
-                for fspec in a {
-                    let fspec = fspec.str()?;
-                    self.merge_fields(fspec, None, &rpath)
-                        .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
-                }
-            }
-            Some(Yaml::String(fspec)) => {
-                self.merge_fields(fspec, None, &rpath)
-                    .with_context(|| format!("Merging fields matched to `{fspec}`"))?;
-            }
-            _ => {}
+        if let Some(yaml) = rmod.get_yaml("_merge") {
+            patch_sugar(yaml, |fspec, fmerge| {
+                self.merge_fields(fspec, fmerge, &rpath)
+                    .with_context(|| format!("Merging fields matched to `{fspec}`"))
+            })?;
         }
 
         // Handle splits
-        match rmod.get_yaml("_split") {
-            Some(Yaml::Hash(h)) => {
-                for (fspec, fsplit) in h {
-                    let fspec = fspec.str()?;
-                    self.split_fields(fspec, fsplit.hash()?, &rpath)
-                        .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
-                }
-            }
-            Some(Yaml::Array(a)) => {
-                for fspec in a {
-                    let fspec = fspec.str()?;
-                    self.split_fields(fspec, &Hash::new(), &rpath)
-                        .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
-                }
-            }
-            Some(Yaml::String(fspec)) => {
-                self.split_fields(fspec, &Hash::new(), &rpath)
-                    .with_context(|| format!("Splitting fields matched to `{fspec}`"))?;
-            }
-            _ => {}
+        if let Some(yaml) = rmod.get_yaml("_split") {
+            patch_sugar(yaml, |fspec, fsplit| {
+                self.split_fields(fspec, fsplit, &rpath)
+                    .with_context(|| format!("Splitting fields matched to `{fspec}`"))
+            })?;
         }
 
         // Handle fields
@@ -507,7 +482,17 @@ impl RegisterExt for Register {
         }
         Ok(())
     }
-    fn split_fields(&mut self, fspec: &str, fsplit: &Hash, rpath: &RegisterPath) -> PatchResult {
+    fn split_fields(
+        &mut self,
+        fspec: &str,
+        value: Option<&Yaml>,
+        rpath: &RegisterPath,
+    ) -> PatchResult {
+        let fsplit = if let Some(fsplit) = value {
+            fsplit.hash()?
+        } else {
+            &Hash::new()
+        };
         let (fspec, ignore) = fspec.spec();
         let mut it = self.iter_fields(fspec);
         let (new_fields, name) = match (it.next(), it.next()) {

@@ -224,3 +224,28 @@ impl GetVal for Hash {
         self.get(&k.to_yaml())
     }
 }
+
+pub fn patch_sugar<F>(yaml: &Yaml, mut f: F) -> Result<()>
+where
+    F: FnMut(&str, Option<&Yaml>) -> Result<()>,
+{
+    match yaml {
+        Yaml::Hash(h) => {
+            for (spec, hash) in h {
+                let spec = spec.str()?;
+                f(spec, Some(hash))?;
+            }
+        }
+        Yaml::Array(a) => {
+            for spec in a {
+                let spec = spec.str()?;
+                f(spec, None)?;
+            }
+        }
+        Yaml::String(spec) => {
+            f(spec, None)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
