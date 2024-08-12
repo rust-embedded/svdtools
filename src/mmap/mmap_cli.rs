@@ -12,6 +12,22 @@ struct CoveredFields {
     covered: u32,
 }
 
+impl core::ops::Add for CoveredFields {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            all: self.all + rhs.all,
+            covered: self.covered + rhs.covered,
+        }
+    }
+}
+
+impl core::ops::AddAssign for CoveredFields {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs
+    }
+}
+
 /// Output sorted text of every peripheral, register, field, and interrupt
 /// in the device, such that automated diffing is possible.
 pub fn parse_device(svd_file: &Path) -> Result<()> {
@@ -34,47 +50,50 @@ fn get_text<R: Read>(svd: &mut R) -> Result<String> {
 }
 
 fn to_text(peripherals: &[Peripheral]) -> String {
-    let mut mmap: Vec<String> = vec![];
+    let mut mmap = Vec::new();
     let mut coverage = CoveredFields::default();
 
     for p in peripherals {
         match p {
             Peripheral::Single(p) => {
-                get_peripheral(p, &mut mmap);
-                get_interrupts(p, &mut mmap);
+                let mut pcov = CoveredFields::default();
                 let registers = get_periph_registers(p, peripherals);
+                let mut rmmap = Vec::new();
                 get_registers(
                     p.base_address,
                     registers.as_ref(),
                     "",
-                    &mut mmap,
-                    &mut coverage,
+                    &mut rmmap,
+                    &mut pcov,
                 );
+                get_peripheral(p, &mut mmap, pcov);
+                get_interrupts(p, &mut mmap);
+                mmap.extend(rmmap);
+                coverage += pcov;
             }
             Peripheral::Array(p, d) => {
+                let mut pcov = CoveredFields::default();
                 for pi in svd::peripheral::expand(p, d) {
-                    get_peripheral(&pi, &mut mmap);
-                    get_interrupts(&pi, &mut mmap);
                     let registers = get_periph_registers(&pi, peripherals);
+                    let mut rmmap = Vec::new();
                     get_registers(
                         pi.base_address,
                         registers.as_ref(),
                         "",
-                        &mut mmap,
-                        &mut coverage,
+                        &mut rmmap,
+                        &mut pcov,
                     );
+                    get_peripheral(&pi, &mut mmap, pcov);
+                    get_interrupts(&pi, &mut mmap);
+                    mmap.extend(rmmap);
+                    coverage += pcov;
                 }
             }
         }
     }
 
     mmap.sort();
-    let mut mmap = mmap.join("\n");
-    mmap.push_str(&format!(
-        "\nCovered {} from {} fields.",
-        coverage.covered, coverage.all
-    ));
-    mmap
+    mmap.join("\n")
 }
 
 fn get_periph_registers<'a>(
@@ -96,11 +115,13 @@ fn get_periph_registers<'a>(
     }
 }
 
-fn get_peripheral(peripheral: &PeripheralInfo, mmap: &mut Vec<String>) {
+fn get_peripheral(peripheral: &PeripheralInfo, mmap: &mut Vec<String>, coverage: CoveredFields) {
     let text = format!(
-        "{} A PERIPHERAL {}",
+        "{} A PERIPHERAL {} ({}/{} fields covered)",
         str_utils::format_address(peripheral.base_address),
-        peripheral.name
+        peripheral.name,
+        coverage.covered,
+        coverage.all,
     );
     mmap.push(text);
 }
@@ -135,6 +156,7 @@ fn get_registers(
         for r in registers {
             match &r {
                 RegisterCluster::Register(r) => {
+                    let mut rcov = CoveredFields::default();
                     let access = svd_utils::access_with_brace(r.properties.access);
                     let derived = derived_str(&r.derived_from);
                     match r {
@@ -147,7 +169,7 @@ fn get_registers(
                                 "{addr} B  REGISTER {rname}{derived}{access}: {description}"
                             );
                             mmap.push(text);
-                            get_fields(r, &addr, mmap, coverage);
+                            get_fields(r, &addr, mmap, &mut rcov);
                         }
                         Register::Array(r, d) => {
                             for ri in svd::register::expand(r, d) {
@@ -160,10 +182,11 @@ fn get_registers(
                                     "{addr} B  REGISTER {rname}{derived}{access}: {description}"
                                 );
                                 mmap.push(text);
-                                get_fields(&ri, &addr, mmap, coverage);
+                                get_fields(&ri, &addr, mmap, &mut rcov);
                             }
                         }
                     }
+                    *coverage += rcov;
                 }
                 RegisterCluster::Cluster(c) => {
                     let derived = derived_str(&c.derived_from);
@@ -341,17 +364,16 @@ mod tests {
     </peripherals>
 </device>";
 
-    static EXPECTED_MMAP: &str = r"0x10000000 A PERIPHERAL PeriphA
+    static EXPECTED_MMAP: &str = r"0x10000000 A PERIPHERAL PeriphA (1/2 fields covered)
 0x10000010 B  REGISTER REG1: Register A1
 0x10000010 C   FIELD 05w02 F1: Field 1
 0x10000010 C   FIELD 10w01 F2: Field 2
 0x10000014 B  REGISTER REG2: Register A2
-0x10010000 A PERIPHERAL PeriphB
+0x10010000 A PERIPHERAL PeriphB (1/1 fields covered)
 0x10010010 B  REGISTER REG1: Register B1
 0x10010010 C   FIELD 10w01 F3: Field 3
 INTERRUPT 001: INT_A1 (PeriphA): Interrupt A1
-INTERRUPT 002: INT_B2 (PeriphB): Interrupt B2
-Covered 2 from 3 fields.";
+INTERRUPT 002: INT_B2 (PeriphB): Interrupt B2";
 
     #[test]
     fn mmap() {
