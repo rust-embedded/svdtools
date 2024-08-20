@@ -66,7 +66,15 @@ fn to_text(peripherals: &[Peripheral]) -> String {
                     &mut rmmap,
                     &mut pcov,
                 );
-                get_peripheral(p, &mut mmap, pcov);
+                get_peripheral(
+                    p,
+                    &mut mmap,
+                    if p.derived_from.is_some() {
+                        CoveredFields::default()
+                    } else {
+                        pcov
+                    },
+                );
                 get_interrupts(p, &mut mmap);
                 mmap.extend(rmmap);
                 coverage += pcov;
@@ -83,7 +91,15 @@ fn to_text(peripherals: &[Peripheral]) -> String {
                         &mut rmmap,
                         &mut pcov,
                     );
-                    get_peripheral(&pi, &mut mmap, pcov);
+                    get_peripheral(
+                        &pi,
+                        &mut mmap,
+                        if pi.derived_from.is_some() {
+                            CoveredFields::default()
+                        } else {
+                            pcov
+                        },
+                    );
                     get_interrupts(&pi, &mut mmap);
                     mmap.extend(rmmap);
                     coverage += pcov;
@@ -116,13 +132,21 @@ fn get_periph_registers<'a>(
 }
 
 fn get_peripheral(peripheral: &PeripheralInfo, mmap: &mut Vec<String>, coverage: CoveredFields) {
-    let text = format!(
-        "{} A PERIPHERAL {} ({}/{} fields covered)",
-        str_utils::format_address(peripheral.base_address),
-        peripheral.name,
-        coverage.covered,
-        coverage.all,
-    );
+    let text = if coverage.all > 0 {
+        format!(
+            "{} A PERIPHERAL {} ({}/{} fields covered)",
+            str_utils::format_address(peripheral.base_address),
+            peripheral.name,
+            coverage.covered,
+            coverage.all,
+        )
+    } else {
+        format!(
+            "{} A PERIPHERAL {}",
+            str_utils::format_address(peripheral.base_address),
+            peripheral.name,
+        )
+    };
     mmap.push(text);
 }
 
@@ -277,7 +301,7 @@ fn is_covered(f: &FieldInfo) -> bool {
 mod tests {
     use super::*;
 
-    static SVD: &str = r"
+    static SVD: &str = r##"
 <device>
     <name>dev</name>
     <peripherals>
@@ -361,8 +385,13 @@ mod tests {
                 </register>
             </registers>
         </peripheral>
+        <peripheral derivedFrom="PeriphB">
+            <name>PeriphC</name>
+            <description>Peripheral C</description>
+            <baseAddress>0x10020000</baseAddress>
+        </peripheral>
     </peripherals>
-</device>";
+</device>"##;
 
     static EXPECTED_MMAP: &str = r"0x10000000 A PERIPHERAL PeriphA (1/2 fields covered)
 0x10000010 B  REGISTER REG1: Register A1
@@ -372,6 +401,9 @@ mod tests {
 0x10010000 A PERIPHERAL PeriphB (1/1 fields covered)
 0x10010010 B  REGISTER REG1: Register B1
 0x10010010 C   FIELD 10w01 F3: Field 3
+0x10020000 A PERIPHERAL PeriphC
+0x10020010 B  REGISTER REG1: Register B1
+0x10020010 C   FIELD 10w01 F3: Field 3
 INTERRUPT 001: INT_A1 (PeriphA): Interrupt A1
 INTERRUPT 002: INT_B2 (PeriphB): Interrupt B2";
 
