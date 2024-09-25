@@ -578,27 +578,25 @@ fn make_cluster(cadd: &Hash, path: Option<&BlockPath>) -> Result<ClusterInfoBuil
     let mut cnew = ClusterInfo::builder()
         .description(opt_interpolate(&path, cadd.get_str("description")?))
         .derived_from(opt_interpolate(&path, cadd.get_str("derivedFrom")?))
-        .default_register_properties(get_register_properties(cadd)?)
-        .children(match cadd.get_hash("registers")? {
-            Some(h) => {
-                let mut ch = Vec::new();
-                for (rname, val) in h {
-                    ch.push(RegisterCluster::Register({
-                        let radd = val.hash()?;
-                        let reg = make_register(radd, None)?
-                            .name(rname.str()?.into())
-                            .build(VAL_LVL)?;
-                        if let Some(dim) = make_dim_element(radd)? {
-                            reg.array(dim.build(VAL_LVL)?)
-                        } else {
-                            reg.single()
-                        }
-                    }));
+        .default_register_properties(get_register_properties(cadd)?);
+
+    if let Some(h) = cadd.get_hash("registers")? {
+        let mut ch = Vec::new();
+        for (rname, val) in h {
+            ch.push(RegisterCluster::Register({
+                let radd = val.hash()?;
+                let reg = make_register(radd, None)?
+                    .name(rname.str()?.into())
+                    .build(VAL_LVL)?;
+                if let Some(dim) = make_dim_element(radd)? {
+                    reg.array(dim.build(VAL_LVL)?)
+                } else {
+                    reg.single()
                 }
-                ch
-            }
-            _ => Vec::new(),
-        });
+            }));
+        }
+        cnew = cnew.children(ch);
+    }
 
     if let Some(name) = cadd.get_str("name")? {
         cnew = cnew.name(name.into());
