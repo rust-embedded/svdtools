@@ -5,6 +5,7 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Show number of covered fields in `mmaps`
 * Sugar for simple `_split` and `_merge` 
 
 ## [v0.3.18] 2024-08-10
