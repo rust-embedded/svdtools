@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.19] 2024-10-18
+
+* Fix deletion childrens on cluster modify
 * Sugar for simple `_split` and `_merge` 
 
 ## [v0.3.18] 2024-08-10
@@ -183,7 +186,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...HEAD
+[v0.3.19]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...v0.3.19
 [v0.3.18]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...v0.3.18
 [v0.3.17]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...v0.3.17
 [v0.3.16]: https://github.com/rust-embedded/svdtools/compare/v0.3.15...v0.3.16
