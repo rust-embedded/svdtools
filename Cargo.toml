@@ -1,6 +1,6 @@
 [package]
 name = "svdtools"
-version = "0.3.18"
+version = "0.3.19"
 repository = "https://github.com/rust-embedded/svdtools/"
 description = "Tool for modifying bugs in CMSIS SVD"
 authors = ["Andrey Zgarbul <zgarbul.andrey@gmail.com>", "MarcoIeni"]
@@ -26,25 +26,25 @@ edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-clap = { version = "4.4", features = ["derive", "cargo", "color"] }
+clap = { version = "4.5", features = ["derive", "cargo", "color"] }
 serde = { version = "1.0", features = ["derive"] }
-quick-xml = { version = "0.31", features = ["serialize"] }
-svd-rs = { version = "0.14.8", features = ["serde", "derive-from"] }
-svd-parser = { version = "0.14.5", features = ["expand"] }
-svd-encoder = "0.14.4"
+quick-xml = { version = "0.36", features = ["serialize"] }
+svd-rs = { version = "0.14.9", features = ["serde", "derive-from"] }
+svd-parser = { version = "0.14.7", features = ["expand"] }
+svd-encoder = "0.14.5"
 # serde_yaml 0.9.x looks broken
 serde_yaml = "0.8.26"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 anyhow = "1.0.65"
 thiserror = "1.0.35"
-hashlink = "0.8.4"
+hashlink = "0.9.1"
 globset = "0.4.14"
 commands = "0.0.5"
 env_logger = "0.11"
 log = { version = "~0.4", features = ["std"] }
-normpath = "1.1.0"
+normpath = "1.3.0"
 liquid = "0.26.0"
-once_cell = "1.18.0"
+once_cell = "1.20.0"
 rayon = "1.7.0"
 regex = "1.10"
 itertools = "0.13.0"
@@ -52,7 +52,7 @@ phf = { version = "0.11", features = ["macros"] }
 
 [dependencies.yaml-rust]
 package = "yaml-rust2"
-version = "0.8"
+version = "0.9"
 
 [dev-dependencies]
 similar = "2.5.0"
