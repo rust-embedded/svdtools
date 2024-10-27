@@ -1,0 +1,7 @@
+_svd: "./mspm0g350x.svd"
+
+# Alter top-level information and peripherals for this device
+"GPIO*":
+  _expand_cluster:
+    - "GPIO?_GPRCM*"
+  _strip: "GPIO?_"

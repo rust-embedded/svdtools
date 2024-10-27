@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<device schemaVersion="1.1"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
+  xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
+  <name>MSPM0G350x</name>
+  <peripherals>
+    <peripheral>
+      <name>GPIOB</name>
+      <groupName>GPIOB</groupName>
+      <version>1.0</version>
+      <description>PERIPHERALREGION</description>
+      <baseAddress>0x400A2000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x1F00</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <cluster>
+          <dim>1</dim>
+          <dimIncrement>24</dimIncrement>
+          <dimArrayIndex>0</dimArrayIndex>
+          <name>GPIOB_GPRCM[%s]</name>
+          <description></description>
+          <addressOffset>0x800</addressOffset>
+          <register>
+            <name>GPIOB_PWREN</name>
+            <description>Power enable</description>
+            <addressOffset>0x0</addressOffset>
+            <size>32</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the power</description>
+                <bitOffset>0x0</bitOffset>
+                <bitWidth>0x1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable Power</description>
+                    <value>0x0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable Power</description>
+                    <value>0x1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+          <register>
+            <name>GPIOB_RSTCTL</name>
+            <description>Reset Control</description>
+            <addressOffset>0x4</addressOffset>
+            <size>32</size>
+            <access>write-only</access>
+            <fields>
+              <field>
+                <name>RESETSTKYCLR</name>
+                <description>Clear the RESETSTKY bit in the STAT register</description>
+                <bitOffset>0x1</bitOffset>
+                <bitWidth>0x1</bitWidth>
+                <access>write-only</access>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>NOP</name>
+                    <description>Writing 0 has no effect</description>
+                    <value>0x0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>CLR</name>
+                    <description>Clear reset sticky bit</description>
+                    <value>0x1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+              <field>
+                <name>RESETASSERT</name>
+                <description>Assert reset to the peripheral</description>
+                <bitOffset>0x0</bitOffset>
+                <bitWidth>0x1</bitWidth>
+                <access>write-only</access>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>NOP</name>
+                    <description>Writing 0 has no effect</description>
+                    <value>0x0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ASSERT</name>
+                    <description>Assert reset</description>
+                    <value>0x1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+          <register>
+            <name>GPIOB_STAT</name>
+            <description>Status Register</description>
+            <addressOffset>0x14</addressOffset>
+            <size>32</size>
+            <access>read-only</access>
+            <fields>
+              <field>
+                <name>RESETSTKY</name>
+                <description>This bit indicates, if the peripheral was reset, since this bit was
+                  cleared
+                  by RESETSTKYCLR in the RSTCTL register</description>
+                <bitOffset>0x10</bitOffset>
+                <bitWidth>0x1</bitWidth>
+                <access>read-only</access>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>NORES</name>
+                    <description>The peripheral has not been reset since this bit was last cleared
+                      by
+                      RESETSTKYCLR in the RSTCTL register</description>
+                    <value>0x0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>RESET</name>
+                    <description>The peripheral was reset since the last bit clear</description>
+                    <value>0x1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>

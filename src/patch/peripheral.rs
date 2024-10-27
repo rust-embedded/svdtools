@@ -513,6 +513,73 @@ pub(crate) trait RegisterBlockExt: Name {
         }
     }
 
+    fn get_cluster_registers(
+        &self,
+        cspec: &str,
+        bpath: &BlockPath,
+    ) -> anyhow::Result<Vec<(&ClusterInfo, Vec<RegisterCluster>)>> {
+        // ) -> anyhow::Result<(Vec<RegisterCluster>, ClusterInfo)> {
+        let (cspec, ignore) = cspec.spec();
+        println!("Expanding cluster {0}", cspec);
+
+        let present = self.present_clusters().clone();
+        Ok(self
+            .clstrs()
+            .matched(cspec)
+            .map(|ctag| {
+                let regs = ctag
+                    .clone()
+                    .all_registers()
+                    .map(|reg| {
+                        RegisterCluster::Register(<RegisterInfo as Clone>::clone(reg).single())
+                    })
+                    .collect::<Vec<_>>();
+                if regs.is_empty() && !ignore {
+                    return Err(anyhow!(
+                        "Could not find cluster `{bpath}:{cspec}. Present clusters: {present}.`"
+                    ));
+                }
+                Ok((std::ops::Deref::deref(ctag), regs))
+            })
+            .flatten()
+            .collect::<Vec<_>>())
+    }
+    /// Expand register cluster
+    fn expand_cluster(&mut self, cspec: &str, bpath: &BlockPath) -> PatchResult {
+        let mut info_and_regs = Vec::new();
+
+        let mut clusters_to_delete = Vec::new();
+        // some fancy footwork to satisfy the borrow checker gods
+        for (ci, rc) in self.get_cluster_registers(cspec, bpath)? {
+            let mut regs = Vec::new();
+            for reg in rc {
+                regs.push(<svd_rs::RegisterCluster as Clone>::clone(&reg));
+            }
+            info_and_regs.push((ci.clone(), regs));
+        }
+
+        if let Some(regs) = self.children_mut() {
+            for (_cinfo, cluster_registers) in info_and_regs {
+                let mut found = false;
+                for reg in cluster_registers {
+                    found = true;
+                    println!("Adding register {0}", reg.name());
+                    regs.push(reg.clone())
+                }
+                if !found {
+                    return Err(anyhow!("No registers found in cluster {:?}", cspec));
+                } else {
+                    clusters_to_delete.push(cspec)
+                }
+            }
+        }
+        for cspec in clusters_to_delete {
+            self.delete_cluster(cspec)
+                .with_context(|| format!("Deleting clusters matched to `{cspec}`"))?;
+        }
+        Ok(())
+    }
+
     /// Expand register array
     fn expand_array(&mut self, rspec: &str, _rmod: &Hash, _config: &Config) -> PatchResult {
         if let Some(regs) = self.children_mut() {
@@ -749,6 +816,27 @@ impl PeripheralExt for Peripheral {
             }
         }
 
+        if let Some(expand_cluster) = pmod.get_yaml("_expand_cluster") {
+            match expand_cluster {
+                Yaml::String(cspec) => {
+                    self.expand_cluster(cspec, &ppath)
+                        .with_context(|| format!("During expand of `{cspec}` cluster"))?;
+                }
+                Yaml::Array(clusters) => {
+                    for cspec in clusters {
+                        let cspec = cspec.str()?;
+                        self.expand_cluster(cspec, &ppath)
+                            .with_context(|| format!("During expand of `{cspec}` cluster"))?;
+                    }
+                }
+                _ => {
+                    return Err(anyhow!(
+                        "`_expand_cluster` requires string value or array of strings"
+                    ))
+                }
+            }
+        }
+
         // Handle any copied peripherals
         for (rname, rcopy) in pmod.hash_iter("_copy") {
             let rname = rname.str()?;
@@ -889,6 +977,7 @@ impl PeripheralExt for Peripheral {
         // Handle registers or clusters
         for (rcspec, rcmod) in pmod {
             let rcspec = rcspec.str()?;
+            println!("Processing {0}", rcspec);
             if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
@@ -1153,6 +1242,7 @@ impl ClusterExt for Cluster {
                 .with_context(|| format!("According to `{rcspec}`"))?;
         }
 
+        println!("post process");
         self.post_process(cmod, parent, config)
     }
 
@@ -1504,6 +1594,7 @@ fn collect_in_cluster(
         )
     };
     cluster.pre_process(cmod, path, &config)?;
+    println!("cluster post process");
     cluster.post_process(cmod, path, &config)?;
     regs.insert(place, RegisterCluster::Cluster(cluster));
     Ok(())
