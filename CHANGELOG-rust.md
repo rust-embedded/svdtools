@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* `regex` replacements for descriptions during `_modify`
+
 ## [v0.3.19] 2024-10-18
 
 * Fix deletion childrens on cluster modify

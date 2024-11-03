@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Ok};
+use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use svd::Name;
 use svd_parser::expand::BlockPath;
@@ -12,7 +12,7 @@ use super::iterators::{MatchIter, Matched};
 use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
-    check_offsets, common_description, make_dim_element, matchname, matchsubspec,
+    check_offsets, common_description, do_replacements, make_dim_element, matchname, matchsubspec,
     modify_dim_element, spec_ind, Config, PatchResult, Spec, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
@@ -843,6 +843,10 @@ fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash, bpath: &BlockPath) ->
     for rtag in rtags {
         modify_dim_element(rtag, &dim)?;
         rtag.modify_from(register_builder.clone(), VAL_LVL)?;
+        if let Ok(Some(h)) = rmod.get_hash("description") {
+            rtag.description =
+                Some(do_replacements(rtag.description.as_deref().unwrap_or(""), h)?.into());
+        }
         if let Some("") = rmod.get_str("access")? {
             rtag.properties.access = None;
         }
@@ -856,6 +860,10 @@ fn modify_cluster(ctags: Vec<&mut Cluster>, cmod: &Hash, bpath: &BlockPath) -> P
     for ctag in ctags {
         modify_dim_element(ctag, &dim)?;
         ctag.modify_from(cluster_builder.clone(), VAL_LVL)?;
+        if let Ok(Some(h)) = cmod.get_hash("description") {
+            ctag.description =
+                Some(do_replacements(ctag.description.as_deref().unwrap_or(""), h)?.into());
+        }
     }
     Ok(())
 }

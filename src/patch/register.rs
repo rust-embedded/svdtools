@@ -14,8 +14,8 @@ use crate::patch::EnumAutoDerive;
 use super::iterators::{MatchIter, Matched};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
-    check_offsets, common_description, make_dim_element, matchname, modify_dim_element, spec_ind,
-    Config, PatchResult, Spec, VAL_LVL,
+    check_offsets, common_description, do_replacements, make_dim_element, matchname,
+    modify_dim_element, spec_ind, Config, PatchResult, Spec, VAL_LVL,
 };
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
@@ -311,6 +311,10 @@ impl RegisterExt for Register {
                 }
                 // For all other tags, just set the value
                 ftag.modify_from(field_builder.clone(), VAL_LVL)?;
+                if let Ok(Some(h)) = fmod.get_hash("description") {
+                    ftag.description =
+                        Some(do_replacements(ftag.description.as_deref().unwrap_or(""), h)?.into());
+                }
                 if let Some("") = fmod.get_str("access")? {
                     ftag.access = None;
                 }
