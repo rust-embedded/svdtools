@@ -1,0 +1,24 @@
+_svd: "./mspm0g350x.svd"
+
+# Alter top-level information and peripherals for this device
+"GPIO*":
+  _strip: "GPIO?_"
+  _clusters:
+    "*":
+      _strip: "GPIO?_"
+  _expand_cluster:
+    GPRCM*:
+      _preindex: "_"
+      _postindex: "_"
+      _zeroindex: false
+      _noprefix: true
+    TEST_CLUSTER*:
+
+"DAC*":
+  _strip: "DAC?_"
+  _clusters:
+    "INT_EVENT*":
+      _strip: "DAC?_"
+  _expand_cluster:
+    - "?~missing_cluster"
+    - "INT_EVENT*"

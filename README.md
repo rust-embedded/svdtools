@@ -266,6 +266,29 @@ _rebase:
             FIRST_REG: {}
             SECOND_REG: {}
 
+    # clusters can be expanded into individual registers. The name of the resulting register will be the cluster name, concatenated with the register name.
+
+    _expand_cluster:
+        - CLUSTER_ONE*
+        - CLUSTER_TWO*
+
+    # When expanding clusters containing more than one element (as specified by <dim>), each register will have substutute [%] in the cluster name with its index number. If the cluster has a dimIndex element, a %s in the  cluster name will be replaced by dimIndex element. [%] is not compatible with dimIndex, as according to SVD 1.3.10
+    # The SVD 1.3.10 does not specify a delimiter for expansion, so passing the following parameters to the cluster as a hash will allow you to set the delimiter before and after the index is applied (the default delimiters are "_". You can also force the cluster to apply a zero index to a cluster with a single element by passing in the _zeroindex: true parameter
+
+    _expand_cluster:
+        CLUSTER_ONE*:
+        CLUSTER_TWO*:
+          _preindex: "_"
+          _postindex: "_"
+          _zeroindex: true
+
+
+    # if you pass the _noprefix: true parameter to a cluster, the cluster name will not be prefixed with the peripheral name. This is only valid for single element clusters.
+
+    _expand_cluster:
+        CLUSTER_ONE*:
+          _noprefix: true
+
     # A register on this peripheral, matches an SVD <register> tag
     MODER:
         # As in the peripheral scope, rename or redescribe a field.
