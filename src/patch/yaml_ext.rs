@@ -208,10 +208,16 @@ pub trait GetVal {
         }
     }
     fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>> {
-        Ok(OptIter::new(match self.get_yaml(k) {
+        let yaml = self.get_yaml(k);
+        Ok(OptIter::new(match yaml {
             None => None,
-            Some(y) if matches!(y, Yaml::String(_) | Yaml::Array(_)) => {
-                Some(OverStringIter(y, None))
+            Some(Yaml::String(_)) => Some(OverStringIter(yaml.unwrap(), None)),
+            Some(Yaml::Array(y)) => {
+                if y.iter().all(|x| x.as_str().is_some()) {
+                    Some(OverStringIter(yaml.unwrap(), None))
+                } else {
+                    return Err(anyhow!("`{k}` requires string value or array of strings"));
+                }
             }
             _ => return Err(anyhow!("`{k}` requires string value or array of strings")),
         }))
@@ -222,5 +228,80 @@ impl GetVal for Hash {
     #[inline(always)]
     fn get_yaml(&self, k: &str) -> Option<&Yaml> {
         self.get(&k.to_yaml())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::patch::yaml_ext::GetVal;
+    use yaml_rust::YamlLoader;
+
+    #[test]
+    fn test_str_vec_iter_string_value() {
+        let yaml_str = r#"
+        key: "value"
+        "#;
+        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let hash = docs[0].as_hash().unwrap();
+
+        let result = hash.str_vec_iter("key");
+        assert!(result.is_ok());
+        let mut iter = result.unwrap();
+        assert_eq!(iter.next().unwrap(), "value");
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn test_str_vec_iter_array_of_strings() {
+        let yaml_str = r#"
+        key: ["value1", "value2", "value3"]
+        "#;
+        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let hash = docs[0].as_hash().unwrap();
+
+        let result = hash.str_vec_iter("key");
+        assert!(result.is_ok());
+        let mut iter = result.unwrap();
+        assert_eq!(iter.next().unwrap(), "value1");
+        assert_eq!(iter.next().unwrap(), "value2");
+        assert_eq!(iter.next().unwrap(), "value3");
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn test_str_vec_iter_invalid_type() {
+        let yaml_str = r#"
+        key: 123
+        "#;
+        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let hash = docs[0].as_hash().unwrap();
+
+        let result = hash.str_vec_iter("key");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_str_vec_iter_hash_type() {
+        let yaml_str = r#"
+        key:
+          subkey: "value"
+        "#;
+        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let hash = docs[0].as_hash().unwrap();
+
+        let result = hash.str_vec_iter("key");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_str_vec_iter_array_with_hash() {
+        let yaml_str = r#"
+        key: ["value1", "value2", {subkey: "value"}]
+        "#;
+        let docs = YamlLoader::load_from_str(yaml_str).unwrap();
+        let hash = docs[0].as_hash().unwrap();
+
+        let result = hash.str_vec_iter("key");
+        assert!(result.is_err());
     }
 }

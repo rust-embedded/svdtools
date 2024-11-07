@@ -182,13 +182,24 @@ pub(crate) trait RegisterBlockExt: Name {
         }
     }
 
-    /// Delete clusters matched by cspec inside ptag
     fn delete_cluster(&mut self, cspec: &str) -> PatchResult {
+        let (cspec, ignore) = cspec.spec();
+
         if let Some(children) = self.children_mut() {
-            children.retain(
-                |rc| !matches!(rc, RegisterCluster::Cluster(c) if matchname(&c.name, cspec)),
-            );
-            Ok(())
+            let mut deleted = false;
+            children.retain(|rc| {
+                let retain =
+                    !matches!(rc, RegisterCluster::Cluster(c) if matchname(&c.name, cspec));
+                if !retain {
+                    deleted = true;
+                }
+                retain
+            });
+            if !deleted && !ignore {
+                Err(anyhow!("No matching clusters found"))
+            } else {
+                Ok(())
+            }
         } else {
             Err(anyhow!("No registers or clusters"))
         }
@@ -468,6 +479,21 @@ pub(crate) trait RegisterBlockExt: Name {
                 }
             }
         }
+        for ctag in self.clstrs_mut() {
+            if glob.is_match(&ctag.name) {
+                ctag.name.drain(..len);
+            }
+            if let Some(dname) = ctag.header_struct_name.as_mut() {
+                if glob.is_match(dname.as_str()) {
+                    dname.drain(..len);
+                }
+            }
+            if let Some(name) = ctag.alternate_cluster.as_mut() {
+                if glob.is_match(name.as_str()) {
+                    name.drain(..len);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -495,6 +521,24 @@ pub(crate) trait RegisterBlockExt: Name {
                 }
             }
         }
+        for ctag in self.clstrs_mut() {
+            if glob.is_match(&ctag.name) {
+                let nlen = ctag.name.len();
+                ctag.name.truncate(nlen - len);
+            }
+            if let Some(dname) = ctag.header_struct_name.as_mut() {
+                if glob.is_match(dname.as_str()) {
+                    let nlen = dname.len();
+                    dname.truncate(nlen - len);
+                }
+            }
+            if let Some(name) = ctag.alternate_cluster.as_mut() {
+                if glob.is_match(name.as_str()) {
+                    let nlen = name.len();
+                    name.truncate(nlen - len);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -516,68 +560,227 @@ pub(crate) trait RegisterBlockExt: Name {
     fn get_cluster_registers(
         &self,
         cspec: &str,
-        bpath: &BlockPath,
-    ) -> anyhow::Result<Vec<(&ClusterInfo, Vec<RegisterCluster>)>> {
-        // ) -> anyhow::Result<(Vec<RegisterCluster>, ClusterInfo)> {
-        let (cspec, ignore) = cspec.spec();
-        println!("Expanding cluster {0}", cspec);
-
-        let present = self.present_clusters().clone();
-        Ok(self
-            .clstrs()
-            .matched(cspec)
-            .map(|ctag| {
-                let regs = ctag
-                    .clone()
-                    .all_registers()
-                    .map(|reg| {
-                        RegisterCluster::Register(<RegisterInfo as Clone>::clone(reg).single())
-                    })
-                    .collect::<Vec<_>>();
-                if regs.is_empty() && !ignore {
-                    return Err(anyhow!(
-                        "Could not find cluster `{bpath}:{cspec}. Present clusters: {present}.`"
-                    ));
+    ) -> Vec<(&ClusterInfo, DimElement, Vec<RegisterCluster>)> {
+        let (cspec, _) = cspec.spec();
+        self.clstrs()
+            .filter(|ctag| matchname(&ctag.name, cspec))
+            .filter_map(|ctag| match ctag.clone() {
+                svd_rs::MaybeArray::Array(cluster, dim) => {
+                    let mut clusters_and_registers = cluster
+                        .registers()
+                        .map(|reg| reg.clone().into())
+                        .collect::<Vec<_>>();
+                    clusters_and_registers.extend(
+                        cluster
+                            .clusters()
+                            .map(|reg| reg.clone().into())
+                            .collect::<Vec<_>>(),
+                    );
+                    Some((std::ops::Deref::deref(ctag), dim, clusters_and_registers))
                 }
-                Ok((std::ops::Deref::deref(ctag), regs))
+                _ => None,
             })
-            .flatten()
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>()
     }
-    /// Expand register cluster
-    fn expand_cluster(&mut self, cspec: &str, bpath: &BlockPath) -> PatchResult {
-        let mut info_and_regs = Vec::new();
 
+    /// Expand register cluster
+    fn expand_cluster(
+        &mut self,
+        cspec: &str,
+        bpath: &BlockPath,
+        pre_index_delim: Option<&str>,
+        post_index_delim: Option<&str>,
+        zeroindex: Option<bool>,
+        noprefix: Option<bool>,
+    ) -> PatchResult {
+        let mut clusters_to_expand_with_info = Vec::new();
         let mut clusters_to_delete = Vec::new();
+
+        let (_, ignore) = cspec.spec();
+
         // some fancy footwork to satisfy the borrow checker gods
-        for (ci, rc) in self.get_cluster_registers(cspec, bpath)? {
+        let cluster_data = self.get_cluster_registers(cspec);
+        if cluster_data.is_empty() && !ignore {
+            let present = self.present_clusters().clone();
+            return Err(anyhow!(
+                "Could not find cluster `{bpath}:{cspec}. Present clusters: {present}.`"
+            ));
+        }
+
+        for (ci, dim, rc) in cluster_data {
             let mut regs = Vec::new();
             for reg in rc {
                 regs.push(<svd_rs::RegisterCluster as Clone>::clone(&reg));
             }
-            info_and_regs.push((ci.clone(), regs));
+            clusters_to_expand_with_info.push((ci.clone(), dim, regs));
         }
 
         if let Some(regs) = self.children_mut() {
-            for (_cinfo, cluster_registers) in info_and_regs {
+            for (ctag, dim, cluster_registers) in clusters_to_expand_with_info.clone() {
                 let mut found = false;
-                for reg in cluster_registers {
-                    found = true;
-                    println!("Adding register {0}", reg.name());
-                    regs.push(reg.clone())
+                let cluster_offset = ctag.address_offset;
+                log::info!(
+                    "Expanding {} element cluster {} for peripheral {}",
+                    dim.dim,
+                    ctag.name,
+                    bpath
+                );
+                // iterate through each dim to expand each dim of a cluster
+                for n_dim in 0..dim.dim {
+                    let prefix = Self::expand_cluster_register_name_prefix(
+                        n_dim,
+                        ctag.clone(),
+                        bpath,
+                        dim.clone(),
+                        pre_index_delim,
+                        post_index_delim,
+                        zeroindex,
+                        noprefix,
+                    )?;
+                    for reg in cluster_registers.clone() {
+                        let reg = match reg {
+                            RegisterCluster::Register(mut register) => {
+                                register.address_offset += cluster_offset;
+                                register.address_offset += n_dim * dim.dim_increment;
+                                register.name = format!("{}{}", prefix, register.name);
+                                RegisterCluster::Register(register)
+                            }
+                            RegisterCluster::Cluster(mut cluster) => {
+                                cluster.address_offset += cluster_offset;
+                                cluster.address_offset += n_dim * dim.dim_increment;
+                                cluster.name = format!("{}{}", prefix, cluster.name);
+                                RegisterCluster::Cluster(cluster)
+                            }
+                        };
+                        found = true;
+                        log::info!(
+                            "Adding register at offset 0x{:08x}: {}",
+                            reg.address_offset(),
+                            reg.name(),
+                        );
+                        regs.push(reg.clone())
+                    }
                 }
                 if !found {
                     return Err(anyhow!("No registers found in cluster {:?}", cspec));
                 } else {
-                    clusters_to_delete.push(cspec)
+                    clusters_to_delete.push(ctag.name);
                 }
             }
-        }
-        for cspec in clusters_to_delete {
-            self.delete_cluster(cspec)
-                .with_context(|| format!("Deleting clusters matched to `{cspec}`"))?;
-        }
+        } else {
+            return Err(anyhow!("No registers or clusters"));
+        };
+
+        self.delete_cluster(cspec)
+            .with_context(|| format!("Deleting clusters matched to `{cspec}`"))?;
+
         Ok(())
+    }
+
+    /// get the prefix to apply to a register name in a cluster that is being expanded
+    #[allow(clippy::too_many_arguments)]
+    fn expand_cluster_register_name_prefix(
+        n_dim: u32,
+        ctag: ClusterInfo,
+        bpath: &BlockPath,
+        dim: DimElement,
+        pre_index_delim: Option<&str>,
+        post_index_delim: Option<&str>,
+        zeroindex: Option<bool>,
+        noprefix: Option<bool>,
+    ) -> anyhow::Result<String> {
+        let pre_index_delim = pre_index_delim.unwrap_or("_").to_string();
+        let post_index_delim = post_index_delim.unwrap_or("_").to_string();
+
+        let has_bracket_delim = ctag.name.find(r#"[%s]"#);
+        let has_nobracket_delim = ctag.name.find(r#"[%s]"#);
+        let prefix = if dim.dim > 1 || matches!(zeroindex, Some(true)) {
+            if let Some(true) = noprefix {
+                return Err(anyhow!(
+                    "Cannot expand cluster {}:{} with multiple elements with noprefix",
+                    bpath,
+                    ctag.name
+                ));
+            }
+            match (
+                dim.dim_index.clone(),
+                has_bracket_delim,
+                has_nobracket_delim,
+            ) {
+                (Some(_), Some(_), _) => {
+                    return Err(anyhow!("Cannot expand cluster {}:{} with multiple elements that uses dim_index and [%s] substitution https://open-cmsis-pack.github.io/svd-spec/main/elem_registers.html", bpath, ctag.name));
+                }
+                (Some(dim_index), None, Some(_)) => {
+                    if dim_index.len() != dim.dim as usize {
+                        return Err(anyhow!("Cannot expand cluster {}:{} with multiple elements that has a dim_index with a number of elements unequal to dim length. _modify cluster dim or index before expanding cluster", bpath, ctag.name));
+                    } else {
+                        format!(
+                            "{}{}",
+                            &ctag.name.replace(
+                                "%s",
+                                &format!(
+                                    "{}{}",
+                                    pre_index_delim,
+                                    &dim_index[n_dim as usize].to_string()
+                                )
+                            ),
+                            post_index_delim
+                        )
+                    }
+                }
+                (Some(dim_index), None, None) => {
+                    if dim_index.len() != dim.dim as usize {
+                        return Err(anyhow!("Cannot expand cluster {}:{} with multiple elements that has a dim_index with a number of elements unequal to dim length. _modify cluster dim or index before expanding cluster ", bpath, ctag.name));
+                    } else {
+                        format!(
+                            "{}{}",
+                            &ctag.name.replace(
+                                r#"%s"#,
+                                &format!(
+                                    "{}{}",
+                                    pre_index_delim,
+                                    &dim_index[n_dim as usize].to_string()
+                                )
+                            ),
+                            post_index_delim
+                        )
+                    }
+                }
+                (None, Some(_), _) => {
+                    format!(
+                        "{}{}",
+                        &ctag.name.replace(
+                            r#"[%s]"#,
+                            &format!("{}{}", pre_index_delim, &n_dim.to_string())
+                        ),
+                        post_index_delim
+                    )
+                }
+                (None, None, _) => {
+                    format!(
+                        "{}{}{}{}",
+                        ctag.name, pre_index_delim, n_dim, post_index_delim
+                    )
+                }
+            }
+        } else {
+            if let Some(true) = noprefix {
+                return Ok("".to_string());
+            }
+            // the cluster is a single element and zeroindex is false, so we will skip adding an index
+            match (has_bracket_delim, has_nobracket_delim) {
+                (Some(_), _) => {
+                    format!("{}{}", &ctag.name.replace(r#"[%s]"#, ""), post_index_delim)
+                }
+                (None, Some(_)) => {
+                    format!("{}{}", &ctag.name.replace(r#"%s"#, ""), post_index_delim)
+                }
+                (None, None) => {
+                    format!("{}{}", &ctag.name, post_index_delim)
+                }
+            }
+        };
+        Ok(prefix)
     }
 
     /// Expand register array
@@ -816,27 +1019,6 @@ impl PeripheralExt for Peripheral {
             }
         }
 
-        if let Some(expand_cluster) = pmod.get_yaml("_expand_cluster") {
-            match expand_cluster {
-                Yaml::String(cspec) => {
-                    self.expand_cluster(cspec, &ppath)
-                        .with_context(|| format!("During expand of `{cspec}` cluster"))?;
-                }
-                Yaml::Array(clusters) => {
-                    for cspec in clusters {
-                        let cspec = cspec.str()?;
-                        self.expand_cluster(cspec, &ppath)
-                            .with_context(|| format!("During expand of `{cspec}` cluster"))?;
-                    }
-                }
-                _ => {
-                    return Err(anyhow!(
-                        "`_expand_cluster` requires string value or array of strings"
-                    ))
-                }
-            }
-        }
-
         // Handle any copied peripherals
         for (rname, rcopy) in pmod.hash_iter("_copy") {
             let rname = rname.str()?;
@@ -977,7 +1159,6 @@ impl PeripheralExt for Peripheral {
         // Handle registers or clusters
         for (rcspec, rcmod) in pmod {
             let rcspec = rcspec.str()?;
-            println!("Processing {0}", rcspec);
             if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
@@ -1010,6 +1191,57 @@ impl PeripheralExt for Peripheral {
             let cspec = cspec.str()?;
             self.process_cluster(cspec, cluster.hash()?, &ppath, config)
                 .with_context(|| format!("According to `{cspec}`"))?;
+        }
+
+        // Handle cluster expansions
+        if let Some(expand_cluster) = pmod.get_yaml("_expand_cluster") {
+            match expand_cluster {
+                Yaml::String(cspec) => {
+                    self.expand_cluster(cspec, &ppath, None, None, None, None)
+                        .with_context(|| format!("During expand of `{cspec}` cluster"))?;
+                }
+                Yaml::Array(cspec) => {
+                    for cname in cspec {
+                        let cname = cname.str()?;
+                        self.expand_cluster(cname, &ppath, None, None, None, None)
+                            .with_context(|| format!("During expand of `{cname}` cluster"))?;
+                    }
+                }
+                Yaml::Hash(cspec) => {
+                    for (cname, cspec) in cspec {
+                        let cspec = cspec.hash().ok();
+                        let cname = cname.str()?;
+                        let mut preindex = None;
+                        let mut postindex = None;
+                        let mut zeroindex = None;
+                        let mut noprefix = None;
+                        if let Some(cspec) = cspec {
+                            for (key, val) in cspec {
+                                match key.str()? {
+                                    "_preindex" => preindex = Some(val.str()?),
+                                    "_postindex" => postindex = Some(val.str()?),
+                                    "_zeroindex" => zeroindex = Some(val.bool()?),
+                                    "_noprefix" => noprefix = Some(val.bool()?),
+                                    _ => {
+                                        return Err(anyhow!(
+                                            "`_expand_cluster` requires string value or array of strings"
+                                        ))
+                                    }
+                                }
+                            }
+                        };
+                        self.expand_cluster(
+                            cname, &ppath, preindex, postindex, zeroindex, noprefix,
+                        )
+                        .with_context(|| format!("During expand of `{cname}` cluster"))?;
+                    }
+                }
+                _ => {
+                    return Err(anyhow!(
+                        "`_expand_cluster` requires string value or array of strings"
+                    ))
+                }
+            }
         }
 
         Ok(())
@@ -1242,7 +1474,6 @@ impl ClusterExt for Cluster {
                 .with_context(|| format!("According to `{rcspec}`"))?;
         }
 
-        println!("post process");
         self.post_process(cmod, parent, config)
     }
 
@@ -1594,7 +1825,6 @@ fn collect_in_cluster(
         )
     };
     cluster.pre_process(cmod, path, &config)?;
-    println!("cluster post process");
     cluster.post_process(cmod, path, &config)?;
     regs.insert(place, RegisterCluster::Cluster(cluster));
     Ok(())

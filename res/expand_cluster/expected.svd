@@ -1,0 +1,1187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<device schemaVersion="1.1" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
+  <name>MSPM0G350x</name>
+  <version>1.0</version>
+  <description></description>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <peripherals>
+    <peripheral>
+      <name>GPIOB</name>
+      <version>1.0</version>
+      <description>PERIPHERALREGION</description>
+      <groupName>GPIOB</groupName>
+      <baseAddress>0x400A2000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x1F00</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>FSUB_0</name>
+          <description>Subsciber Port 0</description>
+          <addressOffset>0x400</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>CHANID</name>
+              <description>0 = disconnected.
+                1-15 = connected to channelID = CHANID.</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>4</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>UNCONNECTED</name>
+                  <description>A value of 0 specifies that the event is not connected</description>
+                  <value>0</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>PWREN</name>
+          <description>Power enable</description>
+          <addressOffset>0x800</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the power</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable Power</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable Power</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>RSTCTL</name>
+          <description>Reset Control</description>
+          <addressOffset>0x804</addressOffset>
+          <size>0x20</size>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>RESETSTKYCLR</name>
+              <description>Clear the RESETSTKY bit in the STAT register</description>
+              <bitOffset>1</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>write-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>NOP</name>
+                  <description>Writing 0 has no effect</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Clear reset sticky bit</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>RESETASSERT</name>
+              <description>Assert reset to the peripheral</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>write-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>NOP</name>
+                  <description>Writing 0 has no effect</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ASSERT</name>
+                  <description>Assert reset</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>STAT</name>
+          <description>Status Register</description>
+          <addressOffset>0x814</addressOffset>
+          <size>0x20</size>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>RESETSTKY</name>
+              <description>This bit indicates, if the peripheral was reset, since this bit was
+                  cleared
+                  by RESETSTKYCLR in the RSTCTL register</description>
+              <bitOffset>16</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>NORES</name>
+                  <description>The peripheral has not been reset since this bit was last cleared
+                      by
+                      RESETSTKYCLR in the RSTCTL register</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>RESET</name>
+                  <description>The peripheral was reset since the last bit clear</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>TEST_REG_0</name>
+          <description>Reg Description</description>
+          <addressOffset>0x800</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_0[%s]</name>
+          <addressOffset>0x1000</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_1</name>
+          <description>Reg Description</description>
+          <addressOffset>0x818</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_1[%s]</name>
+          <addressOffset>0x1018</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_2</name>
+          <description>Reg Description</description>
+          <addressOffset>0x830</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_2[%s]</name>
+          <addressOffset>0x1030</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_3</name>
+          <description>Reg Description</description>
+          <addressOffset>0x848</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_3[%s]</name>
+          <addressOffset>0x1048</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_A</name>
+          <description>Reg Description</description>
+          <addressOffset>0x800</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_A[%s]</name>
+          <addressOffset>0x1000</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_B</name>
+          <description>Reg Description</description>
+          <addressOffset>0x818</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_B[%s]</name>
+          <addressOffset>0x1018</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_C</name>
+          <description>Reg Description</description>
+          <addressOffset>0x830</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_C[%s]</name>
+          <addressOffset>0x1030</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+        <register>
+          <name>TEST_REG_D</name>
+          <description>Reg Description</description>
+          <addressOffset>0x848</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ENABLE</name>
+              <description>Enable the reg</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>DISABLE</name>
+                  <description>Disable regster</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>ENABLE</name>
+                  <description>Enable register</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <cluster>
+          <dim>3</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimIndex>X,Y,Z</dimIndex>
+          <dimArrayIndex/>
+          <name>TEST_NESTED_CLUSTER_D[%s]</name>
+          <addressOffset>0x1048</addressOffset>
+          <register>
+            <name>TEST_NC_REG</name>
+            <description>Reg Description</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the reg</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable regster</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable register</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>DAC0</name>
+      <version>1.0</version>
+      <description>PERIPHERALREGION</description>
+      <groupName>DAC</groupName>
+      <baseAddress>0x40018000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x1F00</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>DAC0_IIDX_0</name>
+          <description>Interrupt index</description>
+          <addressOffset>0x1020</addressOffset>
+          <size>0x20</size>
+          <access>read-only</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>STAT</name>
+              <description>Interrupt index status</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>4</bitWidth>
+              <access>read-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>NO_INTR</name>
+                  <description>No pending interrupt</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MODRDYIFG</name>
+                  <description>Module ready interrupt</description>
+                  <value>2</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOFULLIFG</name>
+                  <description>FIFO full interrupt</description>
+                  <value>9</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO1B4IFG</name>
+                  <description>FIFO one fourth empty interrupt</description>
+                  <value>10</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO1B2IFG</name>
+                  <description>FIFO half empty interrupt</description>
+                  <value>11</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO3B4IFG</name>
+                  <description>FIFO three fourth empty interrupt</description>
+                  <value>12</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOEMPTYIFG</name>
+                  <description>FIFO empty interrupt</description>
+                  <value>13</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOURUNIFG</name>
+                  <description>FIFO underrun interrupt</description>
+                  <value>14</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>DMADONEIFG</name>
+                  <description>DMA done interrupt</description>
+                  <value>15</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>DAC0_IMASK_0</name>
+          <description>Interrupt mask</description>
+          <addressOffset>0x1028</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>MODRDYIFG</name>
+              <description>Masks MODRDYIFG</description>
+              <bitOffset>1</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO1B2IFG</name>
+              <description>Masks FIFO1B2IFG</description>
+              <bitOffset>10</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOEMPTYIFG</name>
+              <description>Masks FIFOEMPTYIFG</description>
+              <bitOffset>12</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO1B4IFG</name>
+              <description>Masks FIFO1B4IFG</description>
+              <bitOffset>9</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO3B4IFG</name>
+              <description>Masks FIFO3B4IFG</description>
+              <bitOffset>11</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOFULLIFG</name>
+              <description>Masks FIFOFULLIFG</description>
+              <bitOffset>8</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOURUNIFG</name>
+              <description>Masks FIFOURUNIFG</description>
+              <bitOffset>13</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>DMADONEIFG</name>
+              <description>Masks DMADONEIFG</description>
+              <bitOffset>14</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>DAC0_IIDX_1</name>
+          <description>Interrupt index</description>
+          <addressOffset>0x104C</addressOffset>
+          <size>0x20</size>
+          <access>read-only</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>STAT</name>
+              <description>Interrupt index status</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>4</bitWidth>
+              <access>read-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>NO_INTR</name>
+                  <description>No pending interrupt</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MODRDYIFG</name>
+                  <description>Module ready interrupt</description>
+                  <value>2</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOFULLIFG</name>
+                  <description>FIFO full interrupt</description>
+                  <value>9</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO1B4IFG</name>
+                  <description>FIFO one fourth empty interrupt</description>
+                  <value>10</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO1B2IFG</name>
+                  <description>FIFO half empty interrupt</description>
+                  <value>11</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFO3B4IFG</name>
+                  <description>FIFO three fourth empty interrupt</description>
+                  <value>12</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOEMPTYIFG</name>
+                  <description>FIFO empty interrupt</description>
+                  <value>13</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>FIFOURUNIFG</name>
+                  <description>FIFO underrun interrupt</description>
+                  <value>14</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>DMADONEIFG</name>
+                  <description>DMA done interrupt</description>
+                  <value>15</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>DAC0_IMASK_1</name>
+          <description>Interrupt mask</description>
+          <addressOffset>0x1054</addressOffset>
+          <size>0x20</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>MODRDYIFG</name>
+              <description>Masks MODRDYIFG</description>
+              <bitOffset>1</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO1B2IFG</name>
+              <description>Masks FIFO1B2IFG</description>
+              <bitOffset>10</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOEMPTYIFG</name>
+              <description>Masks FIFOEMPTYIFG</description>
+              <bitOffset>12</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO1B4IFG</name>
+              <description>Masks FIFO1B4IFG</description>
+              <bitOffset>9</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFO3B4IFG</name>
+              <description>Masks FIFO3B4IFG</description>
+              <bitOffset>11</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOFULLIFG</name>
+              <description>Masks FIFOFULLIFG</description>
+              <bitOffset>8</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>FIFOURUNIFG</name>
+              <description>Masks FIFOURUNIFG</description>
+              <bitOffset>13</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>DMADONEIFG</name>
+              <description>Masks DMADONEIFG</description>
+              <bitOffset>14</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>CLR</name>
+                  <description>Interrupt is masked out</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>SET</name>
+                  <description>Interrupt will request an interrupt service routine and
+                      corresponding bit in MIS will be set</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>CRC</name>
+      <version>1.0</version>
+      <description>PERIPHERALREGION</description>
+      <groupName>CRC</groupName>
+      <baseAddress>0x40440000</baseAddress>
+      <addressBlock>
+        <offset>0x0</offset>
+        <size>0x2000</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <cluster>
+          <dim>1</dim>
+          <dimIncrement>0x18</dimIncrement>
+          <dimArrayIndex/>
+          <name>TEST_CLUSTER_WITH_REG_ARRAY_MEMBER[%s]</name>
+          <addressOffset>0x800</addressOffset>
+          <register>
+            <name>CRC_PWREN</name>
+            <description>Power enable</description>
+            <addressOffset>0x0</addressOffset>
+            <size>0x20</size>
+            <access>read-write</access>
+            <resetValue>0x00000000</resetValue>
+            <fields>
+              <field>
+                <name>ENABLE</name>
+                <description>Enable the power</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>1</bitWidth>
+                <access>read-write</access>
+                <enumeratedValues>
+                  <enumeratedValue>
+                    <name>DISABLE</name>
+                    <description>Disable Power</description>
+                    <value>0</value>
+                  </enumeratedValue>
+                  <enumeratedValue>
+                    <name>ENABLE</name>
+                    <description>Enable Power</description>
+                    <value>1</value>
+                  </enumeratedValue>
+                </enumeratedValues>
+              </field>
+            </fields>
+          </register>
+          <register>
+            <dim>512</dim>
+            <dimIncrement>0x4</dimIncrement>
+            <dimIndex>0-511</dimIndex>
+            <name>TEST_REGISTER_ARRAY_IN_CLUSTER_%s</name>
+            <description>CRC Input Data Array Register</description>
+            <addressOffset>0x1800</addressOffset>
+            <size>0x20</size>
+            <access>write-only</access>
+            <resetValue>0x00000000</resetValue>
+            <resetMask>0xFFFFFFFF</resetMask>
+            <fields>
+              <field>
+                <name>DATA</name>
+                <description>Input Data</description>
+                <bitOffset>0</bitOffset>
+                <bitWidth>32</bitWidth>
+                <access>write-only</access>
+              </field>
+            </fields>
+          </register>
+        </cluster>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
