@@ -1,5 +1,6 @@
 pub mod patch_cli;
 
+use regex::Regex;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -476,7 +477,10 @@ fn modify_dim_element<T: Clone>(
 
 fn make_field(fadd: &Hash, rpath: Option<&RegisterPath>) -> Result<FieldInfoBuilder> {
     let mut fnew = FieldInfo::builder()
-        .description(opt_interpolate(&rpath, fadd.get_str("description")?))
+        .description(opt_interpolate(
+            &rpath,
+            fadd.get_str("description").unwrap_or(None),
+        ))
         .derived_from(opt_interpolate(&rpath, fadd.get_str("derivedFrom")?))
         .access(fadd.get_str("access")?.and_then(Access::parse_str))
         .modified_write_values(
@@ -509,7 +513,10 @@ fn make_field(fadd: &Hash, rpath: Option<&RegisterPath>) -> Result<FieldInfoBuil
 fn make_register(radd: &Hash, path: Option<&BlockPath>) -> Result<RegisterInfoBuilder> {
     let mut rnew = RegisterInfo::builder()
         .display_name(radd.get_string("displayName")?)
-        .description(opt_interpolate(&path, radd.get_str("description")?))
+        .description(opt_interpolate(
+            &path,
+            radd.get_str("description").unwrap_or(None),
+        ))
         .derived_from(opt_interpolate(&path, radd.get_str("derivedFrom")?))
         .alternate_group(radd.get_string("alternateGroup")?)
         .alternate_register(radd.get_string("alternateRegister")?)
@@ -576,7 +583,10 @@ fn get_write_constraint(h: &Hash) -> Result<Option<WriteConstraint>> {
 
 fn make_cluster(cadd: &Hash, path: Option<&BlockPath>) -> Result<ClusterInfoBuilder> {
     let mut cnew = ClusterInfo::builder()
-        .description(opt_interpolate(&path, cadd.get_str("description")?))
+        .description(opt_interpolate(
+            &path,
+            cadd.get_str("description").unwrap_or(None),
+        ))
         .derived_from(opt_interpolate(&path, cadd.get_str("derivedFrom")?))
         .default_register_properties(get_register_properties(cadd)?);
 
@@ -622,7 +632,7 @@ fn make_peripheral(padd: &Hash, modify: bool) -> Result<PeripheralInfoBuilder> {
     let mut pnew = PeripheralInfo::builder()
         .display_name(padd.get_string("displayName")?)
         .version(padd.get_string("version")?)
-        .description(padd.get_string("description")?)
+        .description(padd.get_string("description").unwrap_or(None))
         .derived_from(padd.get_string("derivedFrom")?)
         .group_name(padd.get_string("groupName")?)
         .interrupt(if !modify {
@@ -765,6 +775,30 @@ fn check_offsets(offsets: &[u32], dim_increment: u32) -> bool {
         }
     }
     true
+}
+
+fn do_replacements<'a>(s: &'a str, h: &Hash) -> Result<Cow<'a, str>> {
+    let mut curr = Cow::Borrowed(s);
+    for (pat, rep) in h {
+        let pat = pat.str()?;
+        let re = Regex::new(pat).unwrap();
+        match rep {
+            Yaml::String(rep) => {
+                curr = re.replace_all(curr.as_ref(), rep).to_string().into();
+            }
+            Yaml::Array(v) if v.len() == 2 => {
+                let n = v[0].i64()?;
+                let rep = v[1].str()?;
+                curr = re.replacen(curr.as_ref(), n as _, rep).to_string().into();
+            }
+            _ => {
+                return Err(anyhow!(
+                    "Replacer should be string or number of replacements and string"
+                ))
+            }
+        }
+    }
+    Ok(curr)
 }
 
 /// Tries to get common description (or displayNames) for register/field array with "%s" in index position.

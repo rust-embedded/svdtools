@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
+use super::{abspath, do_replacements, matchname, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -255,6 +255,10 @@ impl DeviceExt for Device {
 
                 modify_dim_element(ptag, &dim)?;
                 ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
+                if let Ok(Some(h)) = pmod.get_hash("description") {
+                    ptag.description =
+                        Some(do_replacements(ptag.description.as_deref().unwrap_or(""), h)?.into());
+                }
                 if let Some(ints) = pmod.get_hash("interrupts")? {
                     for (iname, val) in ints {
                         let iname = iname.str()?;
