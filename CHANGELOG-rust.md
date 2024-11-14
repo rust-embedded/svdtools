@@ -5,10 +5,12 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Support derived registers/fields in `svdtools html`
+
 ## [v0.3.19] 2024-10-18
 
 * Fix deletion childrens on cluster modify
-* Sugar for simple `_split` and `_merge` 
+* Sugar for simple `_split` and `_merge`
 
 ## [v0.3.18] 2024-08-10
 
@@ -64,7 +66,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [v0.3.9] 2024-01-19
 
 * Use `<details>` instead of JavaScript in `html` template
-* Fix escape special characters on Windows 
+* Fix escape special characters on Windows
 
 ## [v0.3.8] 2023-12-23
 
