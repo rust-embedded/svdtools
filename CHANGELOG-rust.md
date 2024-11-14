@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.20] 2024-11-14
+
+* Implement `_expand_cluster`
 * Support derived registers/fields in `svdtools html`
 
 ## [v0.3.19] 2024-10-18
@@ -188,7 +191,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.20...HEAD
+[v0.3.20]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...v0.3.20
 [v0.3.19]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...v0.3.19
 [v0.3.18]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...v0.3.18
 [v0.3.17]: https://github.com/rust-embedded/svdtools/compare/v0.3.16...v0.3.17
