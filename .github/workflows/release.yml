@@ -12,10 +12,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-20.04,   suffix: .gz }
-          - { target: x86_64-apple-darwin,      os: macos-latest,   suffix: .gz }
-          - { target: aarch64-apple-darwin,     os: macos-latest,   suffix: .gz }
-          - { target: x86_64-pc-windows-msvc,   os: windows-latest, suffix: .zip }
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-20.04, suffix: .gz }
+          - { target: x86_64-apple-darwin, os: macos-latest, suffix: .gz }
+          - { target: aarch64-apple-darwin, os: macos-latest, suffix: .gz }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest, suffix: .zip }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: Compress-Archive -Path target\${{ matrix.target }}\release\svdtools.exe -DestinationPath svdtools-${{ matrix.target }}${{ matrix.suffix }}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: svdtools-${{ matrix.target }}
           path: svdtools-${{ matrix.target }}${{ matrix.suffix }}
@@ -49,7 +49,7 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4.1.7
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
       - run: ls -R ./artifacts
