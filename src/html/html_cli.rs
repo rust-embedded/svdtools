@@ -18,7 +18,8 @@ use liquid::{
 };
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
 use svd_parser::expand::{
-    derive_cluster, derive_enumerated_values, derive_register, BlockPath, RegisterPath,
+    derive_cluster, derive_enumerated_values, derive_field, derive_register, BlockPath,
+    RegisterPath,
 };
 use svd_parser::{
     expand::{derive_peripheral, Index},
@@ -122,9 +123,12 @@ fn parse_cluster(
     cpath: &BlockPath,
     index: &Index,
 ) -> anyhow::Result<()> {
+    let mut cpath = cpath.clone();
     let ctag = if let Some(dfname) = ctag.derived_from.as_ref() {
         let mut ctag = ctag.clone();
-        derive_cluster(&mut ctag, dfname, &cpath.parent().unwrap(), index)?;
+        if let Some(path) = derive_cluster(&mut ctag, dfname, &cpath.parent().unwrap(), index)? {
+            cpath = path;
+        }
         Cow::Owned(ctag)
     } else {
         Cow::Borrowed(ctag)
@@ -162,16 +166,19 @@ fn parse_register_array(
     rpath: &RegisterPath,
     index: &Index,
 ) -> anyhow::Result<()> {
+    let mut rpath = rpath.clone();
     let rtag = if let Some(dfname) = rtag.derived_from.as_ref() {
         let mut rtag = rtag.clone();
-        derive_register(&mut rtag, dfname, &rpath.block, index)?;
+        if let Some(path) = derive_register(&mut rtag, dfname, &rpath.block, index)? {
+            rpath = path;
+        }
         Cow::Owned(rtag)
     } else {
         Cow::Borrowed(rtag)
     };
     match rtag.as_ref() {
         Register::Single(r) => {
-            let register = parse_register(r, rpath, index)
+            let register = parse_register(r, &rpath, index)
                 .with_context(|| format!("In register {}", r.name))?;
             registers.push(register);
         }
@@ -184,7 +191,7 @@ fn parse_register_array(
                 r.description = r
                     .description
                     .map(|d| d.replace("[%s]", &idx).replace("%s", &idx));
-                let register = parse_register(&r, rpath, index)
+                let register = parse_register(&r, &rpath, index)
                     .with_context(|| format!("In register {}", r.name))?;
                 registers.push(register);
             }
@@ -209,9 +216,19 @@ fn parse_register(
 
     let mut flds = Vec::new();
     for f in rtag.fields() {
+        let mut fpath = rpath.new_field(&f.name);
+        let f = if let Some(dfname) = f.derived_from.as_ref() {
+            let mut f = f.clone();
+            if let Some(path) = derive_field(&mut f, dfname, rpath, index)? {
+                fpath = path;
+            }
+            f
+        } else {
+            f.clone()
+        };
         match f {
             Field::Single(f) => {
-                flds.push(Cow::Borrowed(f));
+                flds.push((f, fpath));
             }
             Field::Array(f, d) => {
                 for (i, idx) in d.indexes().enumerate() {
@@ -225,21 +242,19 @@ fn parse_register(
                     f.description = f
                         .description
                         .map(|d| d.replace("[%s]", &idx).replace("%s", &idx));
-                    flds.push(Cow::Owned(f));
+                    flds.push((f, fpath.clone()));
                 }
             }
         }
     }
 
-    flds.sort_by_key(|f| f.bit_offset());
+    flds.sort_by_key(|f| f.0.bit_offset());
 
     let mut filling = 0_u64;
 
     let mut fields = Vec::with_capacity(flds.len());
-    for ftag in &flds {
+    for (ftag, fpath) in &flds {
         register_fields_total += 1;
-
-        let fpath = rpath.new_field(&ftag.name);
 
         let foffset = ftag.bit_offset();
         let fwidth = ftag.bit_width();
@@ -256,7 +271,7 @@ fn parse_register(
                 let mut doc = "Allowed values:<br>".to_string();
                 let enums = if let Some(dfname) = enums.derived_from.as_ref() {
                     let mut enums = enums.clone();
-                    derive_enumerated_values(&mut enums, dfname, &fpath, index)?;
+                    derive_enumerated_values(&mut enums, dfname, fpath, index)?;
                     Cow::Owned(enums)
                 } else {
                     Cow::Borrowed(enums)
@@ -310,7 +325,7 @@ fn parse_register(
         2
     ];
 
-    for ftag in flds.iter().rev() {
+    for (ftag, _) in flds.iter().rev() {
         let foffset = ftag.bit_offset();
         let faccs = ftag.access.map(Access::as_str).unwrap_or(raccs);
         let access = short_access(faccs);
