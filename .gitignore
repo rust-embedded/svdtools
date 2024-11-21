@@ -10,5 +10,4 @@
 .pytest_cache
 
 # Rust
-Cargo.lock
 target
