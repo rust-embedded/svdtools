@@ -16,7 +16,7 @@ use svd_parser::svd::{
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
-use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
+use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, Field, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 use hashlink::linked_hash_map;
@@ -885,6 +885,21 @@ impl Interpolate for FieldPath {
             cow = cow.replace("`field_path`", &self.to_string()).into()
         }
         cow
+    }
+}
+
+fn bitmask(f: &Field) -> u64 {
+    let BitRange { offset, width, .. } = f.bit_range;
+    let mask = (!0u64 >> (64 - width)) << offset;
+    match f {
+        Field::Single(_) => mask,
+        Field::Array(_, d) => {
+            let mut bits = 0;
+            for i in 0..d.dim {
+                bits |= mask << (i * d.dim_increment);
+            }
+            bits
+        }
     }
 }
 

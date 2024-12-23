@@ -28,13 +28,7 @@ pub(crate) trait RegisterInfoExt {
 
 impl RegisterInfoExt for RegisterInfo {
     fn get_bitmask(&self) -> u64 {
-        let mut mask = 0x0;
-        if let Some(fields) = self.fields.as_ref() {
-            for ftag in fields {
-                mask |= (!0 >> (64 - ftag.bit_range.width)) << ftag.bit_range.offset;
-            }
-        }
-        mask
+        self.fields().fold(0, |mask, f| mask | super::bitmask(f))
     }
 }
 
@@ -347,6 +341,10 @@ impl RegisterExt for Register {
         } else {
             fnew.single()
         };
+        let exist_bits = self.get_bitmask();
+        if exist_bits & super::bitmask(&fnew) != 0 {
+            log::warn!("field {fname} conflicts with other fields in register {rpath}");
+        }
         self.fields.get_or_insert_with(Default::default).push(fnew);
         Ok(())
     }
