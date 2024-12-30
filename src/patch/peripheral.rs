@@ -128,9 +128,6 @@ pub(crate) trait RegisterBlockExt: Name {
     /// Get register by name
     fn get_reg(&self, name: &str) -> Option<&Register>;
 
-    /// Get mutable register by name
-    fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register>;
-
     /// Register/cluster block
     #[allow(unused)]
     fn children(&self) -> Option<&Vec<RegisterCluster>>;
@@ -249,7 +246,7 @@ pub(crate) trait RegisterBlockExt: Name {
 
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
-    fn derive_register(&mut self, rname: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
+    fn derive_register(&mut self, rspec: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
         let (rderive, info) = if let Some(rderive) = rderive.as_str() {
             (
                 rderive,
@@ -257,14 +254,14 @@ pub(crate) trait RegisterBlockExt: Name {
             )
         } else if let Some(hash) = rderive.as_hash() {
             let rderive = hash.get_str("_from")?.ok_or_else(|| {
-                anyhow!("derive: source register not given, please add a _from field to {rname}")
+                anyhow!("derive: source register not given, please add a _from field to {rspec}")
             })?;
             (
                 rderive,
                 make_register(hash, Some(bpath))?.derived_from(Some(rderive.into())),
             )
         } else {
-            return Err(anyhow!("derive: incorrect syntax for {rname}"));
+            return Err(anyhow!("derive: incorrect syntax for {rspec}"));
         };
 
         // Attempt to verify that the destination register name is correct.
@@ -280,25 +277,30 @@ pub(crate) trait RegisterBlockExt: Name {
             })?;
         }
 
-        match self.get_mut_reg(rname) {
-            Some(register) => register.modify_from(info, VAL_LVL)?,
-            None => {
-                let register = info.name(rname.into()).build(VAL_LVL)?.single();
-                self.add_child(RegisterCluster::Register(register));
-            }
+        let mut found = Vec::new();
+        for register in self.iter_registers(rspec) {
+            found.push(register.name.to_string());
+            register.modify_from(info.clone(), VAL_LVL)?;
         }
-        for r in self
-            .regs_mut()
-            .filter(|r| r.derived_from.as_deref() == Some(rname))
-        {
-            r.derived_from = Some(rderive.into());
+        if found.is_empty() {
+            super::check_dimable_name(rspec)?;
+            let register = info.name(rspec.into()).build(VAL_LVL)?.single();
+            self.add_child(RegisterCluster::Register(register));
+        }
+        for rname in found {
+            for r in self
+                .regs_mut()
+                .filter(|r| r.derived_from.as_deref() == Some(&rname))
+            {
+                r.derived_from = Some(rderive.into());
+            }
         }
         Ok(())
     }
 
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
-    fn derive_cluster(&mut self, _cname: &str, _cderive: &Yaml, _bpath: &BlockPath) -> PatchResult {
+    fn derive_cluster(&mut self, _cspec: &str, _cderive: &Yaml, _bpath: &BlockPath) -> PatchResult {
         todo!()
     }
 
@@ -881,9 +883,6 @@ impl RegisterBlockExt for Peripheral {
     fn get_reg(&self, name: &str) -> Option<&Register> {
         self.get_register(name)
     }
-    fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register> {
-        self.get_mut_register(name)
-    }
     fn children(&self) -> Option<&Vec<RegisterCluster>> {
         self.registers.as_ref()
     }
@@ -918,9 +917,6 @@ impl RegisterBlockExt for Cluster {
     }
     fn get_reg(&self, name: &str) -> Option<&Register> {
         self.get_register(name)
-    }
-    fn get_mut_reg(&mut self, name: &str) -> Option<&mut Register> {
-        self.get_mut_register(name)
     }
     fn children(&self) -> Option<&Vec<RegisterCluster>> {
         Some(&self.children)
@@ -1128,29 +1124,29 @@ impl PeripheralExt for Peripheral {
             }
         }
 
-        for (rname, rderive) in pmod.hash_iter("_derive") {
-            let rname = rname.str()?;
-            match rname {
+        for (rspec, rderive) in pmod.hash_iter("_derive") {
+            let rspec = rspec.str()?;
+            match rspec {
                 "_registers" => {
-                    for (rname, val) in rderive.hash()? {
-                        let rname = rname.str()?;
-                        self.derive_register(rname, val, &ppath).with_context(|| {
-                            format!("Deriving register `{rname}` from `{val:?}`")
+                    for (rspec, val) in rderive.hash()? {
+                        let rspec = rspec.str()?;
+                        self.derive_register(rspec, val, &ppath).with_context(|| {
+                            format!("Deriving register `{rspec}` from `{val:?}`")
                         })?;
                     }
                 }
                 "_clusters" => {
-                    for (cname, val) in rderive.hash()? {
-                        let cname = cname.str()?;
-                        self.derive_cluster(rname, val, &ppath).with_context(|| {
-                            format!("Deriving cluster `{cname}` from `{val:?}`")
+                    for (cspec, val) in rderive.hash()? {
+                        let cspec = cspec.str()?;
+                        self.derive_cluster(cspec, val, &ppath).with_context(|| {
+                            format!("Deriving cluster `{cspec}` from `{val:?}`")
                         })?;
                     }
                 }
                 _ => {
-                    self.derive_register(rname, rderive, &ppath)
+                    self.derive_register(rspec, rderive, &ppath)
                         .with_context(|| {
-                            format!("Deriving register `{rname}` from `{rderive:?}`")
+                            format!("Deriving register `{rspec}` from `{rderive:?}`")
                         })?;
                 }
             }
@@ -1421,29 +1417,29 @@ impl ClusterExt for Cluster {
             }
         }
 
-        for (rname, rderive) in cmod.hash_iter("_derive") {
-            let rname = rname.str()?;
-            match rname {
+        for (rspec, rderive) in cmod.hash_iter("_derive") {
+            let rspec = rspec.str()?;
+            match rspec {
                 "_registers" => {
-                    for (rname, val) in rderive.hash()? {
-                        let rname = rname.str()?;
-                        self.derive_register(rname, val, &cpath).with_context(|| {
-                            format!("Deriving register `{rname}` from `{val:?}`")
+                    for (rspec, val) in rderive.hash()? {
+                        let rspec = rspec.str()?;
+                        self.derive_register(rspec, val, &cpath).with_context(|| {
+                            format!("Deriving register `{rspec}` from `{val:?}`")
                         })?;
                     }
                 }
                 "_clusters" => {
-                    for (cname, val) in rderive.hash()? {
-                        let cname = cname.str()?;
-                        self.derive_cluster(rname, val, &cpath).with_context(|| {
-                            format!("Deriving cluster `{cname}` from `{val:?}`")
+                    for (cspec, val) in rderive.hash()? {
+                        let cspec = cspec.str()?;
+                        self.derive_cluster(cspec, val, &cpath).with_context(|| {
+                            format!("Deriving cluster `{cspec}` from `{val:?}`")
                         })?;
                     }
                 }
                 _ => {
-                    self.derive_register(rname, rderive, &cpath)
+                    self.derive_register(rspec, rderive, &cpath)
                         .with_context(|| {
-                            format!("Deriving register `{rname}` from `{rderive:?}`")
+                            format!("Deriving register `{rspec}` from `{rderive:?}`")
                         })?;
                 }
             }

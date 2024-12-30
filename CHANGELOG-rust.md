@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* `_derive` field
+
 ## [v0.3.20] 2024-11-14
 
 * Implement `_expand_cluster`

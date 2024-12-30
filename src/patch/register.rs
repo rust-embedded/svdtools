@@ -44,6 +44,7 @@ pub trait RegisterExt {
         "_include",
         "_path",
         "_delete",
+        "_derive",
         "_strip",
         "_strip_end",
         "_clear",
@@ -68,6 +69,9 @@ pub trait RegisterExt {
 
     /// Delete fields matched by fspec inside rtag
     fn delete_field(&mut self, fspec: &str) -> PatchResult;
+
+    /// Clear field from rname and mark it as derivedFrom rderive.
+    fn derive_field(&mut self, fname: &str, fderive: &Yaml, rpath: &RegisterPath) -> PatchResult;
 
     /// Clear contents of fields matched by fspec inside rtag
     fn clear_field(&mut self, fspec: &str) -> PatchResult;
@@ -185,6 +189,12 @@ impl RegisterExt for Register {
             let fname = fname.str()?;
             self.add_field(fname, fadd.hash()?, &rpath)
                 .with_context(|| format!("Adding field `{fname}`"))?;
+        }
+        // Handle derives
+        for (fspec, fderive) in rmod.hash_iter("_derive") {
+            let fspec = fspec.str()?;
+            self.derive_field(fspec, fderive, &rpath)
+                .with_context(|| format!("Deriving field `{fspec}` from `{fderive:?}`"))?;
         }
 
         // Handle merges
@@ -338,6 +348,42 @@ impl RegisterExt for Register {
     fn delete_field(&mut self, fspec: &str) -> PatchResult {
         if let Some(fields) = self.fields.as_mut() {
             fields.retain(|f| !(matchname(&f.name, fspec)));
+        }
+        Ok(())
+    }
+
+    fn derive_field(&mut self, fspec: &str, fderive: &Yaml, rpath: &RegisterPath) -> PatchResult {
+        fn make_path(dpath: &str, rpath: &RegisterPath) -> String {
+            let mut parts = dpath.split(".");
+            if let (Some(reg), Some(field), None) = (parts.next(), parts.next(), parts.next()) {
+                let fpath = rpath.block.new_register(reg).new_field(field);
+                fpath.to_string()
+            } else {
+                dpath.into()
+            }
+        }
+        let info = if let Some(dpath) = fderive.as_str() {
+            FieldInfo::builder().derived_from(Some(make_path(dpath, rpath)))
+        } else if let Some(hash) = fderive.as_hash() {
+            let dpath = hash.get_str("_from")?.ok_or_else(|| {
+                anyhow!("derive: source field not given, please add a _from field to {fspec}")
+            })?;
+            make_field(hash, Some(rpath))?.derived_from(Some(make_path(dpath, rpath)))
+        } else {
+            return Err(anyhow!("derive: incorrect syntax for {fspec}"));
+        };
+
+        let mut found = false;
+        for field in self.iter_fields(fspec) {
+            found = true;
+            field.modify_from(info.clone(), VAL_LVL)?;
+        }
+        if !found {
+            {
+                super::check_dimable_name(fspec)?;
+                let field = info.name(fspec.into()).build(VAL_LVL)?.single();
+                self.fields.get_or_insert(Vec::new()).push(field);
+            }
         }
         Ok(())
     }
