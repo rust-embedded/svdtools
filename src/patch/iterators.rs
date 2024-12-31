@@ -11,7 +11,7 @@ where
     spec: &'b str,
 }
 
-impl<'b, I> Iterator for MatchIter<'b, I>
+impl<I> Iterator for MatchIter<'_, I>
 where
     I: Iterator,
     I::Item: Name,
