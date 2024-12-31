@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.3.21] 2024-12-31
+
 * `_derive` field
 
 ## [v0.3.20] 2024-11-14
@@ -193,7 +195,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.20...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.21...HEAD
+[v0.3.21]: https://github.com/rust-embedded/svdtools/compare/v0.3.20...v0.3.21
 [v0.3.20]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...v0.3.20
 [v0.3.19]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...v0.3.19
 [v0.3.18]: https://github.com/rust-embedded/svdtools/compare/v0.3.17...v0.3.18
