@@ -1849,7 +1849,7 @@ def process_device(svd, device, update_fields=True):
     sort_recursive(svd.getroot())
 
 
-def main(yaml_file):
+def main(yaml_file: Path):
     # Load the specified YAML root file
     with open(yaml_file) as f:
         root = yaml.safe_load(f)
@@ -1876,8 +1876,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("patch-file")
+    parser.add_argument("patch-file", type=Path)
     arguments = vars(parser.parse_args())
-    path = arguments["patch-file"]
-    path = Path(path).resolve()
-    main(path)
+    patch_file = arguments["patch-file"].resolve()
+    main(patch_file)
