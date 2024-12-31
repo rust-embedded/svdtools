@@ -247,6 +247,7 @@ pub(crate) trait RegisterBlockExt: Name {
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
     fn derive_register(&mut self, rspec: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
+        let (rspec, ignore) = rspec.spec();
         let (rderive, info) = if let Some(rderive) = rderive.as_str() {
             (
                 rderive,
@@ -277,12 +278,14 @@ pub(crate) trait RegisterBlockExt: Name {
             })?;
         }
 
+        let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
         let mut found = Vec::new();
-        for register in self.iter_registers(rspec) {
-            found.push(register.name.to_string());
-            register.modify_from(info.clone(), VAL_LVL)?;
-        }
-        if found.is_empty() {
+        if !rtags.is_empty() {
+            for register in rtags {
+                found.push(register.name.to_string());
+                register.modify_from(info.clone(), VAL_LVL)?;
+            }
+        } else if !ignore {
             super::check_dimable_name(rspec)?;
             let register = info.name(rspec.into()).build(VAL_LVL)?.single();
             self.add_child(RegisterCluster::Register(register));
