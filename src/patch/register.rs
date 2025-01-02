@@ -289,10 +289,16 @@ impl RegisterExt for Register {
     }
 
     fn modify_field(&mut self, fspec: &str, fmod: &Hash, rpath: &RegisterPath) -> PatchResult {
+        let (fspec, ignore) = fspec.spec();
         let ftags = self.iter_fields(fspec).collect::<Vec<_>>();
         let field_builder = make_field(fmod, Some(rpath))?;
         let dim = make_dim_element(fmod)?;
-        if !ftags.is_empty() {
+        if ftags.is_empty() && !ignore {
+            let present = self.present_fields();
+            return Err(anyhow!(
+                "Could not find `{rpath}:{fspec}. Present fields: {present}.`"
+            ));
+        } else {
             for ftag in ftags {
                 modify_dim_element(ftag, &dim)?;
                 if let Some(value) = fmod
@@ -362,28 +368,39 @@ impl RegisterExt for Register {
                 dpath.into()
             }
         }
-        let info = if let Some(dpath) = fderive.as_str() {
-            FieldInfo::builder().derived_from(Some(make_path(dpath, rpath)))
+        let (fspec, ignore) = fspec.spec();
+        let (dim, info) = if let Some(dpath) = fderive.as_str() {
+            (
+                None,
+                FieldInfo::builder().derived_from(Some(make_path(dpath, rpath))),
+            )
         } else if let Some(hash) = fderive.as_hash() {
             let dpath = hash.get_str("_from")?.ok_or_else(|| {
                 anyhow!("derive: source field not given, please add a _from field to {fspec}")
             })?;
-            make_field(hash, Some(rpath))?.derived_from(Some(make_path(dpath, rpath)))
+            (
+                make_dim_element(hash)?,
+                make_field(hash, Some(rpath))?.derived_from(Some(make_path(dpath, rpath))),
+            )
         } else {
             return Err(anyhow!("derive: incorrect syntax for {fspec}"));
         };
-
-        let mut found = false;
-        for field in self.iter_fields(fspec) {
-            found = true;
-            field.modify_from(info.clone(), VAL_LVL)?;
-        }
-        if !found {
-            {
-                super::check_dimable_name(fspec)?;
-                let field = info.name(fspec.into()).build(VAL_LVL)?.single();
-                self.fields.get_or_insert(Vec::new()).push(field);
+        let ftags = self.iter_fields(fspec).collect::<Vec<_>>();
+        if !ftags.is_empty() {
+            for ftag in ftags {
+                modify_dim_element(ftag, &dim)?;
+                ftag.modify_from(info.clone(), VAL_LVL)?;
             }
+        } else if !ignore {
+            super::check_dimable_name(fspec)?;
+            let field = info.name(fspec.into()).build(VAL_LVL)?;
+            self.fields.get_or_insert(Vec::new()).push({
+                if let Some(dim) = dim {
+                    field.array(dim.build(VAL_LVL)?)
+                } else {
+                    field.single()
+                }
+            });
         }
         Ok(())
     }
