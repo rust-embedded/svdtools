@@ -369,25 +369,38 @@ impl RegisterExt for Register {
             }
         }
         let (fspec, ignore) = fspec.spec();
-        let info = if let Some(dpath) = fderive.as_str() {
-            FieldInfo::builder().derived_from(Some(make_path(dpath, rpath)))
+        let (dim, info) = if let Some(dpath) = fderive.as_str() {
+            (
+                None,
+                FieldInfo::builder().derived_from(Some(make_path(dpath, rpath))),
+            )
         } else if let Some(hash) = fderive.as_hash() {
             let dpath = hash.get_str("_from")?.ok_or_else(|| {
                 anyhow!("derive: source field not given, please add a _from field to {fspec}")
             })?;
-            make_field(hash, Some(rpath))?.derived_from(Some(make_path(dpath, rpath)))
+            (
+                make_dim_element(hash)?,
+                make_field(hash, Some(rpath))?.derived_from(Some(make_path(dpath, rpath))),
+            )
         } else {
             return Err(anyhow!("derive: incorrect syntax for {fspec}"));
         };
         let ftags = self.iter_fields(fspec).collect::<Vec<_>>();
         if !ftags.is_empty() {
-            for field in ftags {
-                field.modify_from(info.clone(), VAL_LVL)?;
+            for ftag in ftags {
+                modify_dim_element(ftag, &dim)?;
+                ftag.modify_from(info.clone(), VAL_LVL)?;
             }
         } else if !ignore {
             super::check_dimable_name(fspec)?;
-            let field = info.name(fspec.into()).build(VAL_LVL)?.single();
-            self.fields.get_or_insert(Vec::new()).push(field);
+            let field = info.name(fspec.into()).build(VAL_LVL)?;
+            self.fields.get_or_insert(Vec::new()).push({
+                if let Some(dim) = dim {
+                    field.array(dim.build(VAL_LVL)?)
+                } else {
+                    field.single()
+                }
+            });
         }
         Ok(())
     }

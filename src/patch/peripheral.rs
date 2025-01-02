@@ -248,9 +248,10 @@ pub(crate) trait RegisterBlockExt: Name {
     /// Update all derivedFrom referencing rname
     fn derive_register(&mut self, rspec: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
         let (rspec, ignore) = rspec.spec();
-        let (rderive, info) = if let Some(rderive) = rderive.as_str() {
+        let (rderive, dim, info) = if let Some(rderive) = rderive.as_str() {
             (
                 rderive,
+                None,
                 RegisterInfo::builder().derived_from(Some(rderive.into())),
             )
         } else if let Some(hash) = rderive.as_hash() {
@@ -259,6 +260,7 @@ pub(crate) trait RegisterBlockExt: Name {
             })?;
             (
                 rderive,
+                make_dim_element(hash)?,
                 make_register(hash, Some(bpath))?.derived_from(Some(rderive.into())),
             )
         } else {
@@ -281,14 +283,21 @@ pub(crate) trait RegisterBlockExt: Name {
         let rtags = self.iter_registers(rspec).collect::<Vec<_>>();
         let mut found = Vec::new();
         if !rtags.is_empty() {
-            for register in rtags {
-                found.push(register.name.to_string());
-                register.modify_from(info.clone(), VAL_LVL)?;
+            for rtag in rtags {
+                found.push(rtag.name.to_string());
+                modify_dim_element(rtag, &dim)?;
+                rtag.modify_from(info.clone(), VAL_LVL)?;
             }
         } else if !ignore {
             super::check_dimable_name(rspec)?;
-            let register = info.name(rspec.into()).build(VAL_LVL)?.single();
-            self.add_child(RegisterCluster::Register(register));
+            let reg = info.name(rspec.into()).build(VAL_LVL)?;
+            self.add_child(RegisterCluster::Register({
+                if let Some(dim) = dim {
+                    reg.array(dim.build(VAL_LVL)?)
+                } else {
+                    reg.single()
+                }
+            }));
         }
         for rname in found {
             for r in self
