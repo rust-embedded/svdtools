@@ -454,12 +454,13 @@ impl RegisterExt for Register {
                 "Could not find any fields to merge {rpath}:{key}. Present fields: {present}.`"
             ));
         }
-        let mut bitwidth = 0;
-        let mut bitoffset = u32::MAX;
-        let mut first = true;
-        let mut desc = None;
         if let Some(fields) = self.fields.as_mut() {
-            for f in fields.iter_mut() {
+            let mut bitwidth = 0;
+            let mut bitoffset = u32::MAX;
+            let mut pos = usize::MAX;
+            let mut first = true;
+            let mut desc = None;
+            for (i, f) in fields.iter_mut().enumerate() {
                 if names.contains(&f.name) {
                     if first {
                         desc.clone_from(&f.description);
@@ -467,10 +468,12 @@ impl RegisterExt for Register {
                     }
                     bitwidth += f.bit_range.width;
                     bitoffset = bitoffset.min(f.bit_range.offset);
+                    pos = pos.min(i);
                 }
             }
             fields.retain(|f| !names.contains(&f.name));
-            fields.push(
+            fields.insert(
+                pos,
                 FieldInfo::builder()
                     .name(name)
                     .description(desc)
