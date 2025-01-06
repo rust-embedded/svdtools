@@ -5,6 +5,11 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.4.0] 2025-01-06
+
+* **breaking** Support "?~" in field `_modify` & `_derive`
+* Keep position when merge fields
+
 ## [v0.3.21] 2024-12-31
 
 * `_derive` field
@@ -195,7 +200,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.3.21...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/rust-embedded/svdtools/compare/v0.3.21...v0.4.0
 [v0.3.21]: https://github.com/rust-embedded/svdtools/compare/v0.3.20...v0.3.21
 [v0.3.20]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...v0.3.20
 [v0.3.19]: https://github.com/rust-embedded/svdtools/compare/v0.3.18...v0.3.19
