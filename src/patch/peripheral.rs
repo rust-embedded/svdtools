@@ -869,10 +869,27 @@ fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash, bpath: &BlockPath) ->
     let register_builder = make_register(rmod, Some(bpath))?;
     let dim = make_dim_element(rmod)?;
     for rtag in rtags {
+        let mut changed = false;
         modify_dim_element(rtag, &dim)?;
-        rtag.modify_from(register_builder.clone(), VAL_LVL)?;
+        if dim.is_some() {
+            changed = true;
+        }
+
+        let mut rb = register_builder.clone();
+        rb.minimize(&rtag);
+        if !rb.is_empty() {
+            rtag.modify_from(rb, VAL_LVL)?;
+            changed = true;
+        }
         if let Some("") = rmod.get_str("access")? {
             rtag.properties.access = None;
+            changed = true;
+        }
+        if !changed {
+            log::info!(
+                "Register {} in {bpath} was not changed during modify",
+                rtag.name
+            );
         }
     }
     Ok(())

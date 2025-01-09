@@ -248,7 +248,12 @@ impl DeviceExt for Device {
         if let Some(c) = self.cpu.as_mut() {
             c.modify_from(cpu, VAL_LVL)?;
         } else {
-            self.cpu = Some(cpu.build(VAL_LVL)?);
+            let new_cpu = Some(cpu.build(VAL_LVL)?);
+            if new_cpu != self.cpu {
+                self.cpu = new_cpu;
+            } else {
+                log::info!("CPU was not changed during modifying");
+            }
         }
         Ok(())
     }
@@ -262,8 +267,17 @@ impl DeviceExt for Device {
             for ptag in ptags {
                 modified.insert(ptag.name.clone());
 
+                let mut changed = false;
                 modify_dim_element(ptag, &dim)?;
-                ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
+                if dim.is_some() {
+                    changed = true;
+                }
+                let mut pb = peripheral_builder.clone();
+                pb.minimize(&ptag);
+                if !pb.is_empty() {
+                    ptag.modify_from(pb, VAL_LVL)?;
+                    changed = true;
+                }
                 if let Some(ints) = pmod.get_hash("interrupts")? {
                     for (iname, val) in ints {
                         let iname = iname.str()?;
@@ -283,8 +297,13 @@ impl DeviceExt for Device {
                         Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
                         _ => *v = Some(vec![ab.build(VAL_LVL)?]),
                     }
+                    changed = true;
                 } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
                     ptag.address_block = Some(make_address_blocks(abmod)?);
+                    changed = true;
+                }
+                if !changed {
+                    log::info!("Peripheral {} was not changed during modify", ptag.name);
                 }
             }
         }

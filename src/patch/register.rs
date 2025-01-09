@@ -294,7 +294,11 @@ impl RegisterExt for Register {
             ));
         } else {
             for ftag in ftags {
+                let mut changed = false;
                 modify_dim_element(ftag, &dim)?;
+                if dim.is_some() {
+                    changed = true;
+                }
                 if let Some(value) = fmod
                     .get_yaml("_write_constraint")
                     .or_else(|| fmod.get_yaml("writeConstraint"))
@@ -318,11 +322,24 @@ impl RegisterExt for Register {
                         _ => return Err(anyhow!("Unknown writeConstraint type {value:?}")),
                     };
                     ftag.write_constraint = wc;
+                    changed = true;
                 }
-                // For all other tags, just set the value
-                ftag.modify_from(field_builder.clone(), VAL_LVL)?;
+                let mut fb = field_builder.clone();
+                fb.minimize(&ftag);
+                if !fb.is_empty() {
+                    // For all other tags, just set the value
+                    ftag.modify_from(fb, VAL_LVL)?;
+                    changed = true;
+                }
                 if let Some("") = fmod.get_str("access")? {
                     ftag.access = None;
+                    changed = true;
+                }
+                if !changed {
+                    log::info!(
+                        "Field {} in {rpath} was not changed during modify",
+                        ftag.name
+                    );
                 }
             }
         }

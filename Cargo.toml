@@ -29,9 +29,14 @@ rust-version = "1.70"
 clap = { version = "4.5", features = ["derive", "cargo", "color"] }
 serde = { version = "1.0", features = ["derive"] }
 quick-xml = { version = "0.36", features = ["serialize"] }
-svd-rs = { version = "0.14.9", features = ["serde", "derive-from"] }
-svd-parser = { version = "0.14.7", features = ["expand"] }
-svd-encoder = "0.14.5"
+svd-rs = { path = "/home/burrbull/svd/svd-rs", version = "0.14.9", features = [
+    "serde",
+    "derive-from",
+] }
+svd-parser = { path = "/home/burrbull/svd/svd-parser", version = "0.14.7", features = [
+    "expand",
+] }
+svd-encoder = { path = "/home/burrbull/svd/svd-encoder", version = "0.14.5" }
 # serde_yaml 0.9.x looks broken
 serde_yaml = "0.8.26"
 serde_json = { version = "1.0", features = ["preserve_order"] }
