@@ -1,0 +1,9 @@
+_svd: stm32l4x2.svd
+
+"*":
+  _remove_duplicate:
+    - "_"
+  # "*":
+  #   _remove_duplicate:
+  #    - "_"
+

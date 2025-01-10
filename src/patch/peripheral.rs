@@ -42,6 +42,7 @@ pub(crate) trait PeripheralExt: InterruptExt + RegisterBlockExt {
         "_cluster",
         "_clusters",
         "_interrupts",
+        "_remove_duplicate",
     ];
 
     /// Work through a peripheral, handling all registers
@@ -66,6 +67,7 @@ pub(crate) trait ClusterExt: RegisterBlockExt {
         "_array",
         "_cluster",
         "_clusters",
+        "_remove_duplicate",
     ];
 
     /// Work through a cluster, handling all registers
@@ -470,6 +472,35 @@ pub(crate) trait RegisterBlockExt: Name {
         for ctag in self.iter_clusters(cspec) {
             ctag.process(cmod, bpath, config)
                 .with_context(|| format!("Processing cluster `{}`", ctag.name))?;
+        }
+        Ok(())
+    }
+
+    /// Delete substring from within register names if there is any repeated data inside ptag
+    fn remove_duplicate(&mut self, delimiter: char) -> PatchResult {
+        // Define a regex to match duplicated groups of underscore-separated words
+        // As it turns out, this is not viable since backreferences are not supported by Regex in Rust
+        // let re = Regex::new(r"(?i)(\b(?:\w+_)+\w+)_\1").unwrap();
+
+        for rtag in self.regs_mut() {
+            // Remove the offending repreated string from register name
+            rtag.name = remove_duplicate_sections(&rtag.name, delimiter);
+
+            if let Some(dname) = rtag.display_name.as_mut() {
+                *dname = remove_duplicate_sections(dname, delimiter);
+            }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                *name = remove_duplicate_sections(name, delimiter);
+            }
+        }
+        for ctag in self.clstrs_mut() {
+            ctag.name = remove_duplicate_sections(&ctag.name, delimiter);
+            if let Some(dname) = ctag.header_struct_name.as_mut() {
+                *dname = remove_duplicate_sections(dname, delimiter);
+            }
+            if let Some(name) = ctag.alternate_cluster.as_mut() {
+                *name = remove_duplicate_sections(name, delimiter);
+            }
         }
         Ok(())
     }
@@ -1066,6 +1097,23 @@ impl PeripheralExt for Peripheral {
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
         }
 
+        // Handle duplicate removal
+        for delimiter in pmod.str_vec_iter("_remove_duplicate")? {
+            println!("I'M AT LEAST TRYING SOMETHING!!!");
+            if let Some(delimiter) = delimiter.chars().nth(0) {
+                self.remove_duplicate(delimiter).with_context(|| {
+                    format!(
+                        "Removing largest duplicate substring conjoined by delimiter {}",
+                        delimiter
+                    )
+                })?;
+            } else {
+                return Err(anyhow!(
+                    "`_remove_duplicate` requires a delimiter of length 1 to break name up by"
+                ));
+            }
+        }
+
         // Handle modifications
         for (rspec, rmod) in pmod.hash_iter("_modify") {
             let rmod = rmod.hash()?;
@@ -1372,6 +1420,23 @@ impl ClusterExt for Cluster {
         for suffix in cmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
+        }
+
+        // Handle duplicate removal
+        for delimiter in cmod.str_vec_iter("_remove_duplicate")? {
+            println!("I'M AT LEAST TRYING SOMETHING!!!");
+            if let Some(delimiter) = delimiter.chars().nth(0) {
+                self.remove_duplicate(delimiter).with_context(|| {
+                    format!(
+                        "Removing largest duplicate substring conjoined by delimiter {}",
+                        delimiter
+                    )
+                })?;
+            } else {
+                return Err(anyhow!(
+                    "`_remove_duplicate` requires a delimiter of length 1 to break name up by"
+                ));
+            }
         }
 
         // Handle modifications
@@ -1838,11 +1903,45 @@ fn collect_in_cluster(
     Ok(())
 }
 
+/// Remove largest adjacent section of the string that is duplicated
+fn remove_duplicate_sections(input: &str, delimiter: char) -> String {
+    let parts: Vec<&str> = input.split(delimiter).collect(); // Split the input by underscores
+    let mut result = Vec::new(); // Store the final result
+    let mut window_size = parts.len() / 2;
+
+    while window_size > 0 {
+        // Sliding window size
+        let mut i = 0;
+
+        while i + (2 * window_size) <= parts.len() {
+            if parts[i..i + window_size] == parts[i + window_size..i + (2 * window_size)] {
+                result.extend_from_slice(&parts[0..i]);
+                result.extend_from_slice(&parts[i + window_size..]);
+                println!(
+                    "Found dupe! {} will be shortened to {} over delimiter {}...",
+                    input,
+                    result.join(&delimiter.to_string()),
+                    delimiter
+                );
+                return result.join(&delimiter.to_string());
+            }
+            i += 1;
+        }
+
+        window_size -= 1;
+    }
+
+    // Rejoin the original input if no changes are required
+    parts.join(&delimiter.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::test_utils;
     use anyhow::Result;
     use std::path::Path;
+
+    use super::remove_duplicate_sections;
 
     #[test]
     fn cluster() -> Result<()> {
@@ -1852,5 +1951,18 @@ mod tests {
     #[test]
     fn cross_cluster_derive() -> Result<()> {
         test_utils::test_expected(Path::new("cross_cluster_derive"))
+    }
+
+    #[test]
+    fn remove_duplicate() -> Result<()> {
+        test_utils::test_expected(Path::new("remove_duplicate"))
+    }
+
+    #[test]
+    fn test_remove_duplicate_sections() -> Result<()> {
+        assert_eq!(remove_duplicate_sections("some_random_long_name_that_serves_as_a_representative_prefix_DEVICE_CTRL_COMMS_IP_PERIPH_PRESENT_COMMS_IP_PERIPH_PRESENT", '_'), "some_random_long_name_that_serves_as_a_representative_prefix_DEVICE_CTRL_COMMS_IP_PERIPH_PRESENT");
+        assert_eq!(remove_duplicate_sections("DAC1_DAC1", '_'), "DAC1");
+
+        Ok(())
     }
 }
