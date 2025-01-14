@@ -28,6 +28,17 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
               <description>DAC channel1 enable</description>
               <bitOffset>0</bitOffset>
               <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <name>CH1_EN_STATE</name>
+                <enumeratedValue>
+                  <name>CH1_STATE_DISABLED</name>
+                  <value>0x0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>CH1_STATE_ENABLED</name>
+                  <value>0x1</value>
+                </enumeratedValue>
+              </enumeratedValues>
             </field>
           </fields>
         </register>

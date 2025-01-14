@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Ok};
+use fancy_regex::Regex;
 use itertools::Itertools;
 use svd::Name;
 use svd_parser::expand::BlockPath;
@@ -42,7 +43,7 @@ pub(crate) trait PeripheralExt: InterruptExt + RegisterBlockExt {
         "_cluster",
         "_clusters",
         "_interrupts",
-        "_remove_duplicate",
+        "_replace",
     ];
 
     /// Work through a peripheral, handling all registers
@@ -67,7 +68,7 @@ pub(crate) trait ClusterExt: RegisterBlockExt {
         "_array",
         "_cluster",
         "_clusters",
-        "_remove_duplicate",
+        "_replace",
     ];
 
     /// Work through a cluster, handling all registers
@@ -477,11 +478,12 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     /// Delete substring from within register names if there is any repeated data inside ptag
-    fn remove_duplicate(&mut self, delimiter: char) -> PatchResult {
+    fn remove_duplicate(&mut self, _delimiter: char) -> PatchResult {
         // Define a regex to match duplicated groups of underscore-separated words
         // As it turns out, this is not viable since backreferences are not supported by Regex in Rust
         // let re = Regex::new(r"(?i)(\b(?:\w+_)+\w+)_\1").unwrap();
 
+        /*
         for rtag in self.regs_mut() {
             // Remove the offending repreated string from register name
             rtag.name = remove_duplicate_sections(&rtag.name, delimiter);
@@ -502,6 +504,7 @@ pub(crate) trait RegisterBlockExt: Name {
                 *name = remove_duplicate_sections(name, delimiter);
             }
         }
+        */
         Ok(())
     }
 
@@ -1903,45 +1906,70 @@ fn collect_in_cluster(
     Ok(())
 }
 
-/// Remove largest adjacent section of the string that is duplicated
-fn remove_duplicate_sections(input: &str, delimiter: char) -> String {
-    let parts: Vec<&str> = input.split(delimiter).collect(); // Split the input by underscores
-    let mut result = Vec::new(); // Store the final result
-    let mut window_size = parts.len() / 2;
+/// Replaces matches of the given regex in a mutable input string with the specified replacement.
+///
+/// # Arguments
+/// * `haystack` - A mutable reference to the string to be modified.
+/// * `pattern` - A regex pattern to match substrings.
+/// * `replacement` - The replacement string to substitute for each match.
+///
+/// # Returns
+/// Returns `true` if at least one replacement was made, otherwise `false`.
+fn replace_helper(haystack: &str, pattern: &str, replacement: &str) -> anyhow::Result<String> {
+    // Compile the regex
+    let re = Regex::new(pattern).map_err(|e| {
+        anyhow!(
+            "Encountered error {} when attempting to decode regex pattern {}",
+            e,
+            pattern
+        )
+    })?;
 
-    while window_size > 0 {
-        // Sliding window size
-        let mut i = 0;
+    // Replace the first match if found
+    if let Some(needle) = re.find(haystack).map_err(|e| {
+        anyhow!(
+            "Encountered error {} when attempting to search haystack {} for regex {}",
+            e,
+            haystack,
+            pattern
+        )
+    })? {
+        println!("Found match to regex pattern {} on string {}, first match starts at index {} and ends at index {}", pattern, haystack, needle.start(), needle.end());
 
-        while i + (2 * window_size) <= parts.len() {
-            if parts[i..i + window_size] == parts[i + window_size..i + (2 * window_size)] {
-                result.extend_from_slice(&parts[0..i]);
-                result.extend_from_slice(&parts[i + window_size..]);
-                println!(
-                    "Found dupe! {} will be shortened to {} over delimiter {}...",
-                    input,
-                    result.join(&delimiter.to_string()),
-                    delimiter
-                );
-                return result.join(&delimiter.to_string());
-            }
-            i += 1;
-        }
+        // Get the range of the match
+        let start = needle.start();
+        let end = needle.end();
 
-        window_size -= 1;
+        // Replace the match with the replacement string
+        let result = format!("{}{}{}", &haystack[..start], replacement, &haystack[end..]);
+        Ok(result)
+    } else {
+        // No match found, return the original string
+        println!("No match found!");
+        Ok(haystack.to_string())
     }
 
-    // Rejoin the original input if no changes are required
-    parts.join(&delimiter.to_string())
+    // Perform the replacement
+    //if re.is_match(input).map_err(|e| {
+    //    anyhow!(
+    //        "Encountered error {} when searching input {} for match to regex {}",
+    //        e,
+    //        input,
+    //        pattern
+    //    )
+    //})? {
+    //    *input = re.replace_append(input, replacement);
+    //    Ok(true)
+    //} else {
+    //    Ok(false)
+    //}
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils;
+    use crate::{patch::peripheral::replace_helper, test_utils};
     use anyhow::Result;
     use std::path::Path;
-
-    use super::remove_duplicate_sections;
 
     #[test]
     fn cluster() -> Result<()> {
@@ -1953,16 +1981,42 @@ mod tests {
         test_utils::test_expected(Path::new("cross_cluster_derive"))
     }
 
+    // #[test]
+    // fn replace() -> Result<()> {
+    //     test_utils::test_expected(Path::new("replace"))
+    // }
+
     #[test]
-    fn remove_duplicate() -> Result<()> {
-        test_utils::test_expected(Path::new("remove_duplicate"))
+    fn test_replace_helper_simple() -> Result<()> {
+        let test_input = "hello world, hello universe";
+        let test_regex = "hello";
+        let replace_with = "hi";
+        let replace_output = replace_helper(test_input, test_regex, replace_with).unwrap();
+        assert_eq!(replace_output, String::from("hi world, hello universe"));
+        Ok(())
     }
 
     #[test]
-    fn test_remove_duplicate_sections() -> Result<()> {
-        assert_eq!(remove_duplicate_sections("some_random_long_name_that_serves_as_a_representative_prefix_DEVICE_CTRL_COMMS_IP_PERIPH_PRESENT_COMMS_IP_PERIPH_PRESENT", '_'), "some_random_long_name_that_serves_as_a_representative_prefix_DEVICE_CTRL_COMMS_IP_PERIPH_PRESENT");
-        assert_eq!(remove_duplicate_sections("DAC1_DAC1", '_'), "DAC1");
+    fn test_replace_helper_remove_duplicate_sections() -> Result<()> {
+        //let mut test_input: String = String::from("foo_bar_bazfoo_bar_baz");
+        // String::from("ip_name_peripheral_name_field_name_field_name");
+        let test_input = "foo_bar_baz_foo_bar_baz_quz";
 
+        // let test_regex = r"\b((?:\w+_)+\w+)\b.*\b\1\b";
+        // let test_regex = r"(^|!)([^!]+)!(|.+!)\2(!|$)";
+        // let test_regex = r"i\b((?:\w+_)+\w+)\b(?:_|\b).*\b\1\b";
+        //let test_regex = r"\b((?:\w+_)+\w+)\b_\1\b";
+        //let test_regex = r"^(.+)\1$";
+        //let test_regex = r"^(\w+) (\1)$";
+        //let test_regex = r"^[^_]+_";
+        let test_regex = r"\b((?:\w+_)*\w+)\b_\1\b";
+        let test_regex = r"\b((\w+))\b.*\b\1\b";
+        let test_regex = r"(.+?)\1";
+        let test_regex = r"((?:\w+_)+\w+)\1";
+        let test_regex = r"^((?:\w+_)+\w+)(?=\1)";
+        let replace_with = "";
+        let replace_out = replace_helper(test_input, test_regex, replace_with).unwrap();
+        assert_eq!(replace_out, "foo_bar_baz_quz");
         Ok(())
     }
 }
