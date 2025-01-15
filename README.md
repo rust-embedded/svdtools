@@ -97,7 +97,27 @@ _modify:
                     size: 0x400
                     usage: "ADC extra registers"
 
-
+# Replace fields based on fully-featured regular expressions.
+# Note that that since this supports backreferences, runtime can become excessive
+# if matching on too many things.
+_replace:
+    description:
+        "pattern": "replace with"
+        "another pattern": "and its replacement"
+    PER_EX_1:
+        name:
+            "unnecessary_prefix_": ""
+        _registers:
+            REG1:
+                name:
+                    "_per_ex_1": ""
+            "*":
+                description:
+                    "*": ""
+            REG2:
+                # Modify fields within a register matched by wildcard, careful here for runtime
+                "*":
+                    "real_example": "example"
 
 # Add whole new peripherals to this device.
 # Incredibly this feature is required.

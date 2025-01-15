@@ -2,7 +2,8 @@
 <device schemaVersion="1.1"
 xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
 xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
-  <name>STM32L4x2</name>
+  <name>STM32L4x2_STM32L4x2</name>
+  <version>1.6</version>
   <peripherals>
     <peripheral>
       <name>DAC1</name>

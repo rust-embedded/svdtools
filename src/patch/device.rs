@@ -7,7 +7,9 @@ use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
 use super::iterators::{MatchIter, Matched};
-use super::peripheral::{PeripheralExt, RegisterBlockExt};
+use super::peripheral::{
+    replace_hash_iter_helper, replace_helper, PeripheralExt, RegisterBlockExt,
+};
 use super::yaml_ext::{AsType, GetVal};
 use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
@@ -28,6 +30,7 @@ pub trait DeviceExt {
         "_add",
         "_derive",
         "_rebase",
+        "_replace",
     ];
 
     /// Iterates over all peripherals that match pspec
@@ -50,6 +53,9 @@ pub trait DeviceExt {
 
     /// Modify pspec inside device according to pmod
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult;
+
+    /// Replace pspec inside device according to prep
+    fn replace_peripheral(&mut self, pspec: &str, prep: &Hash) -> PatchResult;
 
     /// Add pname given by padd to device
     fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult;
@@ -137,6 +143,72 @@ impl DeviceExt for Device {
                 _ => self
                     .modify_peripheral(key, val.hash()?)
                     .with_context(|| format!("Modifying peripherals matched to `{key}`"))?,
+            }
+        }
+
+        // Handle any replaces
+        for (key, val) in device.hash_iter("_replace") {
+            let key = key.str()?;
+            // Since the val will always also be a hash for replacement, just hash it up front
+            let val_hashed = val.hash()?;
+            match key {
+                "cpu" | "addressUnitBits" | "width" | "size" | "access" | "protection"
+                | "resetValue" | "resetMask" => {
+                    return Err(anyhow!(
+                        "Regex replace not supported for field `{key}`, use `_modify`."
+                    ))
+                }
+                "_peripherals" => {
+                    return Err(anyhow!("TODO: Iterate through peripherals, finding matches to replace metadata for..."))
+                }
+                "vendor" => {
+                    self.vendor = Some(replace_hash_iter_helper(
+                        self.vendor.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+                "vendorID" => {
+                    self.vendor_id = Some(replace_hash_iter_helper(
+                        self.vendor_id.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+                "name" => self.name = replace_hash_iter_helper(self.name.as_str(), val_hashed)?,
+                "series" => {
+                    self.series = Some(replace_hash_iter_helper(
+                        self.series.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+                "version" => {
+                    self.version = replace_hash_iter_helper(self.version.as_str(), val_hashed)?
+                }
+                "description" => {
+                    self.description =
+                        replace_hash_iter_helper(self.description.as_str(), val_hashed)?
+                }
+                "licenseText" => {
+                    self.license_text = Some(replace_hash_iter_helper(
+                        self.license_text.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+                "headerSystemFilename" => {
+                    self.header_system_filename = Some(replace_hash_iter_helper(
+                        self.header_system_filename.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+                "headerDefinitionsPrefix" => {
+                    self.header_definitions_prefix = Some(replace_hash_iter_helper(
+                        self.header_definitions_prefix.clone().unwrap().as_str(),
+                        val_hashed,
+                    )?)
+                }
+
+                _ => {
+                    return Err(anyhow!("TODO: Match to the peripheral name, and when matches occur replace metadata for peripheral..."))
+                }
             }
         }
 
@@ -290,6 +362,75 @@ impl DeviceExt for Device {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn replace_peripheral(&mut self, pspec: &str, prep: &Hash) -> PatchResult {
+        /*
+        let mut replaced = HashSet::new();
+        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
+        if !ptags.is_empty() {
+            let peripheral_builder = make_peripheral(prep, true)?;
+            let dim = make_dim_element(prep)?;
+            for ptag in ptags {
+                replaced.insert(ptag.name.clone());
+
+                modify_dim_element(ptag, &dim);
+                ptag.modify_from(peripheral_builder, VAL_LVL)?;
+                if let Some(ints) = prep.get_hash("interrupts")? {
+                    return anyhow!("Interrupts {:?} included in regex replace block, not supported", ints);
+                }
+
+            }
+        }
+        */
+        /*
+        let mut modified = HashSet::new();
+        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
+        if !ptags.is_empty() {
+            let peripheral_builder = make_peripheral(pmod, true)?;
+            let dim = make_dim_element(pmod)?;
+            for ptag in ptags {
+                modified.insert(ptag.name.clone());
+
+                modify_dim_element(ptag, &dim)?;
+                ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
+                if let Some(ints) = pmod.get_hash("interrupts")? {
+                    for (iname, val) in ints {
+                        let iname = iname.str()?;
+                        let int = make_interrupt(val.hash()?)?;
+                        for i in &mut ptag.interrupt {
+                            if i.name == iname {
+                                i.modify_from(int, VAL_LVL)?;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if let Some(abmod) = pmod.get_hash("addressBlock").ok().flatten() {
+                    let v = &mut ptag.address_block;
+                    let ab = make_address_block(abmod)?;
+                    match v.as_deref_mut() {
+                        Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
+                        _ => *v = Some(vec![ab.build(VAL_LVL)?]),
+                    }
+                } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
+                    ptag.address_block = Some(make_address_blocks(abmod)?);
+                }
+            }
+        }
+        // If this peripheral has derivations, update the derived
+        // peripherals to reference the new name.
+        if let Some(value) = pmod.get_str("name")? {
+            for p in self.peripherals.iter_mut() {
+                if let Some(old_name) = p.derived_from.as_mut() {
+                    if modified.contains(old_name) {
+                        *old_name = value.into();
+                    }
+                }
+            }
+        }
+        */
         Ok(())
     }
 
@@ -540,5 +681,23 @@ mod tests {
             dac1.description,
             Some("Digital-to-analog converter".to_string())
         );
+    }
+
+    #[test]
+    fn replace_device_metadata() {
+        let (mut device, yaml) = test_utils::get_patcher(Path::new("replace")).unwrap();
+
+        // Check the initial device config
+        assert_eq!(&device.version, "1.6");
+        assert_eq!(&device.description, "");
+        assert_eq!(&device.name, "STM32L4x2_STM32L4x2");
+
+        // Process the device
+        device.process(&yaml, &Default::default()).unwrap();
+
+        // Check the final device config
+        assert_eq!(&device.version, "1.6");
+        assert_eq!(&device.description, "");
+        assert_eq!(&device.name, "STM32L4x2");
     }
 }

@@ -1,0 +1,6 @@
+_svd: stm32l4x2.svd
+
+_replace:
+  name:
+    \b(\w+)(?=_\1\b)_: ""
+
