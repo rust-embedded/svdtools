@@ -6,7 +6,7 @@ xs:noNamespaceSchemaLocation="CMSIS-SVD_Schema_1_1.xsd">
   <version>1.6</version>
   <peripherals>
     <peripheral>
-      <name>DAC1</name>
+      <name>DAC1_DAC1</name>
       <description>Digital-to-analog converter</description>
       <groupName>DAC</groupName>
       <baseAddress>0x40007400</baseAddress>

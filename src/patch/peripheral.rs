@@ -16,7 +16,7 @@ use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
     check_offsets, common_description, make_dim_element, matchname, matchsubspec,
-    modify_dim_element, spec_ind, Config, PatchResult, Spec, VAL_LVL,
+    modify_dim_element, replace_dim_element_register, spec_ind, Config, PatchResult, Spec, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
 
@@ -431,7 +431,7 @@ pub(crate) trait RegisterBlockExt: Name {
     fn replace_register_metadata(
         &mut self,
         rspec: &str,
-        rmod: &Hash,
+        rrep: &Hash,
         bpath: &BlockPath,
     ) -> PatchResult {
         let (rspec, ignore) = rspec.spec();
@@ -442,7 +442,10 @@ pub(crate) trait RegisterBlockExt: Name {
                 "Could not find `{bpath}:{rspec}. Present registers: {present}.`"
             ));
         }
-        modify_register(rtags, rmod, bpath)
+        for rtag in rtags {
+            replace_dim_element_register(rtag, rrep)?;
+        }
+        Ok(())
     }
 
     /// Modify cspec inside ptag according to cmod
@@ -963,6 +966,17 @@ fn modify_register(rtags: Vec<&mut Register>, rmod: &Hash, bpath: &BlockPath) ->
     Ok(())
 }
 
+fn replace_register_metadata(
+    rtags: Vec<&mut Register>,
+    rrep: &Hash,
+    bpath: &BlockPath,
+) -> PatchResult {
+    for rtag in rtags {
+        replace_dim_element_register(rtag, rrep);
+    }
+    Ok(())
+}
+
 fn modify_cluster(ctags: Vec<&mut Cluster>, cmod: &Hash, bpath: &BlockPath) -> PatchResult {
     let cluster_builder = make_cluster(cmod, Some(bpath))?;
     let dim = make_dim_element(cmod)?;
@@ -1163,23 +1177,6 @@ impl PeripheralExt for Peripheral {
         for suffix in pmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
-        }
-
-        // Handle duplicate removal
-        for delimiter in pmod.str_vec_iter("_remove_duplicate")? {
-            println!("I'M AT LEAST TRYING SOMETHING!!!");
-            if let Some(delimiter) = delimiter.chars().nth(0) {
-                self.remove_duplicate(delimiter).with_context(|| {
-                    format!(
-                        "Removing largest duplicate substring conjoined by delimiter {}",
-                        delimiter
-                    )
-                })?;
-            } else {
-                return Err(anyhow!(
-                    "`_remove_duplicate` requires a delimiter of length 1 to break name up by"
-                ));
-            }
         }
 
         // Handle modifications

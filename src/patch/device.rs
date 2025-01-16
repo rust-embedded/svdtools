@@ -3,6 +3,7 @@ use itertools::Itertools;
 use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::{yaml::Hash, Yaml};
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::{fs::File, io::Read, path::Path};
 
@@ -11,7 +12,9 @@ use super::peripheral::{
     replace_hash_iter_helper, replace_helper, PeripheralExt, RegisterBlockExt,
 };
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
+use super::{
+    abspath, matchname, replace_dim_element_peripheral, Config, PatchResult, Spec, VAL_LVL,
+};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -55,7 +58,7 @@ pub trait DeviceExt {
     fn modify_peripheral(&mut self, pspec: &str, pmod: &Hash) -> PatchResult;
 
     /// Replace pspec inside device according to prep
-    fn replace_peripheral(&mut self, pspec: &str, prep: &Hash) -> PatchResult;
+    fn replace_peripheral_metadata(&mut self, pspec: &str, prep: &Hash) -> PatchResult;
 
     /// Add pname given by padd to device
     fn add_peripheral(&mut self, pname: &str, padd: &Hash) -> PatchResult;
@@ -159,7 +162,13 @@ impl DeviceExt for Device {
                     ))
                 }
                 "_peripherals" => {
-                    return Err(anyhow!("TODO: Iterate through peripherals, finding matches to replace metadata for..."))
+                    for (pspec, prep) in val_hashed {
+                        let pspec = pspec.str()?;
+                        self.replace_peripheral_metadata(pspec, prep.hash()?)
+                            .with_context(|| {
+                                format!("Replacing peripheral metadata matched to `{pspec}`")
+                            })?;
+                    }
                 }
                 "vendor" => {
                     self.vendor = Some(replace_hash_iter_helper(
@@ -205,10 +214,11 @@ impl DeviceExt for Device {
                         val_hashed,
                     )?)
                 }
-
-                _ => {
-                    return Err(anyhow!("TODO: Match to the peripheral name, and when matches occur replace metadata for peripheral..."))
-                }
+                _ => self
+                    .replace_peripheral_metadata(key, val_hashed)
+                    .with_context(|| {
+                        format!("Replacing peripheral metadata for those matched to `{key}`")
+                    })?,
             }
         }
 
@@ -365,72 +375,49 @@ impl DeviceExt for Device {
         Ok(())
     }
 
-    fn replace_peripheral(&mut self, pspec: &str, prep: &Hash) -> PatchResult {
-        /*
-        let mut replaced = HashSet::new();
+    fn replace_peripheral_metadata(&mut self, pspec: &str, prep: &Hash) -> PatchResult {
+        let mut replaced = HashMap::new();
+        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
+        for ptag in ptags {
+            println!("Peripheral matched name specified: {:?}", ptag);
+        }
         let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
         if !ptags.is_empty() {
-            let peripheral_builder = make_peripheral(prep, true)?;
-            let dim = make_dim_element(prep)?;
             for ptag in ptags {
-                replaced.insert(ptag.name.clone());
-
-                modify_dim_element(ptag, &dim);
-                ptag.modify_from(peripheral_builder, VAL_LVL)?;
+                // Keep track of the peripherals whose names had to be replaced,
+                // we need to ensure there are no derived peripherals that lose track of their
+                // parent.
+                if let Some(new_name) = replace_dim_element_peripheral(ptag, prep)? {
+                    replaced.insert(ptag.name.clone(), new_name);
+                }
                 if let Some(ints) = prep.get_hash("interrupts")? {
-                    return anyhow!("Interrupts {:?} included in regex replace block, not supported", ints);
+                    return Err(anyhow!(
+                        "Interrupts {:?} included in regex replace block, not supported",
+                        ints
+                    ));
                 }
+                if let Some(abrep) = prep.get_hash("addressBlock").ok().flatten() {
+                    return Err(anyhow!(
+                        "Address block {:?} included in regex replace block, not supported",
+                        abrep
+                    ));
+                } else if let Some(abrep) = prep.get_vec("addressBlocks").ok().flatten() {
+                    return Err(anyhow!(
+                        "Address block {:?} included in regex replace block, not supported",
+                        abrep
+                    ));
+                }
+            }
+        }
 
-            }
-        }
-        */
-        /*
-        let mut modified = HashSet::new();
-        let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
-        if !ptags.is_empty() {
-            let peripheral_builder = make_peripheral(pmod, true)?;
-            let dim = make_dim_element(pmod)?;
-            for ptag in ptags {
-                modified.insert(ptag.name.clone());
-
-                modify_dim_element(ptag, &dim)?;
-                ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
-                if let Some(ints) = pmod.get_hash("interrupts")? {
-                    for (iname, val) in ints {
-                        let iname = iname.str()?;
-                        let int = make_interrupt(val.hash()?)?;
-                        for i in &mut ptag.interrupt {
-                            if i.name == iname {
-                                i.modify_from(int, VAL_LVL)?;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if let Some(abmod) = pmod.get_hash("addressBlock").ok().flatten() {
-                    let v = &mut ptag.address_block;
-                    let ab = make_address_block(abmod)?;
-                    match v.as_deref_mut() {
-                        Some([adb]) => adb.modify_from(ab, VAL_LVL)?,
-                        _ => *v = Some(vec![ab.build(VAL_LVL)?]),
-                    }
-                } else if let Some(abmod) = pmod.get_vec("addressBlocks").ok().flatten() {
-                    ptag.address_block = Some(make_address_blocks(abmod)?);
+        // Update the name of all derived peripherals to their new parent name if applicable.
+        for p in self.peripherals.iter_mut() {
+            if let Some(derived_name) = p.derived_from.as_mut() {
+                if let Some(new_name) = replaced.get(derived_name) {
+                    *derived_name = new_name.into();
                 }
             }
         }
-        // If this peripheral has derivations, update the derived
-        // peripherals to reference the new name.
-        if let Some(value) = pmod.get_str("name")? {
-            for p in self.peripherals.iter_mut() {
-                if let Some(old_name) = p.derived_from.as_mut() {
-                    if modified.contains(old_name) {
-                        *old_name = value.into();
-                    }
-                }
-            }
-        }
-        */
         Ok(())
     }
 
@@ -604,6 +591,8 @@ impl DeviceExt for Device {
 
 #[cfg(test)]
 mod tests {
+    use svd_rs::MaybeArray;
+
     use super::*;
     use crate::test_utils;
     use std::path::Path;
@@ -681,6 +670,11 @@ mod tests {
             dac1.description,
             Some("Digital-to-analog converter".to_string())
         );
+    }
+
+    #[test]
+    fn replace_device_metadata_whole_file() {
+        test_utils::test_expected(Path::new("replace")).unwrap()
     }
 
     #[test]

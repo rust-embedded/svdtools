@@ -1,6 +1,7 @@
 pub mod patch_cli;
 
 use once_cell::sync::Lazy;
+use peripheral::replace_hash_iter_helper;
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs::File;
@@ -16,10 +17,10 @@ use svd_parser::svd::{
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
-use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
+use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray, Register};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
-use hashlink::linked_hash_map;
+use hashlink::{linked_hash_map, LinkedHashMap};
 
 use anyhow::{anyhow, Context, Result};
 pub type PatchResult = anyhow::Result<()>;
@@ -474,6 +475,155 @@ fn modify_dim_element<T: Clone>(
         }
     }
     Ok(())
+}
+
+fn replace_dim_element_peripheral(
+    tag: &mut MaybeArray<PeripheralInfo>,
+    h: &Hash,
+) -> Result<Option<String>> {
+    match tag {
+        MaybeArray::Array(peripherals, dim) => {
+            println!(
+                "Peripheral at tag is {:?}, dim element is {:?}",
+                peripherals, dim
+            );
+            Err(anyhow!("Found multiple peripherals at the same tag, refer to `fields` for how to handle this edge case, but for now it's a TODO..."))
+        }
+        MaybeArray::Single(peripheral) => {
+            println!(
+                "The peripheral [singular] being analyzed is: {:?}",
+                peripheral
+            );
+            let str_replace = |input_str: Option<String>,
+                               replace_ops: &LinkedHashMap<Yaml, Yaml>|
+             -> Option<String> {
+                match input_str {
+                    Some(input_str_non_empty) => {
+                        match replace_hash_iter_helper(input_str_non_empty.as_str(), replace_ops) {
+                            Ok(e) => Some(e),
+                            Err(_) => Some(input_str_non_empty),
+                        }
+                    }
+                    None => None,
+                }
+            };
+            let mut orig_name = None;
+            for (metadata_type, replace_ops) in h {
+                match metadata_type.str()? {
+                    "name" => {
+                        orig_name = Some(peripheral.name.clone());
+                        peripheral.name = replace_hash_iter_helper(
+                            peripheral.name.as_str(),
+                            replace_ops.hash()?,
+                        )?;
+                    }
+                    "display_name" => {
+                        peripheral.display_name =
+                            str_replace(peripheral.display_name.clone(), replace_ops.hash()?)
+                    }
+                    "version" => {
+                        peripheral.version =
+                            str_replace(peripheral.version.clone(), replace_ops.hash()?)
+                    }
+                    "description" => {
+                        peripheral.description =
+                            str_replace(peripheral.description.clone(), replace_ops.hash()?)
+                    }
+                    "alternate_peripheral" => {
+                        peripheral.alternate_peripheral = str_replace(
+                            peripheral.alternate_peripheral.clone(),
+                            replace_ops.hash()?,
+                        )
+                    }
+                    "group_name" => {
+                        peripheral.group_name =
+                            str_replace(peripheral.group_name.clone(), replace_ops.hash()?)
+                    }
+                    "prepend_to_name" => {
+                        peripheral.prepend_to_name =
+                            str_replace(peripheral.prepend_to_name.clone(), replace_ops.hash()?)
+                    }
+                    "append_to_name" => {
+                        peripheral.append_to_name =
+                            str_replace(peripheral.append_to_name.clone(), replace_ops.hash()?)
+                    }
+                    "header_struct_name" => {
+                        peripheral.header_struct_name =
+                            str_replace(peripheral.header_struct_name.clone(), replace_ops.hash()?)
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "Non-string elements not supported for regex replace."
+                        ))
+                    }
+                }
+            }
+            Ok(orig_name)
+        }
+    }
+}
+
+fn replace_dim_element_register(tag: &mut MaybeArray<RegisterInfo>, h: &Hash) -> PatchResult {
+    match tag {
+        MaybeArray::Array(registers, dim) => {
+            println!(
+                "Register at tag is {:?}, dim element is {:?}",
+                registers, dim
+            );
+            Err(anyhow!("Found multiple registersat the same tag, refer to `fields` for how to handle this edge case, but for now it's a TODO..."))
+        }
+        MaybeArray::Single(peripheral) => {
+            println!(
+                "The register [singular] being analyzed is: {:?}",
+                peripheral
+            );
+            let str_replace = |input_str: Option<String>,
+                               replace_ops: &LinkedHashMap<Yaml, Yaml>|
+             -> Option<String> {
+                match input_str {
+                    Some(input_str_non_empty) => {
+                        match replace_hash_iter_helper(input_str_non_empty.as_str(), replace_ops) {
+                            Ok(e) => Some(e),
+                            Err(_) => Some(input_str_non_empty),
+                        }
+                    }
+                    None => None,
+                }
+            };
+            for (metadata_type, replace_ops) in h {
+                match metadata_type.str()? {
+                    "name" => {
+                        peripheral.name = replace_hash_iter_helper(
+                            peripheral.name.as_str(),
+                            replace_ops.hash()?,
+                        )?;
+                    }
+                    "display_name" => {
+                        peripheral.display_name =
+                            str_replace(peripheral.display_name.clone(), replace_ops.hash()?)
+                    }
+                    "description" => {
+                        peripheral.description =
+                            str_replace(peripheral.description.clone(), replace_ops.hash()?)
+                    }
+                    "alternate_group" => {
+                        peripheral.alternate_group =
+                            str_replace(peripheral.alternate_group.clone(), replace_ops.hash()?)
+                    }
+                    "alternate_register" => {
+                        peripheral.alternate_register =
+                            str_replace(peripheral.alternate_register.clone(), replace_ops.hash()?)
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "Non-string elements not supported for regex replace."
+                        ))
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 fn make_field(fadd: &Hash, rpath: Option<&RegisterPath>) -> Result<FieldInfoBuilder> {
