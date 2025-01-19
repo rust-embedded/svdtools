@@ -128,7 +128,7 @@ details[open] > summary {
         {%- for register in peripheral.registers %}
         <tr>
           <td>{{ register.offset }}{% if register.size != 32 %} ({{ register.size }}-bit){% endif %}</td>
-          <td>{{ register.name }}</td>
+          <td><a class="fieldlink" href="#{{ pname }}:{{ register.name }}">{{ register.name }}</a></td>
           {%- for row in register.table %}
           {%-   if row %}
           {%-     for field in row.fields %}
@@ -139,7 +139,7 @@ details[open] > summary {
           {%-       endunless %}
           {%-       if field.name %}
           <td colspan="{{ field.width }}" class="vertical{% if field.separated %} separated{% endif %}">
-            <div><a class="fieldlink" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">{{ field.name }}</a></div>
+            <div><a class="fieldlink{% if field.doc %} text-success{% endif %}" href="#{{ pname }}:{{ register.name }}:{{ field.name }}">{{ field.name }}</a></div>
           </td>
           {%-       endif %}
           {%-     endfor %}
