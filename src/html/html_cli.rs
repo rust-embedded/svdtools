@@ -25,7 +25,7 @@ use svd_parser::{
     expand::{derive_peripheral, Index},
     svd::{Access, Cluster, Register, RegisterInfo, WriteConstraint},
 };
-use svd_rs::{EnumeratedValue, EnumeratedValues};
+use svd_rs::{EnumeratedValue, EnumeratedValues, ModifiedWriteValues, ReadAction};
 
 fn sanitize(input: &str) -> String {
     use once_cell::sync::Lazy;
@@ -92,6 +92,31 @@ fn short_access(accs: &str) -> &str {
         "read-only" => "r",
         "write-only" => "w",
         _ => "N/A",
+    }
+}
+
+fn short_mwv(mwv: ModifiedWriteValues) -> &'static str {
+    use ModifiedWriteValues::*;
+    match mwv {
+        OneToClear => "w1c",
+        OneToSet => "w1s",
+        OneToToggle => "w1t",
+        ZeroToClear => "w0c",
+        ZeroToSet => "w0s",
+        ZeroToToggle => "w0t",
+        Clear => "wc",
+        Set => "ws",
+        Modify => "w",
+    }
+}
+
+fn short_ra(ra: Option<ReadAction>) -> &'static str {
+    match ra {
+        None => "r",
+        Some(ReadAction::Clear) => "rc",
+        Some(ReadAction::Set) => "rs",
+        Some(ReadAction::Modify) => "rm",
+        Some(ReadAction::ModifyExternal) => "re",
     }
 }
 
@@ -328,7 +353,19 @@ fn parse_register(
     for (ftag, _) in flds.iter().rev() {
         let foffset = ftag.bit_offset();
         let faccs = ftag.access.map(Access::as_str).unwrap_or(raccs);
-        let access = short_access(faccs);
+        let mut access = short_access(faccs).to_string();
+        let mwv = ftag
+            .modified_write_values
+            .unwrap_or(ModifiedWriteValues::Modify);
+        let ra = ftag.read_action;
+        if access != "N/A" {
+            match (faccs, mwv, ra) {
+                (_, ModifiedWriteValues::Modify, None) => {}
+                ("read-only", _, ra) => access = short_ra(ra).to_string(),
+                ("write-only", mwv, _) => access = short_mwv(mwv).to_string(),
+                (_, mwv, ra) => access = format!("{}/{}", short_ra(ra), short_mwv(mwv)),
+            };
+        }
         let fwidth = ftag.bit_width();
         if foffset + fwidth > rsize {
             return Err(anyhow!("Wrong field offset/width"));

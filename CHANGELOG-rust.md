@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* `html`: field `readAction` and `modifiedWriteValues` in `access`
+
 ## [v0.4.0] 2025-01-06
 
 * **breaking** Support "?~" in field `_modify` & `_derive`
