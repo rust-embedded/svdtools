@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use svd_parser::expand::{BlockPath, FieldPath, RegisterPath};
 use svd_parser::svd::{
@@ -20,6 +20,8 @@ use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray}
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 use hashlink::linked_hash_map;
+
+pub use svd_encoder::Config as EncoderConfig;
 
 use anyhow::{anyhow, Context, Result};
 pub type PatchResult = anyhow::Result<()>;
@@ -70,7 +72,7 @@ impl Default for Config {
     }
 }
 
-fn load_patch(yaml_file: &Path) -> Result<Yaml> {
+pub fn load_patch(yaml_file: &Path) -> Result<Yaml> {
     // Load the specified YAML root file
     let f = File::open(yaml_file)?;
     let mut contents = String::new();
@@ -91,14 +93,14 @@ pub fn process_file(
     format_config: Option<&Path>,
     config: &Config,
 ) -> Result<()> {
-    let mut doc = load_patch(yaml_file)?;
-    let root = doc.hash_mut()?;
+    let doc = load_patch(yaml_file)?;
 
     // Load the specified SVD file
     let svdpath = abspath(
         yaml_file,
         Path::new(
-            root.get_str("_svd")?
+            doc.hash()?
+                .get_str("_svd")?
                 .ok_or_else(|| anyhow!("You must have an svd key in the root YAML file"))?,
         ),
     )?;
@@ -109,19 +111,33 @@ pub fn process_file(
         pth.set_extension("svd.patched");
         pth
     };
-    let f = File::open(svdpath)?;
+
+    let encoder_config = get_encoder_config(format_config)?;
+
+    let mut svd_out = process_reader(File::open(svdpath)?, &doc, &encoder_config, config)?;
+    std::io::copy(&mut svd_out, &mut File::create(svdpath_out)?)?;
+
+    Ok(())
+}
+
+pub fn process_reader<R: Read>(
+    mut svd: R,
+    patch: &Yaml,
+    format_config: &EncoderConfig,
+    config: &Config,
+) -> Result<impl Read> {
     let mut contents = String::new();
-    (&f).read_to_string(&mut contents)?;
+    svd.read_to_string(&mut contents)?;
     let mut parser_config = svd_parser::Config::default();
     parser_config.validate_level = ValidateLevel::Disabled;
-    let mut svd = svd_parser::parse_with_config(&contents, &parser_config)?;
+    let mut dev = svd_parser::parse_with_config(&contents, &parser_config)?;
 
     // Process device
-    svd.process(root, config).with_context(|| {
-        let name = &svd.name;
+    dev.process(patch.hash()?, config).with_context(|| {
+        let name = &dev.name;
         let mut out_str = String::new();
         let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);
-        emitter.dump(&doc).unwrap();
+        emitter.dump(patch).unwrap();
         if config.show_patch_on_error {
             format!("Processing device `{name}`. Patches looks like:\n{out_str}")
         } else {
@@ -129,16 +145,11 @@ pub fn process_file(
         }
     })?;
 
-    svd.validate_all(config.post_validate)?;
+    dev.validate_all(config.post_validate)?;
 
-    // SVD should now be updated, write it out
-    let config = get_encoder_config(format_config)?;
-    let svd_out = svd_encoder::encode_with_config(&svd, &config)?;
-
-    let mut f = File::create(svdpath_out)?;
-    f.write_all(svd_out.as_bytes())?;
-
-    Ok(())
+    Ok(Cursor::new(
+        svd_encoder::encode_with_config(&dev, format_config)?.into_bytes(),
+    ))
 }
 
 /// Gets the absolute path of relpath from the point of view of frompath.
