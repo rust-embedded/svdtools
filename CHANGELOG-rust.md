@@ -5,7 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.4.1] 2025-01-21
+
 * `html`: field `readAction` and `modifiedWriteValues` in `access`
+* `patch`: allow processing without path dependencies
 
 ## [v0.4.0] 2025-01-06
 
@@ -202,7 +205,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.1...HEAD
+[v0.4.1]: https://github.com/rust-embedded/svdtools/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/rust-embedded/svdtools/compare/v0.3.21...v0.4.0
 [v0.3.21]: https://github.com/rust-embedded/svdtools/compare/v0.3.20...v0.3.21
 [v0.3.20]: https://github.com/rust-embedded/svdtools/compare/v0.3.19...v0.3.20
