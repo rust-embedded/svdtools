@@ -28,13 +28,7 @@ pub(crate) trait RegisterInfoExt {
 
 impl RegisterInfoExt for RegisterInfo {
     fn get_bitmask(&self) -> u64 {
-        let mut mask = 0x0;
-        if let Some(fields) = self.fields.as_ref() {
-            for ftag in fields {
-                mask |= (!0 >> (64 - ftag.bit_range.width)) << ftag.bit_range.offset;
-            }
-        }
-        mask
+        self.fields().fold(0, |mask, f| mask | super::bitmask(f))
     }
 }
 
@@ -68,7 +62,7 @@ pub trait RegisterExt {
     fn add_field(&mut self, fname: &str, fadd: &Hash, rpath: &RegisterPath) -> PatchResult;
 
     /// Delete fields matched by fspec inside rtag
-    fn delete_field(&mut self, fspec: &str) -> PatchResult;
+    fn delete_field(&mut self, fspec: &str, rpath: &RegisterPath) -> PatchResult;
 
     /// Clear field from rname and mark it as derivedFrom rderive.
     fn derive_field(&mut self, fname: &str, fderive: &Yaml, rpath: &RegisterPath) -> PatchResult;
@@ -158,7 +152,7 @@ impl RegisterExt for Register {
 
         // Handle deletions
         for fspec in rmod.str_vec_iter("_delete")? {
-            self.delete_field(fspec)
+            self.delete_field(fspec, &rpath)
                 .with_context(|| format!("Deleting fields matched to `{fspec}`"))?;
         }
 
@@ -347,12 +341,23 @@ impl RegisterExt for Register {
         } else {
             fnew.single()
         };
+        let exist_bits = self.get_bitmask();
+        if exist_bits & super::bitmask(&fnew) != 0 {
+            log::warn!("field {fname} conflicts with other fields in register {rpath}");
+        }
         self.fields.get_or_insert_with(Default::default).push(fnew);
         Ok(())
     }
 
-    fn delete_field(&mut self, fspec: &str) -> PatchResult {
+    fn delete_field(&mut self, fspec: &str, rpath: &RegisterPath) -> PatchResult {
         if let Some(fields) = self.fields.as_mut() {
+            if fields.iter().filter(|f| matchname(&f.name, fspec)).count() == 0 {
+                log::info!(
+                    "Trying to delete absent `{}` field from register {}",
+                    fspec,
+                    rpath
+                );
+            }
             fields.retain(|f| !(matchname(&f.name, fspec)));
         }
         Ok(())

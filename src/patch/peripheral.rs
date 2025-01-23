@@ -168,8 +168,22 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     /// Delete registers matched by rspec inside ptag
-    fn delete_register(&mut self, rspec: &str) -> PatchResult {
+    fn delete_register(&mut self, rspec: &str, bpath: &BlockPath) -> PatchResult {
         if let Some(children) = self.children_mut() {
+            if children
+                .iter()
+                .filter(
+                    |rc| matches!(rc, RegisterCluster::Register(r) if matchname(&r.name, rspec)),
+                )
+                .count()
+                == 0
+            {
+                log::info!(
+                    "Trying to delete absent `{}` register from {}",
+                    rspec,
+                    bpath
+                );
+            }
             children.retain(
                 |rc| !matches!(rc, RegisterCluster::Register(r) if matchname(&r.name, rspec)),
             );
@@ -999,7 +1013,7 @@ impl PeripheralExt for Peripheral {
                 }
                 Yaml::Hash(deletions) => {
                     for rspec in deletions.str_vec_iter("_registers")? {
-                        self.delete_register(rspec)
+                        self.delete_register(rspec, &ppath)
                             .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                     for cspec in deletions.str_vec_iter("_clusters")? {
@@ -1291,6 +1305,8 @@ impl InterruptExt for Peripheral {
 
 impl ClusterExt for Cluster {
     fn pre_process(&mut self, cmod: &Hash, parent: &BlockPath, _config: &Config) -> PatchResult {
+        let cpath = parent.new_cluster(&self.name);
+
         // Handle deletions
         if let Some(deletions) = cmod.get_yaml("_delete") {
             match deletions {
@@ -1309,7 +1325,7 @@ impl ClusterExt for Cluster {
                 }
                 Yaml::Hash(deletions) => {
                     for rspec in deletions.str_vec_iter("_registers")? {
-                        self.delete_register(rspec)
+                        self.delete_register(rspec, &cpath)
                             .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                     for cspec in deletions.str_vec_iter("_clusters")? {
@@ -1332,8 +1348,6 @@ impl ClusterExt for Cluster {
                 }
             }
         }
-
-        let cpath = parent.new_cluster(&self.name);
 
         // Handle any copied peripherals
         for (rname, rcopy) in cmod.hash_iter("_copy") {

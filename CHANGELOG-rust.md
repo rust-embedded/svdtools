@@ -18,6 +18,7 @@ This changelog tracks the Rust `svdtools` project. See
 ## [v0.3.21] 2024-12-31
 
 * `_derive` field
+* WARN when add field intersecting with other fields
 
 ## [v0.3.20] 2024-11-14
 
