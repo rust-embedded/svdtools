@@ -133,7 +133,10 @@ def yaml_includes(parent):
         if not pspec.startswith("_") and "_include" in parent[pspec]:
             parent[pspec]["_path"] = parent["_path"]
             included += yaml_includes(parent[pspec])
-    for relpath in parent.get("_include", []):
+    include = parent.get("_include", [])
+    if isinstance(include, str):
+        include = [include]
+    for relpath in include:
         path = abspath(parent["_path"], relpath)
         if path in included:
             continue
