@@ -711,12 +711,14 @@ impl RegisterExt for Register {
     }
 
     fn set_field_read_action(&mut self, fspec: &str, action: ReadAction) {
+        let (fspec, _) = fspec.spec();
         for ftag in self.iter_fields(fspec) {
             ftag.read_action = Some(action);
         }
     }
 
     fn set_field_modified_write_values(&mut self, fspec: &str, mwv: ModifiedWriteValues) {
+        let (fspec, _) = fspec.spec();
         for ftag in self.iter_fields(fspec) {
             ftag.modified_write_values = if mwv == ModifiedWriteValues::Modify {
                 None
