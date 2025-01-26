@@ -1,6 +1,7 @@
 use anyhow::{Ok, Result};
 use clap::Parser;
 use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
+use svd_rs::ValidateLevel;
 
 use svdtools::{
     convert::convert_cli,
@@ -211,6 +212,7 @@ impl Command {
                     expand: *expand,
                     expand_properties: *expand_properties,
                     ignore_enums: *ignore_enums,
+                    validate_level: ValidateLevel::Disabled,
                 },
                 format_config.as_ref().map(|p| p.as_path()),
             )?,
@@ -242,11 +244,9 @@ impl Command {
                 input_format,
                 out_path,
             } => {
-                let device = convert_cli::open_svd(
-                    in_path,
-                    *input_format,
-                    convert_cli::ParserConfig::default(),
-                )?;
+                let mut cfg = convert_cli::ParserConfig::default();
+                cfg.validate_level = ValidateLevel::Disabled;
+                let device = convert_cli::open_svd(in_path, *input_format, cfg)?;
                 let yml = enum_extract(&device);
                 let mut out_str = String::new();
                 let mut emitter = yaml_rust::YamlEmitter::new(&mut out_str);
