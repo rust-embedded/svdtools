@@ -247,12 +247,24 @@ pub(crate) trait RegisterBlockExt: Name {
     /// Remove fields from rname and mark it as derivedFrom rderive.
     /// Update all derivedFrom referencing rname
     fn derive_register(&mut self, rspec: &str, rderive: &Yaml, bpath: &BlockPath) -> PatchResult {
+        fn make_path(dpath: &str, bpath: &BlockPath) -> String {
+            let mut parts = dpath.split(".");
+            match (parts.next(), parts.next(), parts.next()) {
+                (Some(cname), Some(rname), None) if !bpath.path.is_empty() => bpath
+                    .parent()
+                    .unwrap()
+                    .new_cluster(cname)
+                    .new_register(rname)
+                    .to_string(),
+                _ => dpath.into(),
+            }
+        }
         let (rspec, ignore) = rspec.spec();
         let (rderive, dim, info) = if let Some(rderive) = rderive.as_str() {
             (
                 rderive,
                 None,
-                RegisterInfo::builder().derived_from(Some(rderive.into())),
+                RegisterInfo::builder().derived_from(Some(make_path(rderive, bpath))),
             )
         } else if let Some(hash) = rderive.as_hash() {
             let rderive = hash.get_str("_from")?.ok_or_else(|| {
@@ -261,7 +273,7 @@ pub(crate) trait RegisterBlockExt: Name {
             (
                 rderive,
                 make_dim_element(hash)?,
-                make_register(hash, Some(bpath))?.derived_from(Some(rderive.into())),
+                make_register(hash, Some(bpath))?.derived_from(Some(make_path(rderive, bpath))),
             )
         } else {
             return Err(anyhow!("derive: incorrect syntax for {rspec}"));
@@ -1783,11 +1795,12 @@ fn collect_in_cluster(
         .address_offset(address_offset);
     let mut config = config.clone();
     config.update_fields = true;
+    let cpath = path.new_cluster(cname);
     let mut cluster = if single {
         for (_, (rmod, mut registers)) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0);
             let rmod = rmod.hash()?;
-            reg.process(rmod, &path.new_cluster(cname), &config)
+            reg.process(rmod, &cpath, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             if let Some(name) = rmod.get_str("name")? {
                 reg.name = name.into();
@@ -1801,7 +1814,6 @@ fn collect_in_cluster(
         for (rspec, (rmod, mut registers)) in rdict.into_iter() {
             let mut reg = registers.swap_remove(0);
             let rmod = rmod.hash()?;
-            let cpath = path.new_cluster(cname);
             reg.process(rmod, &cpath, &config)
                 .with_context(|| format!("Processing register `{}`", reg.name))?;
             reg.name = if let Some(name) = rmod.get_str("name")? {

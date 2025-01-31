@@ -361,11 +361,22 @@ impl RegisterExt for Register {
     fn derive_field(&mut self, fspec: &str, fderive: &Yaml, rpath: &RegisterPath) -> PatchResult {
         fn make_path(dpath: &str, rpath: &RegisterPath) -> String {
             let mut parts = dpath.split(".");
-            if let (Some(reg), Some(field), None) = (parts.next(), parts.next(), parts.next()) {
-                let fpath = rpath.block.new_register(reg).new_field(field);
-                fpath.to_string()
-            } else {
-                dpath.into()
+            match (parts.next(), parts.next(), parts.next(), parts.next()) {
+                (Some(cname), Some(rname), Some(fname), None) if !rpath.block.path.is_empty() => {
+                    let fpath = rpath
+                        .block
+                        .parent()
+                        .unwrap()
+                        .new_cluster(cname)
+                        .new_register(rname)
+                        .new_field(fname);
+                    fpath.to_string()
+                }
+                (Some(reg), Some(field), None, None) => {
+                    let fpath = rpath.block.new_register(reg).new_field(field);
+                    fpath.to_string()
+                }
+                _ => dpath.into(),
             }
         }
         let (fspec, ignore) = fspec.spec();
