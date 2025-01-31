@@ -5,6 +5,10 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.4.3] 2025-01-31
+
+* Allow shorthand when `_derive` across clusters
+
 ## [v0.4.2] 2025-01-25
 
 * Fix optional `fspec` in `set_field_modified_write_values`
@@ -209,7 +213,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.3...HEAD
+[v0.4.3]: https://github.com/rust-embedded/svdtools/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/rust-embedded/svdtools/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/rust-embedded/svdtools/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/rust-embedded/svdtools/compare/v0.3.21...v0.4.0
