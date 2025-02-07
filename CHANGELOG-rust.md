@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Add `prefix` and `suffix` as opposite to `strip` and `strip_end`
+
 ## [v0.4.3] 2025-01-31
 
 * Allow shorthand when `_derive` across clusters

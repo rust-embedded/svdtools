@@ -47,6 +47,8 @@ pub trait RegisterExt {
         "_derive",
         "_strip",
         "_strip_end",
+        "_prefix",
+        "_suffix",
         "_clear",
         "_modify",
         "_add",
@@ -115,6 +117,12 @@ pub trait RegisterExt {
     /// Delete substring from the ending bitfield names inside rtag
     fn strip_end(&mut self, substr: &str) -> PatchResult;
 
+    /// Add prefix at the beginning of bitfield names inside rtag
+    fn add_prefix(&mut self, prefix: &str) -> PatchResult;
+
+    /// Add suffix at the ending of bitfield names inside rtag
+    fn add_suffix(&mut self, suffix: &str) -> PatchResult;
+
     /// Modify fspec inside rtag according to fmod
     fn modify_field(&mut self, fspec: &str, fmod: &Hash, rpath: &RegisterPath) -> PatchResult;
 
@@ -170,6 +178,15 @@ impl RegisterExt for Register {
         for suffix in rmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from field names"))?;
+        }
+
+        if let Some(prefix) = rmod.get_str("_prefix")? {
+            self.add_prefix(prefix)
+                .with_context(|| format!("Adding prefix `{prefix}` to field names"))?;
+        }
+        if let Some(suffix) = rmod.get_str("_suffix")? {
+            self.add_suffix(suffix)
+                .with_context(|| format!("Adding suffix `{suffix}` to field names"))?;
         }
 
         // Handle field clearing
@@ -284,6 +301,22 @@ impl RegisterExt for Register {
                 let nlen = ftag.name.len();
                 ftag.name.truncate(nlen - len);
             }
+        }
+        Ok(())
+    }
+
+    /// Add prefix at the beginning of bitfield names inside rtag
+    fn add_prefix(&mut self, prefix: &str) -> PatchResult {
+        for ftag in self.fields_mut() {
+            ftag.name.insert_str(0, prefix);
+        }
+        Ok(())
+    }
+
+    /// Add suffix at the ending of bitfield names inside rtag
+    fn add_suffix(&mut self, suffix: &str) -> PatchResult {
+        for ftag in self.fields_mut() {
+            ftag.name.push_str(suffix);
         }
         Ok(())
     }
