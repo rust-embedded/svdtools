@@ -490,35 +490,45 @@ pub(crate) trait RegisterBlockExt: Name {
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
         let len = prefix.len();
         let glob = globset::Glob::new(&(prefix.to_string() + "*"))?.compile_matcher();
+        let mut done = false;
         for rtag in self.regs_mut() {
             if glob.is_match(&rtag.name) {
                 rtag.name.drain(..len);
+                done = true;
             }
             if let Some(dname) = rtag.display_name.as_mut() {
                 if glob.is_match(dname.as_str()) {
                     dname.drain(..len);
+                    done = true;
                 }
             }
             if let Some(name) = rtag.alternate_register.as_mut() {
                 if glob.is_match(name.as_str()) {
                     name.drain(..len);
+                    done = true;
                 }
             }
         }
         for ctag in self.clstrs_mut() {
             if glob.is_match(&ctag.name) {
                 ctag.name.drain(..len);
+                done = true;
             }
             if let Some(dname) = ctag.header_struct_name.as_mut() {
                 if glob.is_match(dname.as_str()) {
                     dname.drain(..len);
+                    done = true;
                 }
             }
             if let Some(name) = ctag.alternate_cluster.as_mut() {
                 if glob.is_match(name.as_str()) {
                     name.drain(..len);
+                    done = true;
                 }
             }
+        }
+        if !done {
+            log::info!("Prefix {prefix} in absent in {}", self.name());
         }
         Ok(())
     }
