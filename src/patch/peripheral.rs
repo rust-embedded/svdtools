@@ -32,6 +32,8 @@ pub(crate) trait PeripheralExt: InterruptExt + RegisterBlockExt {
         "_copy",
         "_strip",
         "_strip_end",
+        "_prefix",
+        "_suffix",
         "_modify",
         "_clear_fields",
         "_add",
@@ -57,6 +59,8 @@ pub(crate) trait ClusterExt: RegisterBlockExt {
         "_copy",
         "_strip",
         "_strip_end",
+        "_prefix",
+        "_suffix",
         "_modify",
         "_clear_fields",
         "_add",
@@ -563,6 +567,34 @@ pub(crate) trait RegisterBlockExt: Name {
                     let nlen = name.len();
                     name.truncate(nlen - len);
                 }
+            }
+        }
+        Ok(())
+    }
+
+    /// Add prefix at the beginning of register names inside ptag
+    fn add_prefix(&mut self, prefix: &str) -> PatchResult {
+        for rtag in self.regs_mut() {
+            rtag.name.insert_str(0, prefix);
+            if let Some(dname) = rtag.display_name.as_mut() {
+                dname.insert_str(0, prefix);
+            }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                name.insert_str(0, prefix);
+            }
+        }
+        Ok(())
+    }
+
+    /// Add suffix at the ending of register names inside ptag
+    fn add_suffix(&mut self, suffix: &str) -> PatchResult {
+        for rtag in self.regs_mut() {
+            rtag.name.push_str(suffix);
+            if let Some(dname) = rtag.display_name.as_mut() {
+                dname.push_str(suffix);
+            }
+            if let Some(name) = rtag.alternate_register.as_mut() {
+                name.push_str(suffix);
             }
         }
         Ok(())
@@ -1078,6 +1110,15 @@ impl PeripheralExt for Peripheral {
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
         }
 
+        if let Some(prefix) = pmod.get_str("_prefix")? {
+            self.add_prefix(prefix)
+                .with_context(|| format!("Adding prefix `{prefix}` to register names"))?;
+        }
+        if let Some(suffix) = pmod.get_str("_suffix")? {
+            self.add_suffix(suffix)
+                .with_context(|| format!("Adding suffix `{suffix}` to register names"))?;
+        }
+
         // Handle modifications
         for (rspec, rmod) in pmod.hash_iter("_modify") {
             let rmod = rmod.hash()?;
@@ -1384,6 +1425,15 @@ impl ClusterExt for Cluster {
         for suffix in cmod.str_vec_iter("_strip_end")? {
             self.strip_end(suffix)
                 .with_context(|| format!("Stripping suffix `{suffix}` from register names"))?;
+        }
+
+        if let Some(prefix) = cmod.get_str("_prefix")? {
+            self.add_prefix(prefix)
+                .with_context(|| format!("Adding prefix `{prefix}` to register names"))?;
+        }
+        if let Some(suffix) = cmod.get_str("_suffix")? {
+            self.add_suffix(suffix)
+                .with_context(|| format!("Adding suffix `{suffix}` to register names"))?;
         }
 
         // Handle modifications
