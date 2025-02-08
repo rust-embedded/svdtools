@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.4.4] 2025-02-08
+
 * Add `prefix` and `suffix` as opposite to `strip` and `strip_end`
 
 ## [v0.4.3] 2025-01-31
@@ -215,7 +217,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.4...HEAD
+[v0.4.4]: https://github.com/rust-embedded/svdtools/compare/v0.4.3...v0.4.4
 [v0.4.3]: https://github.com/rust-embedded/svdtools/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/rust-embedded/svdtools/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/rust-embedded/svdtools/compare/v0.4.0...v0.4.1
