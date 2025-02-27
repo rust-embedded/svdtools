@@ -12,7 +12,7 @@ use super::iterators::{MatchIter, Matched};
 use super::register::{RegisterExt, RegisterInfoExt};
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
-    check_offsets, common_description, make_dim_element, matchname, matchsubspec,
+    adding_pos, check_offsets, common_description, make_dim_element, matchname, matchsubspec,
     modify_dim_element, spec_ind, Config, PatchResult, Spec, VAL_LVL,
 };
 use super::{make_cluster, make_interrupt, make_register};
@@ -161,6 +161,14 @@ pub(crate) trait RegisterBlockExt: Name {
 
     fn add_child(&mut self, child: RegisterCluster);
 
+    fn insert_child(&mut self, pos: usize, child: RegisterCluster) {
+        if let Some(children) = self.children_mut() {
+            children.insert(pos, child);
+        } else {
+            self.add_child(child);
+        }
+    }
+
     /// Delete registers and clusters matched by rspec inside ptag
     fn delete_child(&mut self, rcspec: &str) -> PatchResult {
         if let Some(children) = self.children_mut() {
@@ -214,7 +222,8 @@ pub(crate) trait RegisterBlockExt: Name {
                 Self::RB_TYPE
             ));
         }
-        self.add_child(RegisterCluster::Register({
+
+        let rnew = RegisterCluster::Register({
             let reg = make_register(radd, Some(bpath))?
                 .name(rname.into())
                 .build(VAL_LVL)?;
@@ -223,7 +232,18 @@ pub(crate) trait RegisterBlockExt: Name {
             } else {
                 reg.single()
             }
-        }));
+        });
+
+        if let Some(children) = self.children() {
+            let pos = adding_pos(&rnew, children, |rc| match rc {
+                RegisterCluster::Register(r) => r.address_offset,
+                RegisterCluster::Cluster(c) => c.address_offset,
+            });
+            self.insert_child(pos, rnew);
+        } else {
+            self.add_child(rnew);
+        }
+
         Ok(())
     }
 
@@ -235,7 +255,8 @@ pub(crate) trait RegisterBlockExt: Name {
                 Self::RB_TYPE
             ));
         }
-        self.add_child(RegisterCluster::Cluster({
+
+        let cnew = RegisterCluster::Cluster({
             let cl = make_cluster(cadd, Some(bpath))?
                 .name(cname.into())
                 .build(VAL_LVL)?;
@@ -244,7 +265,18 @@ pub(crate) trait RegisterBlockExt: Name {
             } else {
                 cl.single()
             }
-        }));
+        });
+
+        if let Some(children) = self.children() {
+            let pos = adding_pos(&cnew, children, |rc| match rc {
+                RegisterCluster::Register(r) => r.address_offset,
+                RegisterCluster::Cluster(c) => c.address_offset,
+            });
+            self.insert_child(pos, cnew);
+        } else {
+            self.add_child(cnew);
+        }
+
         Ok(())
     }
 

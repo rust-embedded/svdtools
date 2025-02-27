@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Calculate `_add` position for peripherals and registers
+
 ## [v0.4.4] 2025-02-08
 
 * Add `prefix` and `suffix` as opposite to `strip` and `strip_end`

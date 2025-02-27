@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, matchname, Config, PatchResult, Spec, VAL_LVL};
+use super::{abspath, adding_pos, matchname, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -307,7 +307,8 @@ impl DeviceExt for Device {
             pnew.single()
         };
 
-        self.peripherals.push(pnew);
+        let pos = adding_pos(&pnew, &self.peripherals, |p| p.base_address);
+        self.peripherals.insert(pos, pnew);
         Ok(())
     }
 

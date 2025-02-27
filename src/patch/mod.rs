@@ -853,6 +853,20 @@ fn opt_interpolate<T: Interpolate>(path: &Option<&T>, s: Option<&str>) -> Option
     }
 }
 
+fn adding_pos<'a, T, U: Eq + Ord>(
+    new: &'a T,
+    iter: impl IntoIterator<Item = &'a T>,
+    f: impl Fn(&'a T) -> U,
+) -> usize {
+    let address = f(new);
+    iter.into_iter()
+        .enumerate()
+        .filter(|(_, p)| f(p) <= address)
+        .max_by_key(|(_, p)| f(p))
+        .map(|(i, _)| i + 1)
+        .unwrap_or(0)
+}
+
 trait Interpolate {
     fn interpolate<'a>(&self, s: &'a str) -> Cow<'a, str>;
     fn interpolate_opt(&self, s: Option<&str>) -> Option<String> {
