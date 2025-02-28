@@ -705,7 +705,7 @@ impl RegisterExt for Register {
                         .context("Adding read-write enumeratedValues")?;
                 } else {
                     if is_read {
-                        for (key, action) in &READ {
+                        for (&key, action) in &READ {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
@@ -725,7 +725,7 @@ impl RegisterExt for Register {
                         }
                     }
                     if is_write {
-                        for (key, mwv) in &WRITE {
+                        for (&key, mwv) in &WRITE {
                             if let Some(fmod) = fmod.get_hash(key)? {
                                 if !fmod.is_empty() {
                                     self.process_field_enum(
