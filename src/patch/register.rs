@@ -263,7 +263,7 @@ impl RegisterExt for Register {
         // Handle fields
         if config.update_fields {
             for (fspec, field) in rmod {
-                let fspec = fspec.str()?;
+                let fspec = fspec.key()?;
                 if Self::KEYWORDS.contains(&fspec) {
                     continue;
                 }
