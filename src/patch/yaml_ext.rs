@@ -148,66 +148,69 @@ impl<'a> Iterator for OverStringIter<'a> {
 
 type HashIter<'a> = OptIter<super::linked_hash_map::Iter<'a, Yaml, Yaml>>;
 
-pub trait GetVal {
-    fn get_yaml(&self, k: &str) -> Option<&Yaml>;
-    fn get_bool(&self, k: &str) -> Result<Option<bool>> {
+pub trait GetVal<K>
+where
+    K: ?Sized + core::fmt::Debug,
+{
+    fn get_yaml(&self, k: &K) -> Option<&Yaml>;
+    fn get_bool(&self, k: &K) -> Result<Option<bool>> {
         match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .bool()
-                .with_context(|| format!("Under key `{k}`"))
+                .with_context(|| format!("Under key `{k:?}`"))
                 .map(Some),
         }
     }
-    fn get_i64(&self, k: &str) -> Result<Option<i64>> {
+    fn get_i64(&self, k: &K) -> Result<Option<i64>> {
         match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .i64()
-                .with_context(|| format!("Under key `{k}`"))
+                .with_context(|| format!("Under key `{k:?}`"))
                 .map(Some),
         }
     }
-    fn get_u64(&self, k: &str) -> Result<Option<u64>> {
+    fn get_u64(&self, k: &K) -> Result<Option<u64>> {
         self.get_i64(k).map(|v| v.map(|v| v as u64))
     }
-    fn get_u32(&self, k: &str) -> Result<Option<u32>> {
+    fn get_u32(&self, k: &K) -> Result<Option<u32>> {
         self.get_i64(k).map(|v| v.map(|v| v as u32))
     }
-    fn get_str(&self, k: &str) -> Result<Option<&str>> {
+    fn get_str(&self, k: &K) -> Result<Option<&str>> {
         match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .str()
-                .with_context(|| format!("Under key `{k}`"))
+                .with_context(|| format!("Under key `{k:?}`"))
                 .map(Some),
         }
     }
-    fn get_string(&self, k: &str) -> Result<Option<String>> {
+    fn get_string(&self, k: &K) -> Result<Option<String>> {
         self.get_str(k).map(|v| v.map(From::from))
     }
-    fn get_hash(&self, k: &str) -> Result<Option<&Hash>> {
+    fn get_hash(&self, k: &K) -> Result<Option<&Hash>> {
         match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .hash()
-                .with_context(|| format!("Under key `{k}`"))
+                .with_context(|| format!("Under key `{k:?}`"))
                 .map(Some),
         }
     }
-    fn hash_iter<'a>(&'a self, k: &str) -> HashIter<'a> {
+    fn hash_iter<'a>(&'a self, k: &K) -> HashIter<'a> {
         HashIter::new(self.get_yaml(k).and_then(Yaml::as_hash).map(|h| h.iter()))
     }
-    fn get_vec(&self, k: &str) -> Result<Option<&Vec<Yaml>>> {
+    fn get_vec(&self, k: &K) -> Result<Option<&Vec<Yaml>>> {
         match self.get_yaml(k) {
             None => Ok(None),
             Some(v) => v
                 .vec()
-                .with_context(|| format!("Under key `{k}`"))
+                .with_context(|| format!("Under key `{k:?}`"))
                 .map(Some),
         }
     }
-    fn str_vec_iter<'a>(&'a self, k: &str) -> Result<OptIter<OverStringIter<'a>>> {
+    fn str_vec_iter<'a>(&'a self, k: &K) -> Result<OptIter<OverStringIter<'a>>> {
         let yaml = self.get_yaml(k);
         Ok(OptIter::new(match yaml {
             None => None,
@@ -216,18 +219,25 @@ pub trait GetVal {
                 if y.iter().all(|x| x.as_str().is_some()) {
                     Some(OverStringIter(yaml.unwrap(), None))
                 } else {
-                    return Err(anyhow!("`{k}` requires string value or array of strings"));
+                    return Err(anyhow!("`{k:?}` requires string value or array of strings"));
                 }
             }
-            _ => return Err(anyhow!("`{k}` requires string value or array of strings")),
+            _ => return Err(anyhow!("`{k:?}` requires string value or array of strings")),
         }))
     }
 }
 
-impl GetVal for Hash {
+impl GetVal<str> for Hash {
     #[inline(always)]
     fn get_yaml(&self, k: &str) -> Option<&Yaml> {
         self.get(&k.to_yaml())
+    }
+}
+
+impl GetVal<Yaml> for Hash {
+    #[inline(always)]
+    fn get_yaml(&self, k: &Yaml) -> Option<&Yaml> {
+        self.get(k)
     }
 }
 
