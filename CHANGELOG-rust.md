@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.4.5] 2025-03-11
+
 * Calculate `_add` position for peripherals and registers
 
 ## [v0.4.4] 2025-02-08
@@ -219,7 +221,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.5...HEAD
+[v0.4.5]: https://github.com/rust-embedded/svdtools/compare/v0.4.4...v0.4.5
 [v0.4.4]: https://github.com/rust-embedded/svdtools/compare/v0.4.3...v0.4.4
 [v0.4.3]: https://github.com/rust-embedded/svdtools/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/rust-embedded/svdtools/compare/v0.4.1...v0.4.2
