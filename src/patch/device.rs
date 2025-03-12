@@ -9,7 +9,7 @@ use std::{fs::File, io::Read, path::Path};
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
 use super::yaml_ext::{AsType, GetVal};
-use super::{abspath, adding_pos, matchname, Config, PatchResult, Spec, VAL_LVL};
+use super::{abspath, adding_pos, matchname, spec_ind, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
 
@@ -248,13 +248,31 @@ impl DeviceExt for Device {
         let mut modified = HashSet::new();
         let ptags = self.iter_peripherals(pspec).collect::<Vec<_>>();
         if !ptags.is_empty() {
-            let peripheral_builder = make_peripheral(pmod, true)?;
+            let (peripheral_builder, liri) = if !pspec.contains("%s") && pmod.values().filter_map(|v| v.as_str()).any(|v| v.contains("%s")) {
+                (None, spec_ind(pspec))
+            } else {
+                (Some(make_peripheral(pmod, true)?), None)
+            };
             let dim = make_dim_element(pmod)?;
             for ptag in ptags {
                 modified.insert(ptag.name.clone());
-
+                let peripheral_builder = if let Some(peripheral_builder) = peripheral_builder.as_ref() {
+                    peripheral_builder.clone()
+                } else {
+                    let Some((li, ri)) = liri else {
+                        return Err(anyhow!("Cannot find index part"));
+                    };
+                    let idx = &ptag.name[li..ptag.name.len()-ri];
+                    let mut pmod = pmod.clone();
+                    for v in pmod.values_mut() {
+                        if let Yaml::String(s) = v {
+                            *s = s.replace("%s", idx);
+                        }
+                    }
+                    make_peripheral(&pmod, true)?
+                };
                 modify_dim_element(ptag, &dim)?;
-                ptag.modify_from(peripheral_builder.clone(), VAL_LVL)?;
+                ptag.modify_from(peripheral_builder, VAL_LVL)?;
                 if let Some(ints) = pmod.get_hash("interrupts")? {
                     for (iname, val) in ints {
                         let iname = iname.str()?;
