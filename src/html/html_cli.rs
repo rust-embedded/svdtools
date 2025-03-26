@@ -400,7 +400,7 @@ fn parse_register(
         }
     }
     let table = vec![
-        (filling > u16::MAX as _)
+        (filling > u16::MAX as u64)
             .then(|| object!({"headers": (16..32).rev().collect::<Vec<_>>(), "fields": table[0]})),
         (filling > 0)
             .then(|| object!({"headers": (0..16).rev().collect::<Vec<_>>(), "fields": table[1]})),
