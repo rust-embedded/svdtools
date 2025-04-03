@@ -1,6 +1,6 @@
 [package]
 name = "svdtools"
-version = "0.4.5"
+version = "0.4.6"
 repository = "https://github.com/rust-embedded/svdtools/"
 description = "Tool for modifying bugs in CMSIS SVD"
 authors = ["Andrey Zgarbul <zgarbul.andrey@gmail.com>", "MarcoIeni"]
