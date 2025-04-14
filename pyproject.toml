@@ -1,31 +1,41 @@
-[build-system]
-requires = ["black", "flit_core >=2,<4", "isort"]
-build-backend = "flit_core.buildapi"
-
-[tool.flit.metadata]
-module = "svdtools"
-# dist-name = "svdtools"
-author = "Adam Greig"
-author-email = "adam@adamgreig.com"
-maintainer = "Nicolas Stalder"
-maintainer-email = "n@stalder.io"
-home-page = "https://github.com/rust-embedded/svdtools"
+[project]
+name = "svdtools"
+license = "MIT OR Apache-2.0"
+description = "svdtools is a set of tools for modifying vendor-supplied, often buggy SVD files."
+readme = "README.md"
 requires-python = ">=3.9"
-description-file = "README.md"
-requires = [
+dependencies = [
   "click ~= 8.0",
   "PyYAML >= 5.3, < 7",
   "lxml ~= 4.6",
   "braceexpand ~= 0.1.7",
 ]
-classifiers=[
-    "License :: OSI Approved :: MIT License",
-    "License :: OSI Approved :: Apache Software License",
+authors = [
+  { name = "Adam Grieg", email = "adam@adamgreig.com" },
+]
+maintainers = [
+  { name = "Nicolas Stalder", email = "n@stalder.io" }
+]
+classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.9",
 ]
+dynamic = ["version"]
 
-[tool.flit.scripts]
+[dependency-groups]
+dev = [ "black >= 19.10", "isort >= 4.3.21"]
+
+[project.urls]
+Homepage = "https://github.com/rust-embedded/svdtools"
+Repository = "https://github.com/rust-embedded/svdtools"
+Issues = "https://github.com/rust-embedded/svdtools/issues"
+Changelog = "https://github.com/rust-embedded/svdtools/blob/master/CHANGELOG-python.md"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project.scripts]
 svd = "svdtools.cli:svdtools_cli"
