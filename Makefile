@@ -1,7 +1,7 @@
 .PHONY: example
 
 # setup development environment
-setup: update-venv
+setup: venv
 
 install-svd2rust-form-rustfmt:
 	rustup component add rustfmt
@@ -9,7 +9,7 @@ install-svd2rust-form-rustfmt:
 
 # example usage
 example:
-	venv/bin/svd patch example/incomplete-stm32l4x2.yaml
+	uv run svd patch example/incomplete-stm32l4x2.yaml
 
 # ensure this passes before commiting
 check: check-black check-isort
@@ -18,22 +18,22 @@ check: check-black check-isort
 fix: apply-black apply-isort
 
 check-black:
-	venv/bin/black --check svdtools/
+	uv run black --check --diff svdtools/
 
 apply-black:
-	venv/bin/black svdtools/
+	uv run black svdtools/
 
 apply-isort:
-	venv/bin/isort svdtools/
+	uv run isort svdtools/
 
 check-isort:
-	venv/bin/isort --check-only svdtools/
+	uv run isort --check-only svdtools/
 
 semi-clean:
-	rm -rf **/__pycache__
+	uv cache clean
 
 clean: semi-clean
-	rm -rf venv
+	rm -rf .venv
 	rm -rf dist
 
 
@@ -45,17 +45,19 @@ tag:
 	git tag -a $(VERSION) -m"v$(VERSION)"
 
 build: check
-	flit build
+	uv build
 
 publish: check
-	flit --repository pypi publish
+	uv publish
 
+# UV automatically uses a venv located at ./.venv for all commands.
+# This venv can be activated to put the tools and project
+# in PATH
 venv:
-	python3 -m venv venv
+	uv venv
 
 # re-run if dev or runtime dependencies change,
 # or when adding new scripts
-update-venv: venv
-	venv/bin/pip install -U pip
-	venv/bin/pip install -U -r dev-requirements.txt
-	venv/bin/flit install --symlink
+update-venv:
+	uv lock
+	uv sync
