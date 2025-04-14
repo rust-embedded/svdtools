@@ -31,15 +31,13 @@ jobs:
           python-version: 3.9
       - name: Install svdtools
         run: |
-          python -m pip install --upgrade pip
-          pip install -r dev-requirements.txt
-          pip install .
+          uv venv
       - name: Check
         run: |
-          black --check --diff svdtools
-          isort --check-only svdtools
+          uv run black --check --diff svdtools
+          uv run isort --check-only svdtools
       - name: Test
-        run: pytest svdtools
+        run: uv run pytest
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -55,12 +53,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: astral-sh/setup-uv@5
         with:
           python-version: 3.9
       - name: Install svdtools
         run: |
-          python -m pip install --upgrade pip
-          pip install .
+          uv tool install .
       - name: Check
         run: bash tools/check_${{ matrix.target }}.sh
