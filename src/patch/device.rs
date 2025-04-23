@@ -183,7 +183,15 @@ impl DeviceExt for Device {
     }
 
     fn delete_peripheral(&mut self, pspec: &str) -> PatchResult {
-        self.peripherals.retain(|p| !(matchname(&p.name, pspec)));
+        let mut done = false;
+        self.peripherals.retain(|p| {
+            let del = matchname(&p.name, pspec);
+            done |= del;
+            !del
+        });
+        if !done {
+            log::info!("Trying to delete absent `{}` peripheral", pspec);
+        }
         Ok(())
     }
 
