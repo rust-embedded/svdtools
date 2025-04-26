@@ -888,13 +888,17 @@ impl RegisterExt for Register {
                 set_enum(ftag, evs.clone(), orig_usage, true, access)?;
             }
         } else {
-            let (fspec, ignore) = fspec.spec();
+            let (fspec, mut ignore) = fspec.spec();
             let mut offsets: Vec<_> = Vec::new();
             let mut width_vals = HashSet::new();
             for (i, f) in self.fields().enumerate() {
                 if matchname(&f.name, fspec) {
-                    offsets.push((f.bit_offset(), f.name.to_string(), i));
-                    width_vals.insert(f.bit_width());
+                    if f.derived_from.is_none() {
+                        offsets.push((f.bit_offset(), f.name.to_string(), i));
+                        width_vals.insert(f.bit_width());
+                    } else {
+                        ignore = true;
+                    }
                 }
             }
             if offsets.is_empty() {
@@ -964,10 +968,12 @@ impl RegisterExt for Register {
         let mut set_any = false;
         let (fspec, ignore) = fspec.spec();
         for ftag in self.iter_fields(fspec) {
-            ftag.write_constraint = Some(WriteConstraint::Range(WriteConstraintRange {
-                min: fmod[0].i64()? as u64,
-                max: fmod[1].i64()? as u64,
-            }));
+            if ftag.derived_from.is_none() {
+                ftag.write_constraint = Some(WriteConstraint::Range(WriteConstraintRange {
+                    min: fmod[0].i64()? as u64,
+                    max: fmod[1].i64()? as u64,
+                }));
+            }
             set_any = true;
         }
         if !ignore && !set_any {
