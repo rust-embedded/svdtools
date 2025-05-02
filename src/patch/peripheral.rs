@@ -1251,7 +1251,7 @@ impl PeripheralExt for Peripheral {
 
         // Handle registers or clusters
         for (rcspec, rcmod) in pmod {
-            let rcspec = rcspec.str()?;
+            let rcspec = rcspec.key()?;
             if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
@@ -1281,7 +1281,7 @@ impl PeripheralExt for Peripheral {
 
         // Handle clusters
         for (cspec, cluster) in pmod.hash_iter("_clusters") {
-            let cspec = cspec.str()?;
+            let cspec = cspec.key()?;
             self.process_cluster(cspec, cluster.hash()?, &ppath, config)
                 .with_context(|| format!("According to `{cspec}`"))?;
         }
@@ -1561,14 +1561,14 @@ impl ClusterExt for Cluster {
 
         // Handle clusters
         for (cspec, cluster) in cmod.hash_iter("_clusters") {
-            let cspec = cspec.str()?;
+            let cspec = cspec.key()?;
             self.process_cluster(cspec, cluster.hash()?, &cpath, config)
                 .with_context(|| format!("According to `{cspec}`"))?;
         }
 
         // Handle registers or clusters
         for (rcspec, rcmod) in cmod {
-            let rcspec = rcspec.str()?;
+            let rcspec = rcspec.key()?;
             if Self::KEYWORDS.contains(&rcspec) {
                 continue;
             }
