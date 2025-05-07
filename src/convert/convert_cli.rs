@@ -11,7 +11,9 @@ pub use crate::ConfigFormat;
 #[non_exhaustive]
 pub enum InputFormat {
     Xml,
+    #[cfg(feature = "yaml")]
     Yaml,
+    #[cfg(feature = "json")]
     Json,
 }
 
@@ -20,7 +22,9 @@ impl FromStr for InputFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "svd" | "SVD" | "xml" | "XML" => Ok(Self::Xml),
+            #[cfg(feature = "yaml")]
             "yml" | "yaml" | "YAML" => Ok(Self::Yaml),
+            #[cfg(feature = "json")]
             "json" | "JSON" => Ok(Self::Json),
             _ => Err(anyhow!("Unknown input file format")),
         }
@@ -31,7 +35,9 @@ impl FromStr for InputFormat {
 #[non_exhaustive]
 pub enum OutputFormat {
     Xml,
+    #[cfg(feature = "yaml")]
     Yaml,
+    #[cfg(feature = "json")]
     Json,
 }
 
@@ -40,7 +46,9 @@ impl FromStr for OutputFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "svd" | "SVD" | "xml" | "XML" => Ok(Self::Xml),
+            #[cfg(feature = "yaml")]
             "yml" | "yaml" | "YAML" => Ok(Self::Yaml),
+            #[cfg(feature = "json")]
             "json" | "JSON" => Ok(Self::Json),
             _ => Err(anyhow!("Unknown output file format")),
         }
@@ -75,7 +83,9 @@ pub fn open_svd(
             &input,
             &svd_parser::Config::default().ignore_enums(parser_config.ignore_enums),
         )?,
+        #[cfg(feature = "yaml")]
         InputFormat::Yaml => serde_yaml::from_str(&input)?,
+        #[cfg(feature = "json")]
         InputFormat::Json => serde_json::from_str(&input)?,
     };
     if parser_config.expand_properties {
@@ -111,7 +121,9 @@ pub fn convert(
 
     let output = match output_format {
         OutputFormat::Xml => svd_encoder::encode_with_config(&device, &config)?,
+        #[cfg(feature = "yaml")]
         OutputFormat::Yaml => serde_yaml::to_string(&device)?,
+        #[cfg(feature = "json")]
         OutputFormat::Json => serde_json::to_string_pretty(&device)?,
     };
 

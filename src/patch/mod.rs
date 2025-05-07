@@ -1,3 +1,4 @@
+#[cfg(feature = "bin")]
 pub mod patch_cli;
 
 use once_cell::sync::Lazy;
@@ -48,8 +49,8 @@ pub struct Config {
 }
 
 /// Derive level when several identical enumerationValues added in a field
-#[derive(clap::ValueEnum)]
-#[value(rename_all = "lower")]
+#[cfg_attr(feature = "bin", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "bin", value(rename_all = "lower"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum EnumAutoDerive {
     #[default]
