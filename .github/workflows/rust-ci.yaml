@@ -13,7 +13,17 @@ jobs:
   rust-ci:
     name: Rust-CI
     runs-on: ubuntu-latest
-    needs: [build, test, test_convert, clippy, format, check]
+    needs:
+      - build
+      - test
+      - test_convert
+      - clippy
+      - format
+      - check
+      - library
+      - library_test
+      - configless
+      - configless_test
     if: always()
     steps:
       - name: Done
@@ -80,3 +90,40 @@ jobs:
           cargo install svdtools --path .
       - name: Check
         run: bash tools/check_${{ matrix.target }}.sh
+
+  library:
+    name: Library Build
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --no-default-features
+      - run: cargo doc --no-default-features
+  library_test:
+    name: Library Test
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --no-default-features
+  configless:
+    name: Configless Build
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --no-default-features --features bin
+      - run: cargo doc --no-default-features --features bin
+  configless_test:
+    name: Configless Test
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --no-default-features --features bin
