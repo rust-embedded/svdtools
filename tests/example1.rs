@@ -7,7 +7,7 @@ fn example1() {
     let expected_svd_path = test_dir.join("expected.svd");
     let expected_svd = svd_reader::device(&expected_svd_path).unwrap();
 
-    patch::patch_cli::patch(
+    patch::process_file(
         &test_dir.join("patch.yaml"),
         None,
         None,
