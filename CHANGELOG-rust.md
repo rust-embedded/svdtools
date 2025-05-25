@@ -5,6 +5,8 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+* Skip adding `enumeratedValues` & `writeConstraint` to derived fields
+
 ## [v0.4.6] 2025-04-03
 
 * Fixed compilation with new `rust`
