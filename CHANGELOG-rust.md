@@ -5,6 +5,9 @@ This changelog tracks the Rust `svdtools` project. See
 
 ## [Unreleased]
 
+## [v0.5.0] 2025-05-25
+
+* Add `bin` feature (enabled by default), make some dependencies optional
 * Skip adding `enumeratedValues` & `writeConstraint` to derived fields
 
 ## [v0.4.6] 2025-04-03
@@ -227,7 +230,8 @@ Other changes:
 
 * Initial release with feature-parity with the Python project.
 
-[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/rust-embedded/svdtools/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/rust-embedded/svdtools/compare/v0.4.6...v0.5.0
 [v0.4.6]: https://github.com/rust-embedded/svdtools/compare/v0.4.5...v0.4.6
 [v0.4.5]: https://github.com/rust-embedded/svdtools/compare/v0.4.4...v0.4.5
 [v0.4.4]: https://github.com/rust-embedded/svdtools/compare/v0.4.3...v0.4.4
