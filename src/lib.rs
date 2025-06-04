@@ -5,6 +5,7 @@ use std::{fs::File, io::Read, str::FromStr};
 
 pub mod common;
 pub mod convert;
+pub mod enum_extract;
 pub mod html;
 pub mod info;
 pub mod interrupts;

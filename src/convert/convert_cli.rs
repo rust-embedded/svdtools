@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use std::{fs::File, path::Path};
-use svd_rs::Device;
+use svd_rs::{Device, ValidateLevel};
 
 use crate::get_encoder_config;
 pub use crate::ConfigFormat;
@@ -60,6 +60,7 @@ pub struct ParserConfig {
     pub expand: bool,
     pub expand_properties: bool,
     pub ignore_enums: bool,
+    pub validate_level: ValidateLevel,
 }
 
 pub fn open_svd(
@@ -81,7 +82,9 @@ pub fn open_svd(
     let mut device = match input_format {
         InputFormat::Xml => svd_parser::parse_with_config(
             &input,
-            &svd_parser::Config::default().ignore_enums(parser_config.ignore_enums),
+            &svd_parser::Config::default()
+                .ignore_enums(parser_config.ignore_enums)
+                .validate_level(parser_config.validate_level),
         )?,
         #[cfg(feature = "yaml")]
         InputFormat::Yaml => serde_yaml::from_str(&input)?,

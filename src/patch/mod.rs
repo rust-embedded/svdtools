@@ -33,7 +33,8 @@ mod iterators;
 mod peripheral;
 mod register;
 mod yaml_ext;
-use yaml_ext::{AsType, GetVal, ToYaml};
+pub(crate) use yaml_ext::ToYaml;
+use yaml_ext::{AsType, GetVal};
 
 use crate::get_encoder_config;
 
