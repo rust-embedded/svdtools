@@ -12,6 +12,8 @@ pub enum YamlError {
     NotVec(Yaml),
     #[error("Value is not a string: {0:?}")]
     NotStr(Yaml),
+    #[error("Value is not a supported hash key: {0:?}")]
+    NotKey(Yaml),
     #[error("Value is not integer: {0:?}")]
     NotInt(Yaml),
     #[error("Value is not boolean: {0:?}")]
@@ -23,6 +25,7 @@ pub trait AsType {
     fn hash(&self) -> Result<&Hash, YamlError>;
     fn vec(&self) -> Result<&Vec<Yaml>, YamlError>;
     fn str(&self) -> Result<&str, YamlError>;
+    fn key(&self) -> Result<&str, YamlError>;
     fn i64(&self) -> Result<i64, YamlError>;
     fn bool(&self) -> Result<bool, YamlError>;
 }
@@ -43,6 +46,19 @@ impl AsType for Yaml {
     }
     fn str(&self) -> Result<&str, YamlError> {
         self.as_str().ok_or_else(|| YamlError::NotStr(self.clone()))
+    }
+    fn key(&self) -> Result<&str, YamlError> {
+        match self {
+            Yaml::String(k) => Ok(k),
+            Yaml::Array(a) if matches!(a.as_slice(), [Yaml::String(_), Yaml::Integer(_)]) => {
+                if let [Yaml::String(k), Yaml::Integer(_)] = a.as_slice() {
+                    Ok(k)
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => Err(YamlError::NotKey(self.clone())),
+        }
     }
     fn i64(&self) -> Result<i64, YamlError> {
         parse_i64(self).ok_or_else(|| YamlError::NotInt(self.clone()))
