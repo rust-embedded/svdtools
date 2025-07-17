@@ -226,7 +226,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                 if let Entry::Occupied(mut e) = parent.entry(key.clone()) {
                     match e.get_mut() {
                         el if el == val => {
-                            println!("In {key:?}: dublicate rule {val:?}, ignored");
+                            println!("In {key:?}: duplicate rule {val:?}, ignored");
                         }
                         Yaml::Array(a) => match val {
                             Yaml::Array(val) => {
@@ -236,7 +236,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                 if !a.contains(val) {
                                     a.push(val.clone());
                                 } else {
-                                    println!("In {key:?}: dublicate rule {val:?}, ignored");
+                                    println!("In {key:?}: duplicate rule {val:?}, ignored");
                                 }
                             }
                             _ => {}
@@ -251,7 +251,7 @@ fn update_dict(parent: &mut Hash, child: &Hash) -> Result<()> {
                                     a.insert(0, s.clone());
                                     e.insert(Yaml::Array(a));
                                 } else {
-                                    println!("In {key:?}: dublicate rule {s:?}, ignored");
+                                    println!("In {key:?}: duplicate rule {s:?}, ignored");
                                 }
                             }
                             s2 if matches!(s2, Yaml::String(_)) => {
