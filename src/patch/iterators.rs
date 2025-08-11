@@ -29,7 +29,7 @@ where
     Self: Iterator + Sized,
     Self::Item: Name,
 {
-    fn matched(self, spec: &str) -> MatchIter<Self>;
+    fn matched(self, spec: &str) -> MatchIter<'_, Self>;
 }
 
 impl<I> Matched for I
@@ -37,7 +37,7 @@ where
     Self: Iterator + Sized,
     Self::Item: Name,
 {
-    fn matched(self, spec: &str) -> MatchIter<Self> {
+    fn matched(self, spec: &str) -> MatchIter<'_, Self> {
         MatchIter { it: self, spec }
     }
 }

@@ -248,7 +248,7 @@ pub fn run() {
         .run()
         .with_context(|| format!("by svdtools ({})", clap::crate_version!()))
     {
-        log::error!("{:?}", e);
+        log::error!("{e:?}");
 
         std::process::exit(1);
     }

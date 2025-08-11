@@ -122,7 +122,7 @@ fn short_ra(ra: Option<ReadAction>) -> &'static str {
 
 trait GetI64 {
     fn get_i64(&self, key: &str) -> Option<i64>;
-    fn get_str(&self, key: &str) -> Option<Cow<str>>;
+    fn get_str(&self, key: &str) -> Option<Cow<'_, str>>;
 }
 
 impl GetI64 for Object {
@@ -131,7 +131,7 @@ impl GetI64 for Object {
             .and_then(|v| v.as_view().as_scalar())
             .and_then(|s| s.to_integer())
     }
-    fn get_str(&self, key: &str) -> Option<Cow<str>> {
+    fn get_str(&self, key: &str) -> Option<Cow<'_, str>> {
         self.get(key)
             .and_then(|v| v.as_view().as_scalar())
             .map(|s| s.into_cow_str())
@@ -508,7 +508,7 @@ fn parse_device(svdfile: impl AsRef<Path>) -> anyhow::Result<Object> {
 
 fn process_svd(svdfile: impl AsRef<Path>) -> anyhow::Result<Object> {
     let svdfile = svdfile.as_ref().to_str().unwrap();
-    println!("Processing {}", svdfile);
+    println!("Processing {svdfile}");
     parse_device(svdfile).with_context(|| format!("In file {svdfile}"))
 }
 
