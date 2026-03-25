@@ -36,7 +36,7 @@ mod register;
 mod yaml_ext;
 use yaml_ext::{AsType, GetVal, ToYaml};
 
-use crate::convert::convert_cli::InputFormat;
+use crate::common::input_format::InputFormat;
 use crate::get_encoder_config;
 
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
