@@ -7,6 +7,7 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use svd_parser::expand::{BlockPath, FieldPath, RegisterPath};
 use svd_parser::svd::{
     addressblock::AddressBlockBuilder, interrupt::InterruptBuilder, Access, AddressBlock,
@@ -17,7 +18,7 @@ use svd_parser::svd::{
     WriteConstraintRange,
 };
 use svd_parser::SVDError::DimIndexParse;
-use svd_rs::{BitRange, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
+use svd_rs::{BitRange, Device, DimArrayIndex, DimElement, DimElementBuilder, MaybeArray};
 use yaml_rust::{yaml::Hash, Yaml, YamlLoader};
 
 use hashlink::linked_hash_map;
@@ -35,6 +36,7 @@ mod register;
 mod yaml_ext;
 use yaml_ext::{AsType, GetVal, ToYaml};
 
+use crate::common::input_format::InputFormat;
 use crate::get_encoder_config;
 
 const VAL_LVL: ValidateLevel = ValidateLevel::Weak;
@@ -115,8 +117,30 @@ pub fn process_file(
 
     let encoder_config = get_encoder_config(format_config)?;
 
-    let mut svd_out = process_reader(File::open(svdpath)?, &doc, &encoder_config, config)?;
-    std::io::copy(&mut svd_out, &mut File::create(svdpath_out)?)?;
+    let input_format = svdpath
+        .extension()
+        .map(|ext_os| ext_os.to_str().expect("_svd is str"))
+        .and_then(|ext| InputFormat::from_str(ext).ok())
+        .unwrap_or(InputFormat::Xml);
+
+    match input_format {
+        InputFormat::Xml => {
+            let mut svd_out = process_reader(File::open(svdpath)?, &doc, &encoder_config, config)?;
+            std::io::copy(&mut svd_out, &mut File::create(svdpath_out)?)?;
+        }
+        #[cfg(feature = "yaml")]
+        InputFormat::Yaml => {
+            let dev = serde_yaml::from_str(&std::fs::read_to_string(svdpath)?)?;
+            let mut svd_out = process_device(dev, &doc, &encoder_config, config)?;
+            std::io::copy(&mut svd_out, &mut File::create(svdpath_out)?)?;
+        }
+        #[cfg(feature = "json")]
+        InputFormat::Json => {
+            let dev = serde_json::from_str(&std::fs::read_to_string(svdpath)?)?;
+            let mut svd_out = process_device(dev, &doc, &encoder_config, config)?;
+            std::io::copy(&mut svd_out, &mut File::create(svdpath_out)?)?;
+        }
+    };
 
     Ok(())
 }
@@ -131,8 +155,16 @@ pub fn process_reader<R: Read>(
     svd.read_to_string(&mut contents)?;
     let mut parser_config = svd_parser::Config::default();
     parser_config.validate_level = ValidateLevel::Disabled;
-    let mut dev = svd_parser::parse_with_config(&contents, &parser_config)?;
+    let dev = svd_parser::parse_with_config(&contents, &parser_config)?;
+    process_device(dev, patch, format_config, config)
+}
 
+fn process_device(
+    mut dev: Device,
+    patch: &Yaml,
+    format_config: &EncoderConfig,
+    config: &Config,
+) -> Result<impl Read> {
     // Process device
     dev.process(patch.hash()?, config).with_context(|| {
         let name = &dev.name;

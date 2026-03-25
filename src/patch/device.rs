@@ -4,7 +4,8 @@ use svd_parser::svd::{Device, Peripheral, PeripheralInfo};
 use yaml_rust::{yaml::Hash, Yaml};
 
 use std::collections::HashSet;
-use std::{fs::File, io::Read, path::Path};
+use std::str::FromStr;
+use std::{fs, path::Path};
 
 use super::iterators::{MatchIter, Matched};
 use super::peripheral::{PeripheralExt, RegisterBlockExt};
@@ -12,6 +13,7 @@ use super::yaml_ext::{AsType, GetVal};
 use super::{abspath, adding_pos, matchname, Config, PatchResult, Spec, VAL_LVL};
 use super::{make_address_block, make_address_blocks, make_cpu, make_interrupt, make_peripheral};
 use super::{make_dim_element, modify_dim_element, modify_register_properties};
+use crate::common::input_format::InputFormat;
 
 pub type PerMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Peripheral>>;
 
@@ -195,11 +197,24 @@ impl DeviceExt for Device {
             .collect::<Vec<_>>();
         let mut new = match pcopysrc.as_slice() {
             [ppath, pcopyname] => {
-                let f = File::open(abspath(path, Path::new(ppath))?)?;
-                let mut contents = String::new();
-                (&f).read_to_string(&mut contents).unwrap();
-                let filedev = svd_parser::parse(&contents)
-                    .with_context(|| format!("Parsing file {contents}"))?;
+                let ppath = Path::new(ppath);
+                let input_format = ppath
+                    .extension()
+                    .map(|ext_os| ext_os.to_str().expect("ppath is str"))
+                    .and_then(|ext| InputFormat::from_str(ext).ok())
+                    .unwrap_or(InputFormat::Xml);
+                let filepath = abspath(path, ppath)?;
+                let contents = fs::read_to_string(filepath)?;
+                let filedev = match input_format {
+                    InputFormat::Xml => svd_parser::parse(&contents)
+                        .with_context(|| format!("Parsing svd file {contents}"))?,
+                    #[cfg(feature = "yaml")]
+                    InputFormat::Yaml => serde_yaml::from_str(&contents)
+                        .with_context(|| format!("Parsing yaml file {contents}"))?,
+                    #[cfg(feature = "json")]
+                    InputFormat::Json => serde_json::from_str(&contents)
+                        .with_context(|| format!("Parsing json file {contents}"))?,
+                };
                 filedev
                     .get_peripheral(pcopyname)
                     .ok_or_else(|| {
