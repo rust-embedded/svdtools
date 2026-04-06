@@ -9,7 +9,7 @@ use svd_parser::svd::{
 use yaml_rust::{yaml::Hash, Yaml};
 
 use super::iterators::{MatchIter, Matched};
-use super::register::{RegisterExt, RegisterInfoExt};
+use super::register::RegisterExt;
 use super::yaml_ext::{AsType, GetVal, ToYaml};
 use super::{
     adding_pos, check_offsets, common_description, make_dim_element, matchname, matchsubspec,
@@ -170,9 +170,21 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     /// Delete registers and clusters matched by rspec inside ptag
-    fn delete_child(&mut self, rcspec: &str) -> PatchResult {
+    fn delete_child(&mut self, rcspec: &str, bpath: &BlockPath) -> PatchResult {
         if let Some(children) = self.children_mut() {
-            children.retain(|rc| !matchname(rc.name(), rcspec));
+            let mut done = false;
+            children.retain(|rc| {
+                let del = matchname(rc.name(), rcspec);
+                done |= del;
+                !del
+            });
+            if !done {
+                log::info!(
+                    "Trying to delete absent `{}` register/cluster from {}",
+                    rcspec,
+                    bpath
+                );
+            }
             Ok(())
         } else {
             Err(anyhow!("No registers or clusters"))
@@ -180,11 +192,21 @@ pub(crate) trait RegisterBlockExt: Name {
     }
 
     /// Delete registers matched by rspec inside ptag
-    fn delete_register(&mut self, rspec: &str) -> PatchResult {
+    fn delete_register(&mut self, rspec: &str, bpath: &BlockPath) -> PatchResult {
         if let Some(children) = self.children_mut() {
-            children.retain(
-                |rc| !matches!(rc, RegisterCluster::Register(r) if matchname(&r.name, rspec)),
-            );
+            let mut done = false;
+            children.retain(|rc| {
+                let del = matches!(rc, RegisterCluster::Register(r) if matchname(&r.name, rspec));
+                done |= del;
+                !del
+            });
+            if !done {
+                log::info!(
+                    "Trying to delete absent `{}` register from {}",
+                    rspec,
+                    bpath
+                );
+            }
             Ok(())
         } else {
             Err(anyhow!("No registers or clusters"))
@@ -195,16 +217,13 @@ pub(crate) trait RegisterBlockExt: Name {
         let (cspec, ignore) = cspec.spec();
 
         if let Some(children) = self.children_mut() {
-            let mut deleted = false;
+            let mut done = false;
             children.retain(|rc| {
-                let retain =
-                    !matches!(rc, RegisterCluster::Cluster(c) if matchname(&c.name, cspec));
-                if !retain {
-                    deleted = true;
-                }
-                retain
+                let del = matches!(rc, RegisterCluster::Cluster(c) if matchname(&c.name, cspec));
+                done |= del;
+                !del
             });
-            if !deleted && !ignore {
+            if !done && !ignore {
                 Err(anyhow!("No matching clusters found"))
             } else {
                 Ok(())
@@ -1061,21 +1080,21 @@ impl PeripheralExt for Peripheral {
         if let Some(deletions) = pmod.get_yaml("_delete") {
             match deletions {
                 Yaml::String(rcspec) => {
-                    self.delete_child(rcspec).with_context(|| {
+                    self.delete_child(rcspec, &ppath).with_context(|| {
                         format!("Deleting registers and clusters matched to `{rcspec}`")
                     })?;
                 }
                 Yaml::Array(deletions) => {
                     for rcspec in deletions {
                         let rcspec = rcspec.str()?;
-                        self.delete_child(rcspec).with_context(|| {
+                        self.delete_child(rcspec, &ppath).with_context(|| {
                             format!("Deleting registers and clusters matched to `{rcspec}`")
                         })?;
                     }
                 }
                 Yaml::Hash(deletions) => {
                     for rspec in deletions.str_vec_iter("_registers")? {
-                        self.delete_register(rspec)
+                        self.delete_register(rspec, &ppath)
                             .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                     for cspec in deletions.str_vec_iter("_clusters")? {
@@ -1369,32 +1388,46 @@ impl InterruptExt for Peripheral {
     }
 
     fn delete_interrupt(&mut self, ispec: &str) -> PatchResult {
-        self.interrupt.retain(|i| !(matchname(&i.name, ispec)));
+        let mut done = false;
+        self.interrupt.retain(|i| {
+            let del = matchname(&i.name, ispec);
+            done |= del;
+            !del
+        });
+        if !done {
+            log::info!(
+                "Trying to delete absent `{}` interrupt from {}",
+                ispec,
+                self.name
+            );
+        }
         Ok(())
     }
 }
 
 impl ClusterExt for Cluster {
     fn pre_process(&mut self, cmod: &Hash, parent: &BlockPath, _config: &Config) -> PatchResult {
+        let cpath = parent.new_cluster(&self.name);
+
         // Handle deletions
         if let Some(deletions) = cmod.get_yaml("_delete") {
             match deletions {
                 Yaml::String(rcspec) => {
-                    self.delete_child(rcspec).with_context(|| {
+                    self.delete_child(rcspec, &cpath).with_context(|| {
                         format!("Deleting registers and clusters matched to `{rcspec}`")
                     })?;
                 }
                 Yaml::Array(deletions) => {
                     for rcspec in deletions {
                         let rcspec = rcspec.str()?;
-                        self.delete_child(rcspec).with_context(|| {
+                        self.delete_child(rcspec, &cpath).with_context(|| {
                             format!("Deleting registers and clusters matched to `{rcspec}`")
                         })?;
                     }
                 }
                 Yaml::Hash(deletions) => {
                     for rspec in deletions.str_vec_iter("_registers")? {
-                        self.delete_register(rspec)
+                        self.delete_register(rspec, &cpath)
                             .with_context(|| format!("Deleting registers matched to `{rspec}`"))?;
                     }
                     for cspec in deletions.str_vec_iter("_clusters")? {
@@ -1417,8 +1450,6 @@ impl ClusterExt for Cluster {
                 }
             }
         }
-
-        let cpath = parent.new_cluster(&self.name);
 
         // Handle any copied peripherals
         for (rname, rcopy) in cmod.hash_iter("_copy") {
@@ -1675,10 +1706,7 @@ fn collect_in_array(
     if !check_offsets(&offsets, dim_increment) {
         return Err(anyhow!("{path}: registers cannot be collected into {rspec} array. Different addressOffset increments"));
     }
-    let bitmasks = registers
-        .iter()
-        .map(RegisterInfo::get_bitmask)
-        .collect::<Vec<_>>();
+    let bitmasks = registers.iter().map(|r| r.bitmask()).collect::<Vec<_>>();
     if !bitmasks.iter().all(|&m| m == bitmasks[0]) {
         return Err(anyhow!(
             "{path}: registers cannot be collected into {rspec} array. Different bit masks"
@@ -1801,10 +1829,7 @@ fn collect_in_cluster(
                     "Some of `{rspec}` registers are arrays and some are not"
                 ));
             }
-            let bitmasks = registers
-                .iter()
-                .map(|r| RegisterInfo::get_bitmask(r))
-                .collect::<Vec<_>>();
+            let bitmasks = registers.iter().map(|r| r.bitmask()).collect::<Vec<_>>();
             let new_dim_index = registers
                 .iter()
                 .map(|r| {

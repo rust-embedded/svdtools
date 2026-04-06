@@ -283,8 +283,7 @@ fn parse_register(
 
         let foffset = ftag.bit_offset();
         let fwidth = ftag.bit_width();
-        let bit_mask = (u64::MAX >> (u64::BITS - fwidth)) << foffset;
-        filling |= bit_mask;
+        filling |= ftag.bitmask();
 
         let faccs = ftag.access.map(Access::as_str).unwrap_or(raccs);
         let enums = ftag.enumerated_values.first();

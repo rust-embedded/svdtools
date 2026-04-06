@@ -63,4 +63,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
       - name: Check
-        run: bash tools/check_${{ matrix.target }}.sh
+        run: RUST_LOG=warn bash tools/check_${{ matrix.target }}.sh

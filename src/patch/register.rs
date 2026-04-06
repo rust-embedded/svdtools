@@ -5,7 +5,7 @@ use itertools::Itertools;
 use svd_parser::expand::{BlockPath, RegisterPath};
 use svd_parser::svd::{
     Access, BitRange, DimElement, EnumeratedValues, Field, FieldInfo, ModifiedWriteValues,
-    ReadAction, Register, RegisterInfo, Usage, WriteConstraint, WriteConstraintRange,
+    ReadAction, Register, Usage, WriteConstraint, WriteConstraintRange,
 };
 use yaml_rust::{yaml::Hash, Yaml};
 
@@ -20,23 +20,6 @@ use super::{
 use super::{make_derived_enumerated_values, make_ev_array, make_ev_name, make_field};
 
 pub type FieldMatchIterMut<'a, 'b> = MatchIter<'b, std::slice::IterMut<'a, Field>>;
-
-pub(crate) trait RegisterInfoExt {
-    /// Calculate filling of register
-    fn get_bitmask(&self) -> u64;
-}
-
-impl RegisterInfoExt for RegisterInfo {
-    fn get_bitmask(&self) -> u64 {
-        let mut mask = 0x0;
-        if let Some(fields) = self.fields.as_ref() {
-            for ftag in fields {
-                mask |= (!0 >> (64 - ftag.bit_range.width)) << ftag.bit_range.offset;
-            }
-        }
-        mask
-    }
-}
 
 /// Collecting methods for processing register contents
 pub trait RegisterExt {
@@ -70,7 +53,7 @@ pub trait RegisterExt {
     fn add_field(&mut self, fname: &str, fadd: &Hash, rpath: &RegisterPath) -> PatchResult;
 
     /// Delete fields matched by fspec inside rtag
-    fn delete_field(&mut self, fspec: &str) -> PatchResult;
+    fn delete_field(&mut self, fspec: &str, rpath: &RegisterPath) -> PatchResult;
 
     /// Clear field from rname and mark it as derivedFrom rderive.
     fn derive_field(&mut self, fname: &str, fderive: &Yaml, rpath: &RegisterPath) -> PatchResult;
@@ -166,7 +149,7 @@ impl RegisterExt for Register {
 
         // Handle deletions
         for fspec in rmod.str_vec_iter("_delete")? {
-            self.delete_field(fspec)
+            self.delete_field(fspec, &rpath)
                 .with_context(|| format!("Deleting fields matched to `{fspec}`"))?;
         }
 
@@ -380,13 +363,29 @@ impl RegisterExt for Register {
         } else {
             fnew.single()
         };
+        let exist_bits = self.bitmask();
+        if exist_bits & fnew.bitmask() != 0 {
+            log::warn!("field {fname} conflicts with other fields in register {rpath}");
+        }
         self.fields.get_or_insert_with(Default::default).push(fnew);
         Ok(())
     }
 
-    fn delete_field(&mut self, fspec: &str) -> PatchResult {
+    fn delete_field(&mut self, fspec: &str, rpath: &RegisterPath) -> PatchResult {
         if let Some(fields) = self.fields.as_mut() {
-            fields.retain(|f| !(matchname(&f.name, fspec)));
+            let mut done = false;
+            fields.retain(|f| {
+                let del = matchname(&f.name, fspec);
+                done |= del;
+                !del
+            });
+            if !done {
+                log::info!(
+                    "Trying to delete absent `{}` field from register {}",
+                    fspec,
+                    rpath
+                );
+            }
         }
         Ok(())
     }
