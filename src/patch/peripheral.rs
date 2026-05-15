@@ -524,36 +524,23 @@ pub(crate) trait RegisterBlockExt: Name {
 
     /// Delete substring from the beginning of register names inside ptag
     fn strip_start(&mut self, prefix: &str) -> PatchResult {
-        let len = prefix.len();
-        let glob = globset::Glob::new(&(prefix.to_string() + "*"))?.compile_matcher();
+        let re = regex::Regex::new(&globset::Glob::new(prefix)?.regex().replace("(?-u)", "").replace("*", "*?").strip_suffix("$").unwrap())?;
         for rtag in self.regs_mut() {
-            if glob.is_match(&rtag.name) {
-                rtag.name.drain(..len);
-            }
+            rtag.name = re.replace(&rtag.name, "").to_string();
             if let Some(dname) = rtag.display_name.as_mut() {
-                if glob.is_match(dname.as_str()) {
-                    dname.drain(..len);
-                }
+                *dname = re.replace(dname, "").to_string();
             }
             if let Some(name) = rtag.alternate_register.as_mut() {
-                if glob.is_match(name.as_str()) {
-                    name.drain(..len);
-                }
+                *name = re.replace(name, "").to_string();
             }
         }
         for ctag in self.clstrs_mut() {
-            if glob.is_match(&ctag.name) {
-                ctag.name.drain(..len);
-            }
+            ctag.name = re.replace(&ctag.name, "").to_string();
             if let Some(dname) = ctag.header_struct_name.as_mut() {
-                if glob.is_match(dname.as_str()) {
-                    dname.drain(..len);
-                }
+                *dname = re.replace(dname, "").to_string();
             }
             if let Some(name) = ctag.alternate_cluster.as_mut() {
-                if glob.is_match(name.as_str()) {
-                    name.drain(..len);
-                }
+                *name = re.replace(name, "").to_string();
             }
         }
         Ok(())
@@ -561,44 +548,23 @@ pub(crate) trait RegisterBlockExt: Name {
 
     /// Delete substring from the ending of register names inside ptag
     fn strip_end(&mut self, suffix: &str) -> PatchResult {
-        let len = suffix.len();
-        let glob = globset::Glob::new(&("*".to_string() + suffix))
-            .unwrap()
-            .compile_matcher();
+        let re = regex::Regex::new(&globset::Glob::new(suffix)?.regex().replace("(?-u)^", "").replace("*", "*?"))?;
         for rtag in self.regs_mut() {
-            if glob.is_match(&rtag.name) {
-                let nlen = rtag.name.len();
-                rtag.name.truncate(nlen - len);
-            }
+            rtag.name = re.replace(&rtag.name, "").to_string();
             if let Some(dname) = rtag.display_name.as_mut() {
-                if glob.is_match(dname.as_str()) {
-                    let nlen = dname.len();
-                    dname.truncate(nlen - len);
-                }
+                *dname = re.replace(dname, "").to_string();
             }
             if let Some(name) = rtag.alternate_register.as_mut() {
-                if glob.is_match(name.as_str()) {
-                    let nlen = name.len();
-                    name.truncate(nlen - len);
-                }
+                *name = re.replace(name, "").to_string();
             }
         }
         for ctag in self.clstrs_mut() {
-            if glob.is_match(&ctag.name) {
-                let nlen = ctag.name.len();
-                ctag.name.truncate(nlen - len);
-            }
+            ctag.name = re.replace(&ctag.name, "").to_string();
             if let Some(dname) = ctag.header_struct_name.as_mut() {
-                if glob.is_match(dname.as_str()) {
-                    let nlen = dname.len();
-                    dname.truncate(nlen - len);
-                }
+                *dname = re.replace(dname, "").to_string();
             }
             if let Some(name) = ctag.alternate_cluster.as_mut() {
-                if glob.is_match(name.as_str()) {
-                    let nlen = name.len();
-                    name.truncate(nlen - len);
-                }
+                *name = re.replace(name, "").to_string();
             }
         }
         Ok(())

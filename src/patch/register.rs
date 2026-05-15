@@ -283,24 +283,17 @@ impl RegisterExt for Register {
     }
 
     fn strip_start(&mut self, substr: &str) -> PatchResult {
-        let len = substr.len();
-        let glob = globset::Glob::new(&(substr.to_string() + "*"))?.compile_matcher();
+        let re = regex::Regex::new(&globset::Glob::new(substr)?.regex().replace("(?-u)", "").replace("*", "*?").strip_suffix("$").unwrap())?;
         for ftag in self.fields_mut() {
-            if glob.is_match(&ftag.name) {
-                ftag.name.drain(..len);
-            }
+            ftag.name = re.replace(&ftag.name, "").to_string();
         }
         Ok(())
     }
 
     fn strip_end(&mut self, substr: &str) -> PatchResult {
-        let len = substr.len();
-        let glob = globset::Glob::new(&("*".to_string() + substr))?.compile_matcher();
+        let re = regex::Regex::new(&globset::Glob::new(substr)?.regex().replace("(?-u)^", "").replace("*", "*?"))?;
         for ftag in self.fields_mut() {
-            if glob.is_match(&ftag.name) {
-                let nlen = ftag.name.len();
-                ftag.name.truncate(nlen - len);
-            }
+            ftag.name = re.replace(&ftag.name, "").to_string();
         }
         Ok(())
     }
